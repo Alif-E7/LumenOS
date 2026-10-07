@@ -1,3 +1,11 @@
+import sys
+import os
+
+# --- Cloud deployment fix: project root কে Python path-এ যোগ করা ---
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+# -------------------------------------------------------------------
 import streamlit as st
 import engine.orbital_engine as oe
 from engine.orbital_engine import OrbitalEngine
