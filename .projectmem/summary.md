@@ -1,12 +1,12 @@
 # projectmem - LumenOS
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-09_
 
 ## Project purpose
 Replace this placeholder with a concise description of what this project does, who it serves, and the main technologies or runtime assumptions.
 
 ## Recent issues
-- No issues logged yet.
+- [DONE] #0001 Dashboard lacks explicit simulation runner with time duration controls, and 3D globe orbit path coloring / Earth rounding / AI data center radiator orientation visualization needs improvement [dashboard/app.py, dashboard/orbit_view.py] -> Resolved simulation runner and 3D Earth rounding / AI data center radiator orientation in dashboard. Upgraded UI to dark aerospace theme with time scrubber, instantaneous telemetry HUD, synchronized thermal graph, and Streamlit 1.65 support. (fixed)
 
 ## Decisions
 - Orbital engine model: skyfield+sgp4 propagation from mean elements (no TLE download), analytic Sun vector (no ephemeris download), cylindrical shadow, single-axis sun-tracking array so P = 2000*cos(beta), radiator normal in orbit plane 90deg ahead of Sun projection (gives DEEP_SPACE / EARTH_DAY / EARTH_NIGHT each orbit). Default epoch fixed 2026-03-20 12:00 UTC for reproducibility.
@@ -15,6 +15,7 @@ Replace this placeholder with a concise description of what this project does, w
 - Thermal model v2: mass 15kg, base_heat 100W, Battery (500Wh, charges from excess solar, max 200W in eclipse, 0% -> SHUTDOWN). Radiator A=1.5, eps=0.80, T=340K (max 909W). Q_out is temperature-dependent: min(orbital max capacity, eps*sigma*A*(T_server^4 - T_sink^4)); without it naive never overheats (eclipse resets temperature).
 - Radiator attitude flipped: radiator faces Earth noon->dusk->midnight so EARTH_DAY arc follows the sunlit deep-space heating phase. LumenScheduler starts at orbital sunrise (OrbitalEngine.next_sunrise). Result: naive hits 95.4C once and loses 14.5 min of work; LumenOS max 59.9C, 0 shutdowns.
 - Scheduler semantics: recurring job stream (finished jobs re-queued), LumenOS pauses with checkpoint (progress kept), hard thermal SHUTDOWN destroys running job progress, shutdown latched until <70C. LumenOS uses 5-min look-ahead vs category limits (HEAVY 60, MEDIUM 80, COLD 95). Naive = power-aware but thermally blind.
+- Dashboard v2 architecture: Interactive simulation runner with custom duration & presets, 3D Earth globe with continental references, color-coded orbit paths (DEEP_SPACE/EARTH_DAY/ECLIPSE), AI Data Center satellite with dynamic radiator normal vector & solar radiation vector, synchronized orbit time scrubber, and dark aerospace telemetry HUD.
 
 ## Notes
 - Stefan-Boltzmann cooling with eps=0.85, A=2m2, T_rad=350K gives ~1446W (DEEP_SPACE 3K), ~1221W (EARTH_NIGHT 220K), ~854W (EARTH_DAY 280K) - higher than the 650W example in the original story.
@@ -36,6 +37,7 @@ Replace this placeholder with a concise description of what this project does, w
 - `59.9C`
 - `3.14`
 - `3.11.9`
+- `1.65`
 
 ## Open questions
 - None logged yet.

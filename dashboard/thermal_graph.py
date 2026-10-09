@@ -1,17 +1,34 @@
+"""Thermal and Power Timeline Visualizer for LumenOS.
+
+Plots:
+1. Core Server Temperature: LumenOS (predictive thermal control) vs Naive (thermally blind baseline)
+   - Shaded danger zones: NOMINAL (<60°C), WARNING (60-80°C), CRITICAL (80-95°C), SHUTDOWN (>=95°C)
+   - Vertical marker for the current inspected orbital time step.
+2. Heat Budget & Cooling Dynamics:
+   - Dynamic Radiator Cooling Capacity (W)
+   - Workload Heat Generation (W)
+   - Battery State of Charge (%)
+"""
+
+from typing import Any, Optional
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-def create_thermal_figure(timeline_lumen, timeline_naive):
-    """
-    Creates a 2-subplot timeline:
-    1. Temperature (°C) for LumenOS (blue) and Naive (red), with SHUTDOWN zone shaded (> 85°C).
-    2. Workload heat vs Cooling capacity for LumenOS.
-    """
+
+def create_thermal_figure(
+    timeline_lumen: list[dict[str, Any]],
+    timeline_naive: list[dict[str, Any]],
+    current_step_idx: Optional[int] = None,
+) -> go.Figure:
+    """Creates an aerospace telemetry dashboard chart comparing LumenOS and Naive schedulers."""
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.1,
-        subplot_titles=("Temperature (°C)", "Workload Heat vs Cooling Capacity (Watts)")
+        vertical_spacing=0.12,
+        subplot_titles=(
+            "<b>Hardware Temperature (°C) — LumenOS vs Naive</b>",
+            "<b>Thermal Dissipation (Watts) & Battery Level (%)</b>"
+        )
     )
 
     times = [step["time"] for step in timeline_lumen]
@@ -20,46 +37,150 @@ def create_thermal_figure(timeline_lumen, timeline_naive):
     temp_lumen = [step["temperature_c"] for step in timeline_lumen]
     temp_naive = [step["temperature_c"] for step in timeline_naive]
 
-    # Subplot 1: Temperature
+    # --- Subplot 1: Temperature curves ---
     fig.add_trace(
-        go.Scatter(x=times, y=temp_lumen, mode='lines', name='LumenOS', line=dict(color='blue', width=2)),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Scatter(x=times_naive, y=temp_naive, mode='lines', name='Naive', line=dict(color='red', width=2)),
+        go.Scatter(
+            x=times, y=temp_lumen,
+            mode="lines",
+            name="LumenOS (Active Hypervisor)",
+            line=dict(color="#00e5ff", width=2.5),
+            hovertemplate="LumenOS Temp: %{y:.1f}°C<extra></extra>"
+        ),
         row=1, col=1
     )
 
-    # Shade SHUTDOWN zone (> 85°C)
+    fig.add_trace(
+        go.Scatter(
+            x=times_naive, y=temp_naive,
+            mode="lines",
+            name="Naive Baseline (Blind)",
+            line=dict(color="#ff3344", width=2.5, dash="dot"),
+            hovertemplate="Naive Temp: %{y:.1f}°C<extra></extra>"
+        ),
+        row=1, col=1
+    )
+
+    # Threshold horizontal reference lines
+    fig.add_hline(
+        y=95.0, line_dash="dash", line_color="#ff1744", line_width=1.5,
+        annotation_text="HARD SHUTDOWN (95°C)", annotation_position="top right",
+        annotation_font=dict(color="#ff1744", size=10),
+        row=1, col=1
+    )
+    fig.add_hline(
+        y=80.0, line_dash="dot", line_color="#ff9100", line_width=1.2,
+        annotation_text="CRITICAL (80°C)", annotation_position="top right",
+        annotation_font=dict(color="#ff9100", size=10),
+        row=1, col=1
+    )
+    fig.add_hline(
+        y=60.0, line_dash="dot", line_color="#ffd600", line_width=1.2,
+        annotation_text="WARNING (60°C)", annotation_position="top right",
+        annotation_font=dict(color="#ffd600", size=10),
+        row=1, col=1
+    )
+
+    # Hard Shutdown Danger Zone shading
+    max_t = max(max(temp_naive, default=100.0), 100.0)
     fig.add_hrect(
-        y0=85, y1=max(max(temp_naive), 100),
-        fillcolor="red", opacity=0.2,
+        y0=95.0, y1=max_t + 5,
+        fillcolor="rgba(255, 23, 68, 0.18)",
         layer="below", line_width=0,
-        row=1, col=1,
-        annotation_text="SHUTDOWN ZONE", annotation_position="top left"
+        row=1, col=1
     )
 
-    # Subplot 2: Workload / Cooling
+    # --- Subplot 2: Heat Dissipation, Cooling & Battery ---
     cooling = [step["cooling_watts"] for step in timeline_lumen]
     task_heat = [step["task_heat_watts"] for step in timeline_lumen]
-    
+    battery_pct = [step.get("battery_percent", 100.0) for step in timeline_lumen]
+
     fig.add_trace(
-        go.Scatter(x=times, y=cooling, mode='lines', name='Max Cooling', line=dict(color='cyan', dash='dash')),
+        go.Scatter(
+            x=times, y=cooling,
+            mode="lines",
+            name="Radiator Cooling Capacity",
+            line=dict(color="#00e676", width=2, dash="dash"),
+            hovertemplate="Cooling Cap: %{y:.1f} W<extra></extra>"
+        ),
         row=2, col=1
     )
+
     fig.add_trace(
-        go.Scatter(x=times, y=task_heat, mode='lines', name='LumenOS Heat', fill='tozeroy', line=dict(color='orange')),
+        go.Scatter(
+            x=times, y=task_heat,
+            mode="lines",
+            name="LumenOS Workload Heat",
+            fill="tozeroy",
+            line=dict(color="#ff9100", width=2),
+            fillcolor="rgba(255, 145, 0, 0.25)",
+            hovertemplate="Heat Generated: %{y:.1f} W<extra></extra>"
+        ),
         row=2, col=1
     )
+
+    fig.add_trace(
+        go.Scatter(
+            x=times, y=battery_pct,
+            mode="lines",
+            name="Battery SoC (%)",
+            line=dict(color="#d500f9", width=1.8, dash="dot"),
+            hovertemplate="Battery SoC: %{y:.1f}%<extra></extra>"
+        ),
+        row=2, col=1
+    )
+
+    # Highlight current inspected step with vertical cursor line
+    if current_step_idx is not None and 0 <= current_step_idx < len(times):
+        cur_time = times[current_step_idx]
+        fig.add_vline(
+            x=cur_time,
+            line_width=2,
+            line_dash="solid",
+            line_color="#ffd700",
+            row="all"
+        )
 
     fig.update_layout(
-        height=600,
-        margin=dict(l=40, r=40, t=40, b=40),
+        height=580,
+        margin=dict(l=50, r=30, t=40, b=30),
         hovermode="x unified",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        paper_bgcolor="#090d16",
+        plot_bgcolor="#0d1424",
+        font=dict(color="#d0d7de", family="Inter, system-ui, sans-serif"),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            bgcolor="rgba(13, 17, 23, 0.8)",
+            bordercolor="rgba(255, 255, 255, 0.15)",
+            borderwidth=1,
+        )
     )
 
-    fig.update_yaxes(title_text="Temperature (°C)", row=1, col=1)
-    fig.update_yaxes(title_text="Watts", row=2, col=1)
+    fig.update_xaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        row=1, col=1
+    )
+    fig.update_xaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        title_text="Simulation UTC Time",
+        row=2, col=1
+    )
+    fig.update_yaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        title_text="Temp (°C)",
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        gridcolor="rgba(255, 255, 255, 0.08)",
+        zerolinecolor="rgba(255, 255, 255, 0.12)",
+        title_text="Watts / %",
+        row=2, col=1
+    )
 
     return fig

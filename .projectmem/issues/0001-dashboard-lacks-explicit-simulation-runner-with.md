@@ -1,0 +1,5 @@
+# #0001 Dashboard lacks explicit simulation runner with time duration controls, and 3D globe orbit path coloring / Earth rounding / AI data center radiator orientation visualization needs improvement
+
+- 2026-10-09T16:20:46Z `issue`: Dashboard lacks explicit simulation runner with time duration controls, and 3D globe orbit path coloring / Earth rounding / AI data center radiator orientation visualization needs improvement [dashboard/app.py, dashboard/orbit_view.py]
+- 2026-10-09T16:32:47Z `attempt`: Added dedicated simulation runner with time duration and scenario presets, implemented 3D Earth rounding and AI Data Center satellite orbit with dynamic radiator normal vector and solar vector, and upgraded UI with dark aerospace theme and Streamlit 1.65 compatibility (worked)
+- 2026-10-09T16:33:13Z `fix`: Resolved simulation runner and 3D Earth rounding / AI data center radiator orientation in dashboard. Upgraded UI to dark aerospace theme with time scrubber, instantaneous telemetry HUD, synchronized thermal graph, and Streamlit 1.65 support.

@@ -296,6 +296,10 @@ class OrbitalEngine:
             "altitude_km": float(wgs84.height_of(geocentric).km),
             "beta_angle_deg": math.degrees(beta_rad),
             "on_day_side": on_day_side,
+            "position_km": position_km.tolist(),
+            "velocity_km_s": velocity_km_s.tolist(),
+            "radiator_normal": radiator_normal.tolist(),
+            "sun_vector": sun_hat.tolist(),
         }
 
     def simulate_orbit(
