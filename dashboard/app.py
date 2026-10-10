@@ -1,13 +1,19 @@
+"""LumenOS: Space Mission Trade-off Simulator
+NASA Space Apps 2026 — "Space Mission Design Game"
+
+Interactive mission designer: choose your orbit, hardware, and OS,
+then watch the simulation play out in real-time.
+"""
+
 import sys
 import os
+import time
 
-# --- Project root in sys.path ---
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import streamlit as st
-import pandas as pd
 import engine.orbital_engine as oe
 from engine.orbital_engine import OrbitalEngine
 from engine.thermal_engine import ThermalEngine
@@ -16,408 +22,461 @@ from engine.lumen_scheduler import LumenScheduler
 from dashboard.orbit_view import create_orbit_figure
 from dashboard.thermal_graph import create_thermal_figure
 
-# Streamlit Page Config
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE CONFIG
+# ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="LumenOS — Orbital Data Center Hypervisor",
-    page_icon="🛰️",
+    page_title="LumenOS — Space Mission Simulator",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Custom Aerospace Glassmorphism Styling
+# ─────────────────────────────────────────────────────────────────────────────
+# GLOBAL STYLING
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    /* Dark aerospace theme background */
-    .stApp {
-        background-color: #080d1a;
-        color: #e6edf3;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    
-    /* Metrics and cards styling */
-    div[data-testid="stMetric"] {
-        background: linear-gradient(135deg, rgba(16, 26, 46, 0.75) 0%, rgba(9, 14, 26, 0.9) 100%);
-        border: 1px solid rgba(0, 229, 255, 0.2);
-        border-radius: 10px;
-        padding: 14px 18px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    }
-    div[data-testid="stMetric"]:hover {
-        border-color: rgba(0, 229, 255, 0.5);
-    }
-    div[data-testid="stMetricLabel"] {
-        color: #8b949e !important;
-        font-size: 0.85rem !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    div[data-testid="stMetricValue"] {
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        font-size: 1.6rem !important;
-    }
-    div[data-testid="stMetricDelta"] {
-        font-size: 0.8rem !important;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    .stApp { background: #07091a; color: #e2e8f0;
+             font-family: 'Inter', -apple-system, sans-serif; }
 
-    /* Telemetry HUD card */
-    .telemetry-card {
-        background: rgba(13, 21, 38, 0.85);
-        border: 1px solid rgba(56, 139, 253, 0.25);
-        border-radius: 8px;
-        padding: 14px 18px;
-        margin-bottom: 12px;
+    /* Sidebar */
+    section[data-testid="stSidebar"] { background: #0d1326; border-right: 1px solid rgba(99,179,237,0.18); }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 { color: #90cdf4; }
+
+    /* Metric cards */
+    div[data-testid="stMetric"] {
+        background: linear-gradient(135deg, rgba(17,25,55,0.85), rgba(9,14,35,0.95));
+        border: 1px solid rgba(99,179,237,0.22);
+        border-radius: 10px; padding: 14px 18px;
+        box-shadow: 0 4px 18px rgba(0,0,0,0.35);
     }
-    .badge-green {
-        background-color: rgba(46, 160, 67, 0.25);
-        color: #3fb950;
-        border: 1px solid #2ea043;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .badge-red {
-        background-color: rgba(248, 81, 73, 0.25);
-        color: #f85149;
-        border: 1px solid #da3633;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .badge-blue {
-        background-color: rgba(56, 139, 253, 0.25);
-        color: #58a6ff;
-        border: 1px solid #388bfd;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .badge-amber {
-        background-color: rgba(210, 153, 34, 0.25);
-        color: #d29922;
-        border: 1px solid #bb8009;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
+    div[data-testid="stMetricLabel"] { color: #94a3b8 !important; font-size: .82rem !important;
+        text-transform: uppercase; letter-spacing: .05em; }
+    div[data-testid="stMetricValue"] { color: #f8fafc !important; font-weight: 700 !important; }
+
+    /* Divider */
+    hr { border: 0; border-top: 1px solid rgba(255,255,255,.08); margin: 12px 0; }
+
+    /* Report card banners */
+    .banner { border-radius: 10px; padding: 16px 24px; margin: 10px 0;
+              font-size: 1.1rem; font-weight: 700; letter-spacing: .02em; }
+    .banner-success { background: rgba(34,197,94,.18); border: 1.5px solid #22c55e; color: #4ade80; }
+    .banner-fail    { background: rgba(239,68,68,.18);  border: 1.5px solid #ef4444; color: #f87171; }
+    .banner-warn    { background: rgba(234,179,8,.18);  border: 1.5px solid #eab308; color: #fde047; }
+
+    /* Phase badges */
+    .badge { display:inline-block; padding:3px 10px; border-radius:12px;
+             font-size:.76rem; font-weight:700; letter-spacing:.04em; }
+    .badge-space  { background:rgba(34,197,94,.18);  color:#4ade80; border:1px solid #22c55e; }
+    .badge-earth  { background:rgba(239,68,68,.18);  color:#f87171; border:1px solid #ef4444; }
+    .badge-eclipse{ background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid #3b82f6; }
+
+    /* HUD strip */
+    .hud { background:rgba(15,23,42,.8); border:1px solid rgba(99,179,237,.22);
+           border-radius:8px; padding:10px 18px; margin-bottom:10px; font-size:.9rem; }
 </style>
 """, unsafe_allow_html=True)
 
-# Header Section
-col_title, col_status = st.columns([3, 1])
-with col_title:
-    st.markdown("<h1 style='margin-bottom: 2px; color: #58a6ff;'>🛰️ LumenOS — Orbital Data Center Hypervisor</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #8b949e; margin-top: 0;'>Thermodynamics-Aware Workload Orchestration in Low Earth Orbit (LEO) | NASA Space Apps 2026</p>", unsafe_allow_html=True)
-with col_status:
-    st.markdown("""
-    <div style='text-align: right; margin-top: 10px;'>
-        <span class='badge-green'>● SYSTEM ONLINE</span> &nbsp;
-        <span class='badge-blue'>LEO 550 km</span>
+# ─────────────────────────────────────────────────────────────────────────────
+# MISSION SCENARIO PROFILES
+# ─────────────────────────────────────────────────────────────────────────────
+MISSION_PROFILES = {
+    "🌍 LEO Earth Observer": {
+        "altitude_km": 550.0,
+        "inclination_deg": 53.0,
+        "sim_minutes": 90.0,
+        "description": "Classic ISS-like low Earth orbit. Eclipse ~35 min per orbit. Strong solar & decent cooling.",
+        "orbital_period_label": "~95.6 min",
+    },
+    "🌕 Lunar Gateway (NRHO)": {
+        "altitude_km": 350_000.0,   # approximated via high alt; no ecliptic dependency below
+        "inclination_deg": 90.0,
+        "sim_minutes": 180.0,
+        "description": "Near-Rectilinear Halo Orbit around the Moon. Longer eclipse stretches, weaker solar (1/r² falloff). Critical power margins.",
+        "orbital_period_label": "~7 days (180 min sim)",
+    },
+    "🔴 Mars Transit (Heliocentric)": {
+        "altitude_km": 1000.0,
+        "inclination_deg": 5.0,
+        "sim_minutes": 120.0,
+        "description": "Deep-space cruise to Mars. Solar power halved (1.52 AU). Near-zero eclipse. Thermal stress from solar heating only.",
+        "orbital_period_label": "~7-month transit (120 min sim)",
+    },
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SIDEBAR — MISSION DESIGNER
+# ─────────────────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("## 🚀 Mission Designer")
+    st.markdown("---")
+
+    # 1. Mission Scenario
+    st.markdown("### 🌐 Mission Scenario")
+    scenario_name = st.selectbox(
+        "Select Orbit Profile:",
+        list(MISSION_PROFILES.keys()),
+        index=0,
+        help="Determines orbital altitude, inclination, eclipse fraction, and simulation duration."
+    )
+    profile = MISSION_PROFILES[scenario_name]
+    st.info(profile["description"])
+
+    st.markdown("---")
+
+    # 2. Hardware Configuration
+    st.markdown("### ⚙️ Hardware Configuration")
+
+    radiator_area = st.slider(
+        "Radiator Area (m²)",
+        min_value=0.5, max_value=3.0, value=1.5, step=0.1,
+        help="Larger radiator → more heat rejection via Stefan-Boltzmann radiation."
+    )
+    battery_capacity_wh = st.slider(
+        "Battery Capacity (Wh)",
+        min_value=200, max_value=1500, value=500, step=50,
+        help="Larger battery → more power headroom during eclipse passes."
+    )
+    server_mass_kg = st.slider(
+        "Server Chassis Mass (kg)",
+        min_value=5, max_value=30, value=15, step=1,
+        help="Higher thermal mass slows temperature swings (buffer against thermal shock)."
+    )
+
+    st.markdown("---")
+
+    # 3. Operating System Selection
+    st.markdown("### 🖥️ Operating System")
+    os_choice = st.radio(
+        "Scheduler OS:",
+        ["LumenOS (AI-Aware)", "Naive Scheduler (Legacy)"],
+        index=0,
+        help="LumenOS uses 5-min thermal look-ahead + checkpoint. Naive runs blindly until meltdown."
+    )
+    is_lumenos = os_choice.startswith("LumenOS")
+
+    st.markdown("---")
+
+    # 4. Playback Speed
+    st.markdown("### ▶️ Simulation Playback")
+    speed_opt = st.selectbox(
+        "Animation Speed (for selected orbit duration):",
+        ["30 Seconds (Fast)", "1 Minute (Normal)", "2 Minutes (Cinematic)"],
+        index=0
+    )
+    run_sim = st.button("🚀 Launch Mission", type="primary", use_container_width=True)
+    reset_btn = st.button("🔄 Reset", use_container_width=True)
+
+    st.markdown("---")
+    st.caption(f"Orbital Period: {profile['orbital_period_label']}")
+    st.caption("Sim Duration: %.0f min" % profile["sim_minutes"])
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CACHE KEY: Any sidebar change triggers fresh simulation
+# ─────────────────────────────────────────────────────────────────────────────
+cache_key = (scenario_name, radiator_area, battery_capacity_wh, server_mass_kg)
+
+@st.cache_data(show_spinner=False)
+def run_both_schedulers(scenario, area_m2, batt_wh, mass_kg):
+    """Always runs both schedulers so we can compute the efficiency gain delta."""
+    prof = MISSION_PROFILES[scenario]
+    alt  = min(prof["altitude_km"], 5000.0)  # SGP4 cap for heliocentric approximation
+    incl = prof["inclination_deg"]
+    dur  = prof["sim_minutes"]
+
+    oe.RADIATOR_AREA_M2 = area_m2
+
+    # Lunar / Mars: reduce solar by 1/r² factor
+    solar_scale = 1.0
+    if "Lunar" in scenario:
+        solar_scale = 0.65   # ~0.65 at lunar distance (reduced due to Earth eclipse geometry)
+    elif "Mars" in scenario:
+        solar_scale = 0.43   # 1/1.52² ≈ 0.43
+
+    o_engine = OrbitalEngine(
+        altitude_km=alt,
+        inclination_deg=incl,
+        solar_array_max_watts=2000.0 * solar_scale,
+    )
+    t_engine_lumen = ThermalEngine(mass_kg=float(mass_kg), base_heat_watts=100.0,
+                                   battery_capacity_wh=float(batt_wh))
+    t_engine_naive = ThermalEngine(mass_kg=float(mass_kg), base_heat_watts=100.0,
+                                   battery_capacity_wh=float(batt_wh))
+    w_profiler = WorkloadProfiler()
+
+    sched_lumen = LumenScheduler(o_engine, t_engine_lumen, w_profiler)
+    lumen_res = sched_lumen.run_simulation(dur)
+
+    sched_naive = LumenScheduler(o_engine, t_engine_naive, w_profiler)
+    naive_res = sched_naive.compare_with_naive_scheduler(dur)
+
+    return lumen_res, naive_res
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SESSION STATE
+# ─────────────────────────────────────────────────────────────────────────────
+if "current_step" not in st.session_state or reset_btn:
+    st.session_state["current_step"] = 0
+if "last_cache_key" not in st.session_state:
+    st.session_state["last_cache_key"] = None
+
+# Force re-render if sidebar changed
+if st.session_state["last_cache_key"] != cache_key:
+    st.session_state["current_step"] = 0
+    st.session_state["last_cache_key"] = cache_key
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEADER
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("<h1 style='margin: 0 0 4px 0; color: #38bdf8;'>🚀 LumenOS: Space Mission Trade-off Simulator</h1>",
+            unsafe_allow_html=True)
+st.markdown(
+    "<p style='margin: 0 0 12px 0; color: #94a3b8;'>"
+    "Design your spacecraft, choose your OS, and see if your mission survives the thermal extremes of space."
+    "</p>",
+    unsafe_allow_html=True
+)
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RUN SIMULATION
+# ─────────────────────────────────────────────────────────────────────────────
+with st.spinner("⚡ Computing orbital mechanics & thermal physics…"):
+    lumen_res, naive_res = run_both_schedulers(scenario_name, radiator_area,
+                                               battery_capacity_wh, server_mass_kg)
+
+# Pick which result to display as the "primary" based on OS selection
+primary_res = lumen_res if is_lumenos else naive_res
+
+timeline_lumen = lumen_res["timeline"]
+timeline_naive = naive_res["timeline"]
+timeline_primary = primary_res["timeline"]
+total_steps = len(timeline_primary)
+
+max_temp_primary = primary_res["max_temperature_reached"]
+useful_mins_lumen = lumen_res["total_compute_seconds"] / 60.0
+useful_mins_naive = naive_res["total_compute_seconds"] / 60.0
+lost_mins = naive_res["lost_compute_seconds"] / 60.0
+
+gain_pct = 0.0
+if useful_mins_naive > 0:
+    gain_pct = (useful_mins_lumen - useful_mins_naive) / useful_mins_naive * 100.0
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MISSION REPORT CARD
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("### 📋 Mission Report Card")
+
+if max_temp_primary >= 95.0:
+    st.markdown(
+        "<div class='banner banner-fail'>"
+        "🔴 MISSION FAILED: THERMAL SHUTDOWN — Hardware temperature reached "
+        f"{max_temp_primary:.1f}°C, exceeding the 95°C hard limit. "
+        f"{primary_res['thermal_shutdowns']} shutdown event(s) destroyed "
+        f"{primary_res['lost_compute_seconds']/60:.1f} min of active compute."
+        "</div>",
+        unsafe_allow_html=True
+    )
+elif is_lumenos:
+    st.markdown(
+        "<div class='banner banner-success'>"
+        "🟢 MISSION SUCCESS: All thermal constraints managed — "
+        f"LumenOS kept the server at {max_temp_primary:.1f}°C peak "
+        f"with 0 crashes. {useful_mins_lumen:.1f} min of useful computation completed."
+        "</div>",
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        "<div class='banner banner-warn'>"
+        "🟡 MISSION MARGINAL: Naive Scheduler scraped through — "
+        f"Peak {max_temp_primary:.1f}°C, {primary_res['thermal_shutdowns']} shutdowns. "
+        "Switch to LumenOS for reliable thermal control."
+        "</div>",
+        unsafe_allow_html=True
+    )
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KPI METRICS ROW
+# ─────────────────────────────────────────────────────────────────────────────
+mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+mc1.metric("🌡️ Peak Temperature", f"{max_temp_primary:.1f}°C",
+           delta="SAFE" if max_temp_primary < 80 else ("WARNING" if max_temp_primary < 95 else "SHUTDOWN"),
+           delta_color="normal" if max_temp_primary < 80 else "inverse")
+mc2.metric("⏱️ Useful Compute", f"{primary_res['total_compute_seconds']/60:.1f} min",
+           delta=f"{primary_res['thermal_shutdowns']} crash(es)", delta_color="inverse")
+mc3.metric("🔋 Min Battery", f"{primary_res['min_battery_percent']:.0f}%",
+           delta="Eclipse survived" if primary_res["min_battery_percent"] > 0 else "Battery drained!")
+mc4.metric("⚡ Compute Efficiency Gain",
+           f"+{gain_pct:.0f}%" if gain_pct >= 0 else f"{gain_pct:.0f}%",
+           delta=f"LumenOS vs Naive | +{useful_mins_lumen - useful_mins_naive:.1f} min",
+           delta_color="normal")
+mc5.metric("💥 Lost Compute (Naive)", f"{lost_mins:.1f} min",
+           delta=f"{naive_res['thermal_shutdowns']} shutdown(s)", delta_color="inverse")
+
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PLAYBACK CONTROLS
+# ─────────────────────────────────────────────────────────────────────────────
+pc1, pc2, pc3 = st.columns([3, 1, 1])
+with pc1:
+    scrub = st.slider(
+        "⏩ Orbit Time Inspector:",
+        min_value=0, max_value=total_steps - 1,
+        value=st.session_state["current_step"],
+        format="Step %d",
+        help="Drag to inspect any point in the mission. Auto-advances during simulation."
+    )
+    if not run_sim:
+        st.session_state["current_step"] = scrub
+
+with pc2:
+    st.write("")
+    if run_sim:
+        st.success("Simulating…")
+    else:
+        st.caption(f"t = {st.session_state['current_step'] * 0.5:.1f} min / {profile['sim_minutes']:.0f} min")
+
+with pc3:
+    # Jump to interesting events
+    event_jump = st.selectbox("Jump to:", ["— Select Event —",
+                                           "Orbital Sunrise",
+                                           "Radiator → Earth Day (Hot)",
+                                           "Eclipse Entry",
+                                           "Naive Shutdown Moment"])
+    if event_jump == "Orbital Sunrise":
+        st.session_state["current_step"] = 0
+    elif event_jump == "Radiator → Earth Day (Hot)":
+        for i, s in enumerate(timeline_primary):
+            if s["orbital_state"]["radiator_facing"] == "EARTH_DAY":
+                st.session_state["current_step"] = i; break
+    elif event_jump == "Eclipse Entry":
+        for i, s in enumerate(timeline_primary):
+            if not s["orbital_state"]["is_sunlit"]:
+                st.session_state["current_step"] = i; break
+    elif event_jump == "Naive Shutdown Moment":
+        for i, s in enumerate(timeline_naive):
+            if s["thermal_status"] == "SHUTDOWN":
+                st.session_state["current_step"] = i; break
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PLACEHOLDER CONTAINERS FOR LIVE UPDATE
+# ─────────────────────────────────────────────────────────────────────────────
+hud_ph = st.empty()
+col_orb, col_therm = st.columns([1, 1], gap="medium")
+orb_ph = col_orb.empty()
+therm_ph = col_therm.empty()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RENDER FUNCTION — called once per frame
+# ─────────────────────────────────────────────────────────────────────────────
+def render_frame(idx: int):
+    idx = max(0, min(idx, total_steps - 1))
+    step_p = timeline_primary[idx]
+    step_n = timeline_naive[idx]
+    state   = step_p["orbital_state"]
+    t_min   = idx * 0.5
+
+    facing  = state["radiator_facing"]
+    is_sun  = state["is_sunlit"]
+    temp_p  = step_p["temperature_c"]
+    temp_n  = step_n["temperature_c"]
+    cool    = state["max_cooling_capacity_watts"]
+    solar   = state["solar_power_watts"]
+    batt    = step_p.get("battery_percent", 100.0)
+    task    = step_p.get("task_running") or "Idle"
+    task_n  = step_n.get("task_running") or "OFF"
+
+    if not is_sun:
+        env = "<span class='badge badge-eclipse'>🌑 ECLIPSE (Shadow, 0W Solar, Battery Mode)</span>"
+    elif facing == "DEEP_SPACE":
+        env = "<span class='badge badge-space'>❄️ DEEP SPACE (3K Cold Sky, 909W Cooling)</span>"
+    else:
+        env = "<span class='badge badge-earth'>☀️ EARTH DAY (280K Earth IR, 491W Cooling)</span>"
+
+    naive_label = ("🔥 <b style='color:#f87171;'>THERMAL SHUTDOWN</b>"
+                   if step_n["thermal_status"] == "SHUTDOWN"
+                   else f"<b style='color:#fde047;'>{temp_n:.1f}°C</b>")
+
+    hud_ph.markdown(f"""
+    <div class='hud'>
+    <b>⏱ Mission Time:</b> <span style='color:#38bdf8;'>{t_min:.1f} min</span> &nbsp;|&nbsp;
+    {env} &nbsp;|&nbsp;
+    <b>Cooling:</b> <b style='color:#4ade80;'>{cool:.0f} W</b> &nbsp;|&nbsp;
+    <b>Solar:</b> {solar:.0f} W &nbsp;|&nbsp;
+    <b>Battery:</b> {batt:.0f}% &nbsp;|&nbsp;
+    <b>{os_choice.split()[0]}:</b> <b style='color:#38bdf8;'>{temp_p:.1f}°C</b> | <code>{task}</code> &nbsp;|&nbsp;
+    <b>Naive:</b> {naive_label} | <code>{task_n}</code>
     </div>
     """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------
-# Sidebar Controls & Simulation Runner
-# ---------------------------------------------------------
-st.sidebar.markdown("### ⚙️ Simulation Configuration")
+    fig_o = create_orbit_figure(timeline_primary, current_step_idx=idx)
+    fig_t = create_thermal_figure(timeline_lumen, timeline_naive, current_step_idx=idx)
 
-# Quick Scenario Presets
-preset = st.sidebar.selectbox(
-    "Scenario Presets",
-    ["Custom Parameters", "Standard LEO Orbit (90 min | 1.5 m²)", "Stress Test (180 min | 1.2 m²)", "High Cooling Capacity (90 min | 2.5 m²)"]
-)
+    orb_ph.plotly_chart(fig_o, width="stretch")
+    therm_ph.plotly_chart(fig_t, width="stretch")
 
-# Set defaults based on preset
-default_duration = 90.0
-default_area = 1.5
-default_mass = 15.0
 
-if preset == "Standard LEO Orbit (90 min | 1.5 m²)":
-    default_duration = 90.0
-    default_area = 1.5
-    default_mass = 15.0
-elif preset == "Stress Test (180 min | 1.2 m²)":
-    default_duration = 180.0
-    default_area = 1.2
-    default_mass = 15.0
-elif preset == "High Cooling Capacity (90 min | 2.5 m²)":
-    default_duration = 90.0
-    default_area = 2.5
-    default_mass = 15.0
+# ─────────────────────────────────────────────────────────────────────────────
+# LIVE SIMULATION LOOP or STATIC FRAME
+# ─────────────────────────────────────────────────────────────────────────────
+if run_sim:
+    if "30 Seconds" in speed_opt:
+        step_inc, delay = 3, 0.50
+    elif "1 Minute" in speed_opt:
+        step_inc, delay = 2, 0.65
+    else:
+        step_inc, delay = 1, 0.65
 
-sim_duration = st.sidebar.slider(
-    "Simulation Duration (minutes)",
-    min_value=30.0, max_value=240.0,
-    value=float(default_duration), step=10.0,
-    help="Time span to simulate orbital passes (~95.6 mins per complete Earth orbit revolution)."
-)
-
-radiator_area = st.sidebar.slider(
-    "Radiator Area (m²)",
-    min_value=0.5, max_value=5.0,
-    value=float(default_area), step=0.1,
-    help="Effective radiating surface area rejecting heat via Stefan-Boltzmann infrared radiation."
-)
-
-server_mass = st.sidebar.slider(
-    "AI Server Mass (kg)",
-    min_value=5.0, max_value=50.0,
-    value=float(default_mass), step=1.0,
-    help="Thermal mass of server chassis (Aluminum Cp = 900 J/kg·K)."
-)
-
-base_heat = st.sidebar.slider(
-    "Base Electronics Idle Heat (Watts)",
-    min_value=50, max_value=200,
-    value=100, step=10,
-    help="Continuous standby power and avionics thermal dissipation."
-)
-
-st.sidebar.markdown("---")
-
-# Run Simulation Button
-run_btn = st.sidebar.button("🚀 Run Orbital Simulation", type="primary", use_container_width=True)
-
-# ---------------------------------------------------------
-# Simulation Execution & Session State Caching
-# ---------------------------------------------------------
-@st.cache_data(show_spinner=False)
-def execute_simulation(duration, area, mass, base_idle):
-    oe.RADIATOR_AREA_M2 = area
-    o_engine = OrbitalEngine()
-    t_engine = ThermalEngine(mass_kg=mass, base_heat_watts=base_idle)
-    w_profiler = WorkloadProfiler()
-    
-    scheduler = LumenScheduler(o_engine, t_engine, w_profiler)
-    lumen_res = scheduler.run_simulation(duration)
-    naive_res = scheduler.compare_with_naive_scheduler(duration)
-    return lumen_res, naive_res
-
-# Trigger simulation if button clicked or not yet in session
-if run_btn or "sim_results" not in st.session_state:
-    with st.spinner("Calculating orbital mechanics, Stefan-Boltzmann radiation, and scheduler timelines..."):
-        lumen_data, naive_data = execute_simulation(sim_duration, radiator_area, server_mass, base_heat)
-        st.session_state["sim_results"] = (lumen_data, naive_data)
-        st.session_state["params"] = (sim_duration, radiator_area, server_mass, base_heat)
-
-lumen, naive = st.session_state["sim_results"]
-
-# Calculate core comparison metrics
-lumen_useful_mins = lumen["total_compute_seconds"] / 60.0
-naive_useful_mins = naive["total_compute_seconds"] / 60.0
-lost_compute_mins = naive["lost_compute_seconds"] / 60.0
-
-if naive_useful_mins > 0:
-    productivity_gain = ((lumen_useful_mins - naive_useful_mins) / naive_useful_mins) * 100.0
+    prog = st.progress(0.0)
+    for i in range(0, total_steps, step_inc):
+        st.session_state["current_step"] = i
+        prog.progress(i / max(total_steps - 1, 1))
+        render_frame(i)
+        time.sleep(delay)
+    st.session_state["current_step"] = total_steps - 1
+    prog.progress(1.0)
+    render_frame(total_steps - 1)
+    prog.empty()
 else:
-    productivity_gain = 0.0
+    render_frame(st.session_state["current_step"])
 
-# ---------------------------------------------------------
-# Top KPI Metric Cards
-# ---------------------------------------------------------
-st.markdown("### 📊 Mission Performance Summary")
-c1, c2, c3, c4 = st.columns(4)
+# ─────────────────────────────────────────────────────────────────────────────
+# EXPLAINER — Context Cards
+# ─────────────────────────────────────────────────────────────────────────────
+st.markdown("<hr>", unsafe_allow_html=True)
+col_a, col_b, col_c = st.columns(3)
 
-c1.metric(
-    label="LumenOS Useful Work",
-    value=f"{lumen_useful_mins:.1f} min",
-    delta=f"Max: {lumen['max_temperature_reached']:.1f}°C | 0 Crashes",
-    delta_color="normal"
-)
-
-c2.metric(
-    label="Naive Scheduler Work",
-    value=f"{naive_useful_mins:.1f} min",
-    delta=f"Max: {naive['max_temperature_reached']:.1f}°C | {naive['thermal_shutdowns']} Crash",
-    delta_color="inverse"
-)
-
-c3.metric(
-    label="Productivity Gain",
-    value=f"+{productivity_gain:.0f}%",
-    delta=f"{lumen_useful_mins - naive_useful_mins:+.1f} min work gained",
-    delta_color="normal"
-)
-
-c4.metric(
-    label="Compute Lost to Crashes",
-    value=f"{lost_compute_mins:.1f} min",
-    delta=f"Naive Shutdown: {naive['shutdown_minutes']:.1f} min dark",
-    delta_color="inverse"
-)
-
-st.markdown("---")
-
-# ---------------------------------------------------------
-# Interactive Orbit Time Scrubber & Rounding Playback
-# ---------------------------------------------------------
-timeline = lumen["timeline"]
-timeline_len = len(timeline)
-
-st.markdown("### 🛰️ Live Orbital Rounding & Telemetry Inspector")
-scrub_col1, scrub_col2 = st.columns([3, 1])
-
-with scrub_col1:
-    step_idx = st.slider(
-        "Scrub Time Along Orbit (30-second steps)",
-        min_value=0,
-        max_value=timeline_len - 1,
-        value=0,
-        format="Step %d",
-        help="Drag slider to inspect the satellite and radiator orientation rounding Earth at each point in time."
-    )
-
-with scrub_col2:
-    # Quick jumps
-    jump = st.selectbox(
-        "Jump to Key Orbital Events:",
-        ["Select event...", "Orbital Sunrise (12:00)", "Radiator Facing Earth (Thermal Stress)", "Naive Hard Shutdown", "Eclipse Entry (Shadow)"]
-    )
-    if jump == "Orbital Sunrise (12:00)":
-        step_idx = 0
-    elif jump == "Radiator Facing Earth (Thermal Stress)":
-        # Find step where radiator faces EARTH_DAY
-        for idx_ev, stp in enumerate(timeline):
-            if stp["orbital_state"]["radiator_facing"] == "EARTH_DAY":
-                step_idx = idx_ev
-                break
-    elif jump == "Naive Hard Shutdown":
-        # Find step where naive hit shutdown
-        for idx_ev, stp in enumerate(naive["timeline"]):
-            if stp["thermal_status"] == "SHUTDOWN":
-                step_idx = idx_ev
-                break
-    elif jump == "Eclipse Entry (Shadow)":
-        for idx_ev, stp in enumerate(timeline):
-            if not stp["orbital_state"]["is_sunlit"]:
-                step_idx = idx_ev
-                break
-
-cur_step = timeline[step_idx]
-cur_naive_step = naive["timeline"][step_idx]
-cur_state = cur_step["orbital_state"]
-sim_time_str = str(cur_step["time"])[:19]
-elapsed_min = step_idx * 0.5
-
-# Instantaneous Telemetry HUD Strip
-facing = cur_state["radiator_facing"]
-facing_badge = (
-    "<span class='badge-green'>🟢 DEEP_SPACE (3 K Cold Sky)</span>" if facing == "DEEP_SPACE"
-    else "<span class='badge-red'>🔴 EARTH_DAY (280 K Earth IR)</span>"
-)
-sun_badge = (
-    "<span class='badge-amber'>☀️ SUNLIT (100% Solar)</span>" if cur_state["is_sunlit"]
-    else "<span class='badge-blue'>🌑 ECLIPSE (Earth Shadow)</span>"
-)
-lumen_status_badge = (
-    "<span class='badge-green'>NOMINAL</span>" if cur_step["thermal_status"] == "NOMINAL"
-    else ("<span class='badge-amber'>WARNING</span>" if cur_step["thermal_status"] == "WARNING" else "<span class='badge-red'>CRITICAL</span>")
-)
-naive_status_badge = (
-    "<span class='badge-red'>🔥 SHUTDOWN (OFF)</span>" if cur_naive_step["thermal_status"] == "SHUTDOWN"
-    else "<span class='badge-green'>RUNNING</span>"
-)
-
-st.markdown(f"""
-<div class='telemetry-card'>
-    <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;'>
-        <div><b>Telemetry Instant:</b> <code style='color: #58a6ff;'>{sim_time_str} UTC</code> (t = {elapsed_min:.1f} min)</div>
-        <div><b>Illumination:</b> {sun_badge}</div>
-        <div><b>Radiator Orientation:</b> {facing_badge}</div>
-        <div><b>Cooling Capacity:</b> <b style='color: #3fb950;'>{cur_state['max_cooling_capacity_watts']:.1f} W</b></div>
-        <div><b>Solar Power:</b> <b>{cur_state['solar_power_watts']:.1f} W</b></div>
-        <div><b>Battery SoC:</b> <b>{cur_step.get('battery_percent', 100):.1f}%</b></div>
-    </div>
-    <hr style='border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0;'>
-    <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.9rem;'>
-        <div><b>LumenOS:</b> {lumen_status_badge} | Temp: <b style='color: #00e5ff;'>{cur_step['temperature_c']:.1f}°C</b> | Task: <code>{cur_step.get('task_running') or 'Idle (Predictive Pause)'}</code></div>
-        <div><b>Naive:</b> {naive_status_badge} | Temp: <b style='color: #ff5252;'>{cur_naive_step['temperature_c']:.1f}°C</b> | Task: <code>{cur_naive_step.get('task_running') or 'None'}</code></div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# 3D Orbit Globe & Thermal Timeline Layout
-# ---------------------------------------------------------
-col_globe, col_graphs = st.columns([1, 1], gap="medium")
-
-with col_globe:
-    st.subheader("🌐 3D Orbital Mechanics & Radiator Orientation")
-    st.caption("AI Data Center rounding Earth with active Radiator Vector (Green = Deep Space, Red = Earth Facing) and Solar Vector.")
-    fig_orbit = create_orbit_figure(timeline, current_step_idx=step_idx)
-    st.plotly_chart(fig_orbit, width="stretch")
-
-with col_graphs:
-    st.subheader("📈 Thermal Dynamics & Cooling Envelope")
-    st.caption("Comparing LumenOS predictive thermal throttling vs Naive baseline overheating into hard shutdown.")
-    fig_thermal = create_thermal_figure(timeline, naive["timeline"], current_step_idx=step_idx)
-    st.plotly_chart(fig_thermal, width="stretch")
-
-# ---------------------------------------------------------
-# Detailed Workload Analytics & Decision Log
-# ---------------------------------------------------------
-st.markdown("---")
-tab_tasks, tab_decisions, tab_architecture = st.tabs(["📋 Workload Execution Breakdown", "📜 Hypervisor Event Audit Log", "🏗️ LumenOS Orbital Architecture"])
-
-with tab_tasks:
-    col_t1, col_t2 = st.columns([1, 1])
-    with col_t1:
-        st.markdown("#### Completed Tasks by Category")
-        df_lumen_tasks = pd.DataFrame(list(lumen["completed_by_task"].items()), columns=["Task Name", "LumenOS Completed"])
-        df_naive_tasks = pd.DataFrame(list(naive["completed_by_task"].items()), columns=["Task Name", "Naive Completed"])
-        df_merged = pd.merge(df_lumen_tasks, df_naive_tasks, on="Task Name", how="outer").fillna(0)
-        st.dataframe(df_merged, width="stretch", hide_index=True)
-    
-    with col_t2:
-        st.markdown("#### Key Takeaway")
-        st.info(
-            f"**Zero Crashes:** LumenOS avoided {lumen['thermal_shutdowns_avoided']} catastrophic shutdown events by pre-emptively holding back heavy AI jobs before the thermal limit was breached.\n\n"
-            f"**No Lost Compute:** Naive scheduler wasted {lost_compute_mins:.1f} minutes of computation due to hard thermal shutdowns wiping out active checkpoint progress."
-        )
-
-with tab_decisions:
-    st.markdown("#### Real-Time Hypervisor Decision Trail")
-    # Build decision history DataFrame
-    decision_rows = []
-    for i, s in enumerate(timeline):
-        decision_rows.append({
-            "Time": str(s["time"])[:19],
-            "Temp (°C)": f"{s['temperature_c']:.1f}",
-            "Status": s["thermal_status"],
-            "Radiator": s["orbital_state"]["radiator_facing"],
-            "Active Job": s.get("task_running") or "None",
-            "LumenOS Reason": s["decision"]
-        })
-    df_decisions = pd.DataFrame(decision_rows)
-    st.dataframe(df_decisions.tail(20), width="stretch", hide_index=True)
-
-with tab_architecture:
+with col_a:
     st.markdown("""
-    #### 🏗️ The 4-Module Thermodynamic Architecture
-    
-    1. **Orbital Engine (`engine/orbital_engine.py`):**
-       - SGP4 orbit propagation in circular LEO (550 km, 51.6° inclination).
-       - Calculates Earth shadow (cylindrical umbra) and single-axis sun tracking.
-       - Evaluates Radiator View Factor: DEEP_SPACE (3 K), EARTH_DAY (280 K), EARTH_NIGHT (220 K).
-    
-    2. **Thermal Engine (`engine/thermal_engine.py`):**
-       - First-principles Stefan-Boltzmann radiative rejection: $Q_{out} = \\epsilon \\sigma A (T_{server}^4 - T_{sink}^4)$.
-       - Lumped thermal mass model ($m \\cdot C_p = 15\\text{ kg} \\times 900\\text{ J/kg K}$).
-       - Battery subsystem (500 Wh, charges from excess daytime solar, supplies night eclipse).
-    
-    3. **Workload Profiler (`engine/workload_profiler.py`):**
-       - Profiles AI tasks (LLM Fine-Tuning: 900W heat; Data Sorting: 30W heat; Log Compression: 25W heat).
-       - Categorizes thermal headroom thresholds (HEAVY < 60°C, MEDIUM < 80°C, COLD < 95°C).
-    
-    4. **Lumen Scheduler (`engine/lumen_scheduler.py`):**
-       - Status-gated, 5-minute predictive lookahead.
-       - Checkpoint-based preemption (resumes jobs without losing work).
+    #### 🎯 The Trade-off Challenge
+    In vacuum, **fans don't work** — heat exits only via radiative infrared.
+    When the radiator faces the warm sunlit Earth (280 K), cooling capacity **drops 46%**.
+    Overloaded hardware → **thermal shutdown → mission data lost**.
     """)
 
-# Footer
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: #8b949e; font-size: 0.85rem;'>Developed for NASA Space Apps Challenge 2026 | Orbital Computing & Microgravity Data Centers</p>", unsafe_allow_html=True)
+with col_b:
+    st.markdown(f"""
+    #### 🔥 Naive Scheduler Result
+    * Blindly runs high-priority tasks regardless of temperature.
+    * Pushed past **95°C** → **{naive_res['thermal_shutdowns']} hard crash(es)**.
+    * Lost **{lost_mins:.1f} min** of active computation with no checkpoint recovery.
+    * Total useful work: **{useful_mins_naive:.1f} min**.
+    """)
+
+with col_c:
+    st.markdown(f"""
+    #### 💡 LumenOS Result
+    * 5-minute predictive thermal look-ahead.
+    * Checkpoint & pause — **0 crashes, 0 data lost**.
+    * Resumed jobs when radiator swung to cold deep space (3 K).
+    * Total useful work: **{useful_mins_lumen:.1f} min** — **+{gain_pct:.0f}% gain**.
+    """)
+
+st.markdown("<hr>", unsafe_allow_html=True)
+st.caption("Built for NASA Space Apps Challenge 2026 | LumenOS — Orbital AI Computing | Open Source MIT")
