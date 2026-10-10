@@ -1,4 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Caches and logs
+*.log
+.cache/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables & secrets
+.env
+*.env
+.streamlit/secrets.toml
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Agent & local assistant configurations
+.jolli/
+.claude/
+.gemini/
+
+# projectmem runtime files
 .projectmem/events.jsonl
 .projectmem/watch.pid
 .projectmem/watch.log
 .projectmem/structure.json
+.projectmem/.current_issue
