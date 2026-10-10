@@ -1,17 +1,19 @@
 """3D Space & Orbital Mechanics Visualizer for LumenOS.
 
-Visual elements:
-1. The SUN: Radiant golden star beaming solar radiation toward Earth.
-2. DEEP SPACE: Cosmic dark background with distant stars.
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+Visualizes competing orbital mechanics and geometry in real-time 3D:
+1. The SUN: Radiant star providing solar power budget across orbit.
+2. DEEP SPACE: Cold cosmic background (3 K radiative sink).
 3. EARTH HALF-LIGHTING:
-   - Day side: Warm, bright, heat-emitting (radiates 280K Earth IR).
-   - Night side: Grey, dark, in shadow (eclipse umbra).
-4. AI DATA CENTER SATELLITE:
-   - Orbits and rotates around Earth.
-   - Dynamic Radiator Normal Vector:
-     * Green: Points to Deep Space (3K cold sky, max cooling ~909W).
-     * Red: Points to Earth Day-Side (280K, poor cooling ~491W).
-     * Blue: In Earth's shadow (Eclipse, 0W solar).
+   - Day side: Warm, heat-emitting (radiates 280 K Earth IR — thermal danger zone).
+   - Night side: Cool, in shadow (eclipse umbra — battery survival phase).
+4. SPACECRAFT / ORBITAL COMPUTE NODE:
+   - Real-time orbital propagation and attitude orientation.
+   - Dynamic Radiator Vector:
+     * Green: Points to Deep Space (3 K cold sky, max cooling ~909 W).
+     * Red: Points to Earth Day-Side (280 K, throttled cooling ~491 W).
+     * Blue: In Earth's shadow (Eclipse, 0 W solar power).
 """
 
 import math
@@ -238,9 +240,10 @@ def create_orbit_figure(
         cur_facing = cur_state.get("radiator_facing", "DEEP_SPACE")
         cur_sun = cur_state.get("is_sunlit", True)
         cur_task = cur_step.get("task_running") or "Idle"
+        display_task = "Primary Payload" if cur_task == "LLM_Fine_Tuning" else cur_task.replace("_", " ")
         cur_temp = cur_step.get("temperature_c", 45.0)
 
-        # Satellite Data Center Payload Marker
+        # Spacecraft Payload / Orbital Compute Node Marker
         fig.add_trace(go.Scatter3d(
             x=[sat_x], y=[sat_y], z=[sat_z],
             mode="markers+text",
@@ -250,11 +253,11 @@ def create_orbit_figure(
                 symbol="diamond",
                 line=dict(color="#ffffff", width=2)
             ),
-            text=[f"🛰️ AI Data Center ({cur_task})"],
+            text=[f"🛰️ Orbital Compute Node ({display_task})"],
             textposition="top center",
             textfont=dict(color="#ffffff", size=12),
-            name="🛰️ AI Data Center Satellite",
-            hovertext=[f"AI Data Center<br>Temp: {cur_temp:.1f}°C<br>Task: {cur_task}<br>Radiator: {cur_facing}"],
+            name="🛰️ Orbital Compute Node",
+            hovertext=[f"Orbital Compute Node<br>Temp: {cur_temp:.1f}°C<br>Active Payload: {display_task}<br>Radiator: {cur_facing}"],
             hoverinfo="text"
         ))
 

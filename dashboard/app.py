@@ -1,8 +1,11 @@
 """LumenOS: Space Mission Trade-off Simulator
 NASA Space Apps 2026 — "Space Mission Design Game"
 
-Interactive mission designer: choose your orbit, hardware, and OS,
-then watch the simulation play out in real-time.
+An interactive mission designer built for the 2026 NASA Space Apps Challenge.
+Participants choose an orbit, configure spacecraft hardware, select an OS, and
+discover how each engineering decision shapes the success or failure of their
+mission. Managing competing demands — thermal budget, power budget, and compute
+resources — is the core challenge.
 """
 
 import sys
@@ -24,7 +27,7 @@ from dashboard.thermal_graph import create_thermal_figure
 # PAGE CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="LumenOS — Space Mission Simulator",
+    page_title="LumenOS — Space Mission Design Game",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -114,12 +117,12 @@ with st.sidebar:
     st.markdown("---")
 
     # 1. Mission Scenario
-    st.markdown("### 🌐 Mission Scenario")
+    st.markdown("### 🌐 1️⃣  Mission Scenario")
     scenario_name = st.selectbox(
         "Select Orbit Profile:",
         list(MISSION_PROFILES.keys()),
         index=0,
-        help="Determines orbital altitude, inclination, eclipse fraction, and simulation duration."
+        help="(🎮 Engineering Decision) Determines orbital altitude, inclination, eclipse fraction, and simulation duration. Each scenario imposes different power and thermal constraints."
     )
     profile = MISSION_PROFILES[scenario_name]
     st.info(profile["description"])
@@ -127,33 +130,34 @@ with st.sidebar:
     st.markdown("---")
 
     # 2. Hardware Configuration
-    st.markdown("### ⚙️ Hardware Configuration")
+    st.markdown("### ⚙️ 2️⃣  Hardware Configuration")
+    st.caption("Configure your spacecraft's physical limits. Each slider adjusts a competing demand — more radiator area helps cooling but adds mass; more battery helps eclipse survival but adds cost.")
 
     radiator_area = st.slider(
         "Radiator Area (m²)",
         min_value=0.5, max_value=3.0, value=1.5, step=0.1,
-        help="Larger radiator → more heat rejection via Stefan-Boltzmann radiation."
+        help="(🎮 Trade-off: Cooling vs. Mass) Larger radiator → more heat rejection via Stefan-Boltzmann radiation, but higher spacecraft mass budget."
     )
     battery_capacity_wh = st.slider(
         "Battery Capacity (Wh)",
         min_value=200, max_value=1500, value=500, step=50,
-        help="Larger battery → more power headroom during eclipse passes."
+        help="(🎮 Trade-off: Eclipse Survival vs. Mass) Larger battery → more power headroom during eclipse passes — prevents SHUTDOWN from empty battery."
     )
     server_mass_kg = st.slider(
         "Server Chassis Mass (kg)",
         min_value=5, max_value=30, value=15, step=1,
-        help="Higher thermal mass slows temperature swings (buffer against thermal shock)."
+        help="(🎮 Trade-off: Thermal Inertia vs. Launch Cost) Higher thermal mass slows temperature swings (buffer against thermal shock), but increases launch mass."
     )
 
     st.markdown("---")
 
     # 3. Operating System Selection
-    st.markdown("### 🖥️ Operating System")
+    st.markdown("### 🖥️ 3️⃣  OS Engineering Decision")
     os_choice = st.radio(
         "Scheduler OS:",
         ["LumenOS (AI-Aware)", "Naive Scheduler (Legacy)"],
         index=0,
-        help="LumenOS uses 5-min thermal look-ahead + checkpoint. Naive runs blindly until meltdown."
+        help="(🎮 Core Engineering Decision) LumenOS uses 5-min thermal look-ahead + checkpoint to manage competing resource demands. Naive runs blindly until meltdown — demonstrating what happens without a mission-aware OS."
     )
     is_lumenos = os_choice.startswith("LumenOS")
 
@@ -162,16 +166,18 @@ with st.sidebar:
     # 4. Playback Speed
     st.markdown("### ▶️ Simulation Playback")
     speed_opt = st.selectbox(
-        "Animation Speed (for selected orbit duration):",
-        ["30 Seconds (Fast)", "1 Minute (Normal)", "2 Minutes (Cinematic)"],
+        "Animation Speed (real-time scale for selected orbit duration):",
+        ["30 Seconds (Fast Preview)", "1 Minute (Normal)", "2 Minutes (Cinematic)"],
         index=0
     )
-    run_sim = st.button("🚀 Launch Mission", type="primary", use_container_width=True)
-    reset_btn = st.button("🔄 Reset", use_container_width=True)
+    run_sim = st.button("🚀 Launch Mission", type="primary", use_container_width=True,
+                        help="Run the simulation and evaluate how your engineering decisions shaped mission success.")
+    reset_btn = st.button("🔄 Reset Mission", use_container_width=True)
 
     st.markdown("---")
     st.caption(f"Orbital Period: {profile['orbital_period_label']}")
     st.caption("Sim Duration: %.0f min" % profile["sim_minutes"])
+    st.caption("🎮 Each setting adjusts a competing demand — see the Mission Report Card below to evaluate your choices.")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CACHE KEY: Any sidebar change triggers fresh simulation
@@ -256,8 +262,14 @@ if st.session_state["last_cache_key"] != cache_key:
 st.markdown("<h1 style='margin: 0 0 4px 0; color: #38bdf8;'>🚀 LumenOS: Space Mission Trade-off Simulator</h1>",
             unsafe_allow_html=True)
 st.markdown(
-    "<p style='margin: 0 0 12px 0; color: #94a3b8;'>"
-    "Design your spacecraft, choose your OS, and see if your mission survives the thermal extremes of space."
+    "<p style='margin: 0 0 4px 0; color: #94a3b8;'>"
+    "<b>NASA Space Apps Challenge 2026 — Space Mission Design Game</b>"
+    "</p>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='margin: 0 0 12px 0; color: #64748b; font-size: 0.92rem;'>"
+    "Make engineering decisions. Manage competing resource demands. Evaluate how each choice shapes the success of your mission."
     "</p>",
     unsafe_allow_html=True
 )
@@ -289,14 +301,17 @@ if useful_mins_naive > 0:
 # MISSION REPORT CARD
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("### 📋 Mission Report Card")
+st.caption("Evaluating how your engineering decisions shaped mission success — the core of the Space Mission Design Game challenge.")
 
 if max_temp_primary >= 95.0:
     st.markdown(
         "<div class='banner banner-fail'>"
         "🔴 MISSION FAILED: THERMAL SHUTDOWN — Hardware temperature reached "
         f"{max_temp_primary:.1f}°C, exceeding the 95°C hard limit. "
+        f"Your hardware configuration could not manage the thermal budget for the chosen scenario. "
         f"{primary_res['thermal_shutdowns']} shutdown event(s) destroyed "
-        f"{primary_res['lost_compute_seconds']/60:.1f} min of active compute."
+        f"{primary_res['lost_compute_seconds']/60:.1f} min of active compute. "
+        "Adjust your radiator area, battery, or switch to LumenOS to recover."
         "</div>",
         unsafe_allow_html=True
     )
@@ -304,8 +319,9 @@ elif is_lumenos:
     st.markdown(
         "<div class='banner banner-success'>"
         "🟢 MISSION SUCCESS: All thermal constraints managed — "
-        f"LumenOS kept the server at {max_temp_primary:.1f}°C peak "
-        f"with 0 crashes. {useful_mins_lumen:.1f} min of useful computation completed."
+        f"LumenOS kept the spacecraft at {max_temp_primary:.1f}°C peak "
+        f"with 0 crashes. Your engineering decisions paid off: "
+        f"{useful_mins_lumen:.1f} min of useful computation completed."
         "</div>",
         unsafe_allow_html=True
     )
@@ -313,8 +329,9 @@ else:
     st.markdown(
         "<div class='banner banner-warn'>"
         "🟡 MISSION MARGINAL: Naive Scheduler scraped through — "
-        f"Peak {max_temp_primary:.1f}°C, {primary_res['thermal_shutdowns']} shutdowns. "
-        "Switch to LumenOS for reliable thermal control."
+        f"Peak {max_temp_primary:.1f}°C, {primary_res['thermal_shutdowns']} shutdown(s). "
+        "Your hardware barely survived. Switch to LumenOS for mission-reliable thermal control — "
+        "or increase your radiator area and battery capacity to manage the competing demands."
         "</div>",
         unsafe_allow_html=True
     )
@@ -333,9 +350,11 @@ mc3.metric("🔋 Min Battery", f"{primary_res['min_battery_percent']:.0f}%",
 mc4.metric("⚡ Compute Efficiency Gain",
            f"+{gain_pct:.0f}%" if gain_pct >= 0 else f"{gain_pct:.0f}%",
            delta=f"LumenOS vs Naive | +{useful_mins_lumen - useful_mins_naive:.1f} min",
-           delta_color="normal")
+           delta_color="normal",
+           help="How much more useful compute LumenOS delivers vs. the Naive Scheduler — the quantified value of your OS engineering decision.")
 mc5.metric("💥 Lost Compute (Naive)", f"{lost_mins:.1f} min",
-           delta=f"{naive_res['thermal_shutdowns']} shutdown(s)", delta_color="inverse")
+           delta=f"{naive_res['thermal_shutdowns']} shutdown(s)", delta_color="inverse",
+           help="Mission compute time destroyed by thermal shutdown events under the Naive Scheduler.")
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
@@ -408,8 +427,10 @@ def render_frame(idx: int):
     cool    = state["max_cooling_capacity_watts"]
     solar   = state["solar_power_watts"]
     batt    = step_p.get("battery_percent", 100.0)
-    task    = step_p.get("task_running") or "Idle"
-    task_n  = step_n.get("task_running") or "OFF"
+    task_raw = step_p.get("task_running") or "Idle"
+    task_n_raw = step_n.get("task_running") or "OFF"
+    task    = "Primary Payload" if task_raw == "LLM_Fine_Tuning" else task_raw.replace("_", " ")
+    task_n  = "Primary Payload" if task_n_raw == "LLM_Fine_Tuning" else task_n_raw.replace("_", " ")
 
     if not is_sun:
         env = "<span class='badge badge-eclipse'>🌑 ECLIPSE (Shadow, 0W Solar, Battery Mode)</span>"
@@ -473,29 +494,38 @@ col_a, col_b, col_c = st.columns(3)
 
 with col_a:
     st.markdown("""
-    #### 🎯 The Trade-off Challenge
-    In vacuum, **fans don't work** — heat exits only via radiative infrared.
-    When the radiator faces the warm sunlit Earth (280 K), cooling capacity **drops 46%**.
+    #### 🎮 The Competing Demands
+    *"Designing a space mission requires careful consideration of competing demands."*
+
+    In vacuum, **fans don’t work** — heat exits only via radiative infrared.
+    When the radiator faces warm sunlit Earth (280 K), cooling capacity **drops 46%**.
     Overloaded hardware → **thermal shutdown → mission data lost**.
+    Your radiator area, battery, and chassis mass sliders are your engineering levers.
     """)
 
 with col_b:
     st.markdown(f"""
-    #### 🔥 Naive Scheduler Result
+    #### 🔥 Naive Scheduler — No Engineering Awareness
     * Blindly runs high-priority tasks regardless of temperature.
     * Pushed past **95°C** → **{naive_res['thermal_shutdowns']} hard crash(es)**.
     * Lost **{lost_mins:.1f} min** of active computation with no checkpoint recovery.
     * Total useful work: **{useful_mins_naive:.1f} min**.
+    * *This is what a mission without a thermodynamics-aware OS looks like.*
     """)
 
 with col_c:
     st.markdown(f"""
-    #### 💡 LumenOS Result
-    * 5-minute predictive thermal look-ahead.
+    #### 💡 LumenOS — Mission-Aware Engineering
+    * 5-minute predictive thermal look-ahead evaluates each scheduling decision.
     * Checkpoint & pause — **0 crashes, 0 data lost**.
     * Resumed jobs when radiator swung to cold deep space (3 K).
     * Total useful work: **{useful_mins_lumen:.1f} min** — **+{gain_pct:.0f}% gain**.
+    * *Each choice you made in the sidebar shaped this outcome.*
     """)
 
 st.markdown("<hr>", unsafe_allow_html=True)
-st.caption("Built for NASA Space Apps Challenge 2026 | LumenOS — Orbital AI Computing | Open Source MIT")
+st.caption(
+    "🚀 Built for NASA Space Apps Challenge 2026 — “Space Mission Design Game” | "
+    "LumenOS: Thermodynamics-Aware OS for Orbital Compute Nodes | "
+    "Open Source MIT License"
+)

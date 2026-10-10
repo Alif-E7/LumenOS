@@ -1,12 +1,14 @@
-"""Thermal and Power Timeline Visualizer for LumenOS.
+"""Thermal and Power Telemetry Visualizer for LumenOS.
 
-Plots:
-1. Core Server Temperature: LumenOS (predictive thermal control) vs Naive (thermally blind baseline)
-   - Shaded danger zones: NOMINAL (<60°C), WARNING (60-80°C), CRITICAL (80-95°C), SHUTDOWN (>=95°C)
-   - Vertical marker for the current inspected orbital time step.
-2. Heat Budget & Cooling Dynamics:
-   - Dynamic Radiator Cooling Capacity (W)
-   - Workload Heat Generation (W)
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+Visualizes the telemetry outputs that evaluate participant engineering decisions:
+1. Core Spacecraft Temperature: LumenOS (predictive thermal control) vs Naive (thermally blind baseline)
+   - Shaded safety regimes: NOMINAL (<60°C), WARNING (60-80°C), CRITICAL (80-95°C), SHUTDOWN (>=95°C)
+   - Synchronized indicator for the active simulation step.
+2. Resource Budget Dynamics:
+   - Dynamic Radiator Heat Rejection Capacity (W)
+   - Payload Workload Heat Dissipation (W)
    - Battery State of Charge (%)
 """
 
@@ -109,11 +111,11 @@ def create_thermal_figure(
         go.Scatter(
             x=times, y=task_heat,
             mode="lines",
-            name="LumenOS Workload Heat",
+            name="Payload Heat Generation",
             fill="tozeroy",
             line=dict(color="#ff9100", width=2),
             fillcolor="rgba(255, 145, 0, 0.25)",
-            hovertemplate="Heat Generated: %{y:.1f} W<extra></extra>"
+            hovertemplate="Payload Heat: %{y:.1f} W<extra></extra>"
         ),
         row=2, col=1
     )
