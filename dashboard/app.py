@@ -7,11 +7,9 @@ then watch the simulation play out in real-time.
 
 import sys
 import os
-import time
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, PROJECT_ROOT)
+import time
 
 import streamlit as st
 import engine.orbital_engine as oe
