@@ -27,7 +27,7 @@ forces SHUTDOWN.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from engine.orbital_engine import radiator_cooling_capacity
 
@@ -179,6 +179,11 @@ class ThermalEngine:
         battery_capacity_wh: float = 500,
         battery_discharge_watts: float = 200,
         initial_battery_percent: float = 100,
+        *,
+        server_mass: Optional[float] = None,
+        server_mass_kg: Optional[float] = None,
+        battery_capacity: Optional[float] = None,
+        **kwargs: Any,
     ) -> None:
         """Create the thermal model.
 
@@ -190,10 +195,21 @@ class ThermalEngine:
             battery_capacity_wh: Battery capacity in watt-hours.
             battery_discharge_watts: Maximum battery output (eclipse supply).
             initial_battery_percent: Starting battery charge (0-100).
+            server_mass: Alias for mass_kg.
+            server_mass_kg: Alias for mass_kg.
+            battery_capacity: Alias for battery_capacity_wh.
 
         Raises:
             ValueError: If mass, specific heat or base heat is invalid.
         """
+        if server_mass is not None:
+            mass_kg = float(server_mass)
+        elif server_mass_kg is not None:
+            mass_kg = float(server_mass_kg)
+
+        if battery_capacity is not None:
+            battery_capacity_wh = float(battery_capacity)
+
         if mass_kg <= 0:
             raise ValueError("mass_kg must be positive")
         if specific_heat <= 0:

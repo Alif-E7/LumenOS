@@ -178,43 +178,66 @@ with st.sidebar:
 # ─────────────────────────────────────────────────────────────────────────────
 # CACHE KEY: Any sidebar change triggers fresh simulation
 # ─────────────────────────────────────────────────────────────────────────────
-cache_key = (scenario_name, radiator_area, battery_capacity_wh, server_mass_kg)
+cache_key = (scenario_name, radiator_area, battery_capacity_wh, server_mass_kg, os_choice)
 
 @st.cache_data(show_spinner=False)
-def run_both_schedulers(scenario, area_m2, batt_wh, mass_kg):
-    """Always runs both schedulers so we can compute the efficiency gain delta."""
+def run_both_schedulers(scenario, area_m2, batt_wh, mass_kg, os_type):
+    """Passes sidebar parameters directly into LumenScheduler and run_simulation."""
     prof = MISSION_PROFILES[scenario]
-    alt  = min(prof["altitude_km"], 5000.0)  # SGP4 cap for heliocentric approximation
-    incl = prof["inclination_deg"]
     dur  = prof["sim_minutes"]
 
-    oe.RADIATOR_AREA_M2 = area_m2
-
-    # Lunar / Mars: reduce solar by 1/r² factor
-    solar_scale = 1.0
-    if "Lunar" in scenario:
-        solar_scale = 0.65   # ~0.65 at lunar distance (reduced due to Earth eclipse geometry)
-    elif "Mars" in scenario:
-        solar_scale = 0.43   # 1/1.52² ≈ 0.43
-
-    o_engine = OrbitalEngine(
-        altitude_km=alt,
-        inclination_deg=incl,
-        solar_array_max_watts=2000.0 * solar_scale,
+    # 1. Primary scheduler run based on user's OS selection
+    sched_primary = LumenScheduler(
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type=os_type,
     )
-    t_engine_lumen = ThermalEngine(mass_kg=float(mass_kg), base_heat_watts=100.0,
-                                   battery_capacity_wh=float(batt_wh))
-    t_engine_naive = ThermalEngine(mass_kg=float(mass_kg), base_heat_watts=100.0,
-                                   battery_capacity_wh=float(batt_wh))
-    w_profiler = WorkloadProfiler()
+    primary_res = sched_primary.run_simulation(
+        dur,
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type=os_type,
+    )
 
-    sched_lumen = LumenScheduler(o_engine, t_engine_lumen, w_profiler)
-    lumen_res = sched_lumen.run_simulation(dur)
+    # 2. Always run LumenOS for trade-off / efficiency delta comparison
+    sched_lumen = LumenScheduler(
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type="LumenOS",
+    )
+    lumen_res = sched_lumen.run_simulation(
+        dur,
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type="LumenOS",
+    )
 
-    sched_naive = LumenScheduler(o_engine, t_engine_naive, w_profiler)
-    naive_res = sched_naive.compare_with_naive_scheduler(dur)
+    # 3. Always run Naive for trade-off / efficiency delta comparison
+    sched_naive = LumenScheduler(
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type="Naive",
+    )
+    naive_res = sched_naive.compare_with_naive_scheduler(
+        dur,
+        scenario=scenario,
+        radiator_area=area_m2,
+        battery_capacity=batt_wh,
+        server_mass=mass_kg,
+        os_type="Naive",
+    )
 
-    return lumen_res, naive_res
+    return lumen_res, naive_res, primary_res
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SESSION STATE
@@ -246,11 +269,9 @@ st.markdown("<hr>", unsafe_allow_html=True)
 # RUN SIMULATION
 # ─────────────────────────────────────────────────────────────────────────────
 with st.spinner("⚡ Computing orbital mechanics & thermal physics…"):
-    lumen_res, naive_res = run_both_schedulers(scenario_name, radiator_area,
-                                               battery_capacity_wh, server_mass_kg)
-
-# Pick which result to display as the "primary" based on OS selection
-primary_res = lumen_res if is_lumenos else naive_res
+    lumen_res, naive_res, primary_res = run_both_schedulers(
+        scenario_name, radiator_area, battery_capacity_wh, server_mass_kg, os_choice
+    )
 
 timeline_lumen = lumen_res["timeline"]
 timeline_naive = naive_res["timeline"]

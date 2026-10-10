@@ -182,6 +182,11 @@ class OrbitalEngine:
         raan_deg: float = 0.0,
         epoch: Optional[datetime] = None,
         solar_array_max_watts: float = SOLAR_ARRAY_MAX_WATTS,
+        radiator_area: Optional[float] = None,
+        radiator_area_m2: Optional[float] = None,
+        scenario: Optional[str] = None,
+        solar_scale: Optional[float] = None,
+        **kwargs: Any,
     ) -> None:
         """Build the orbit.
 
@@ -193,10 +198,42 @@ class OrbitalEngine:
             epoch: Orbit epoch / default simulation start (UTC). Defaults to
                 :data:`DEFAULT_EPOCH` for reproducible runs.
             solar_array_max_watts: Array output at normal sun incidence.
+            radiator_area: Radiator area in m^2 (updates RADIATOR_AREA_M2).
+            radiator_area_m2: Alias for radiator_area.
+            scenario: Mission scenario name ('LEO', 'Lunar Gateway', 'Mars Transit').
+            solar_scale: Solar intensity multiplier (e.g. 0.65 for lunar, 0.43 for mars).
 
         Raises:
             ValueError: If altitude or inclination is out of range.
         """
+        if scenario is not None:
+            s = str(scenario).upper()
+            if "LUNAR" in s or "MOON" in s or "NRHO" in s:
+                if altitude_km == 550.0:
+                    altitude_km = 5000.0
+                if inclination_deg == 53.0:
+                    inclination_deg = 90.0
+                if solar_scale is None:
+                    solar_scale = 0.65
+            elif "MARS" in s:
+                if altitude_km == 550.0:
+                    altitude_km = 1000.0
+                if inclination_deg == 53.0:
+                    inclination_deg = 5.0
+                if solar_scale is None:
+                    solar_scale = 0.43
+
+        if solar_scale is not None and solar_array_max_watts == SOLAR_ARRAY_MAX_WATTS:
+            solar_array_max_watts = SOLAR_ARRAY_MAX_WATTS * float(solar_scale)
+
+        rad_area = radiator_area if radiator_area is not None else radiator_area_m2
+        if rad_area is not None:
+            global RADIATOR_AREA_M2
+            RADIATOR_AREA_M2 = float(rad_area)
+            self.radiator_area_m2: float = float(rad_area)
+        else:
+            self.radiator_area_m2 = RADIATOR_AREA_M2
+
         if altitude_km <= 0:
             raise ValueError("altitude_km must be positive")
         if not 0.0 <= inclination_deg <= 180.0:
