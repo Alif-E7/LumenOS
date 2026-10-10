@@ -1,23 +1,36 @@
-"""Orbital Engine — where is the satellite, and what does that mean for power and cooling?
+"""Orbital Engine — spacecraft position, orbital resource budget, and cooling capacity.
 
-This module simulates a satellite in a circular Low Earth Orbit (LEO) and, for any
-instant, answers the three questions LumenOS needs from orbital mechanics:
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+Designing a space mission requires managing competing orbital demands: when is
+the satellite sunlit (solar power budget), when is it eclipsed (battery-only
+mode), and — critically — what is the radiator seeing (thermal budget)?
 
-1. **Sunlight vs. eclipse** — is the satellite inside Earth's shadow?
-2. **Solar power** — how many watts the solar array is producing.
+This module simulates a spacecraft in a circular orbit and answers the three
+orbital resource-trade-off questions LumenOS needs every scheduling tick:
+
+1. **Sunlight vs. eclipse** — is the spacecraft inside Earth's shadow?
+   (Determines whether the power budget comes from solar arrays or battery.)
+2. **Solar power** — how many watts the solar array is currently generating.
+   (A core limited resource; eclipse passes force a switch to battery reserves.)
 3. **Radiator view factor** — what the radiator (fixed on the body -Z axis) is
-   looking at, and therefore how much heat it can reject:
+   looking at, and therefore the spacecraft's *thermal budget* — how much heat
+   it can reject to maintain safe operating temperatures:
 
-   ============  ===========  =====================================
-   Facing        Sink temp    Meaning
-   ============  ===========  =====================================
-   DEEP_SPACE    3 K          Excellent cooling (cold sky)
-   EARTH_NIGHT   220 K        Moderate cooling (night-side Earth IR)
-   EARTH_DAY     280 K        Poor cooling (day-side Earth IR)
-   ============  ===========  =====================================
+   ============  ===========  =============================================
+   Facing        Sink temp    Thermal budget impact
+   ============  ===========  =============================================
+   DEEP_SPACE    3 K          Excellent cooling — run heavy AI workloads
+   EARTH_NIGHT   220 K        Moderate cooling — medium workloads only
+   EARTH_DAY     280 K        Poor cooling — critical thermal danger zone
+   ============  ===========  =============================================
 
-Modelling assumptions (deliberately simplified, documented here so they are easy
-to revisit):
+These three variables define the **orbital resource envelope** the scheduler
+must navigate: a mission engineer's hardware choices (radiator area, battery
+capacity, server mass) directly control how well the spacecraft can operate in
+each regime. Each design decision shapes whether the mission succeeds or fails.
+
+Modelling assumptions (deliberately simplified for educational clarity):
 
 * **Propagation** — `skyfield` + `sgp4`, orbit built from mean elements
   (near-circular, no drag) instead of a downloaded TLE, so it works offline.
@@ -29,11 +42,11 @@ to revisit):
   ``P = P_max * cos(beta)`` when sunlit, ``0`` in eclipse.
 * **Attitude / radiator** — quasi-inertial attitude: the radiator normal lies in
   the orbit plane, 90 deg *behind* the Sun's projection onto that plane (the
-  "dawn" direction). As the satellite goes around, the radiator therefore
+  "dawn" direction). As the spacecraft goes around, the radiator therefore
   faces Earth from local noon through dusk to midnight (EARTH_DAY, then
   EARTH_NIGHT) and deep space from midnight through dawn to noon. The poor-
-  cooling EARTH_DAY arc thus follows the sunlit heating phase — the
-  thermally stressful case a scheduler has to plan around.
+  cooling EARTH_DAY arc thus follows the sunlit heating phase — the thermally
+  stressful trade-off a mission OS must plan around.
 * **Cooling** — Stefan-Boltzmann:
   ``Q = epsilon * sigma * A * (T_radiator^4 - T_sink^4)``.
 """

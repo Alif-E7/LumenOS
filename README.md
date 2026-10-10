@@ -19,6 +19,10 @@ Space mission design is fundamentally an unforgiving game of multi-variable engi
 
 **LumenOS** addresses the **NASA Space Apps 2026 "Space Mission Design Game"** challenge by transforming celestial mechanics and satellite thermodynamics into an interactive, real-time trade-off simulator. Mission designers can architect spacecraft hardware, choose their operating system, and test whether their orbital data center thrives or melts down under extreme space conditions.
 
+### 🎮 Why a Game for Data Centers?
+
+> While our core technology (LumenOS) is designed to solve the critical thermal bottleneck for future Orbital AI Data Centers, we built this interactive simulator to make those complex engineering trade-offs accessible. By gamifying the deployment of a space data center, students and engineers can experience firsthand how power, mass, and thermal constraints shape the success of a mission. LumenOS isn't just a game; it's the operational blueprint for the next generation of space-based computing.
+
 ---
 
 ## 💡 The Problem: Why Space Data Centers Overheat

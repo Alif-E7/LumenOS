@@ -1,14 +1,37 @@
-"""Thermal Engine — how hot is the server, how hot will it get, and is there power?
+"""Thermal Engine — spacecraft temperature state, thermal budget, and power reserves.
 
-Lumped Capacitance Thermal Model: the whole server block is treated as a single
-mass at one uniform temperature.
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+Managing limited resources is the core challenge of any space mission. On a
+spacecraft running an orbital AI data center there are three tightly-coupled
+resource budgets the mission designer must balance:
+
+* **Thermal budget** — how much heat the server generates vs. how much the
+  radiator can reject. This is not constant: it varies every orbit as the
+  radiator swings from deep space (3 K, excellent rejection) to Earth day-side
+  (280 K, severely limited rejection). Each hardware design choice — radiator
+  area, server chassis mass — directly shapes this budget.
+
+* **Power budget** — solar array output in sunlight vs. battery reserves during
+  eclipse. An empty battery forces a hard SHUTDOWN, destroying active compute.
+
+* **Compute budget** — how many workloads can run before thermal or power limits
+  are hit. A thermally-blind ("naive") OS burns through this budget carelessly.
+  LumenOS preserves it via predictive pausing and mission-aware checkpointing.
+
+This module implements the lumped-capacitance thermal model and battery state
+tracker. It answers the mission-critical question every 30 seconds:
+
+    "Is the spacecraft thermally safe to run the next workload?"
+
+Lumped Capacitance Model (simplified for educational clarity):
 
     dT/dt = (Q_in - Q_out) / (m * Cp)
 
-    Q_in  = base_heat (idle electronics) + ai_heat_generated + solar_heat_absorbed
-    Q_out = radiator heat rejection (Stefan-Boltzmann)
-    m     = mass of the server block (kg)
-    Cp    = specific heat capacity (J/kg.K)
+    Q_in  = base_heat (idle electronics) + workload_heat + (solar absorption)
+    Q_out = radiator heat rejection (Stefan-Boltzmann, temperature-dependent)
+    m     = spacecraft server block mass (kg)       — mission design variable
+    Cp    = specific heat capacity (J/kg·K)
 
 Integrated with explicit (forward) Euler steps:
 
@@ -16,13 +39,14 @@ Integrated with explicit (forward) Euler steps:
 
 Radiator heat rejection is evaluated at the server's *actual* temperature and
 capped at the orbital engine's maximum capacity (the radiator's 340 K design
-point). A cool server therefore rejects less heat than a hot one — which is
-what stops an idle server from drifting to the -20 °C floor and what makes a
-radiator facing the warm day-side Earth genuinely dangerous.
+point). A cool spacecraft therefore rejects less heat than a hot one — which
+is what stops idle hardware from drifting to the -20 °C floor and what makes
+a radiator facing warm day-side Earth (280 K) genuinely mission-threatening.
 
-The module also contains a simple :class:`Battery`: it charges from excess
-solar power in sunlight and supplies up to 200 W in eclipse. An empty battery
-forces SHUTDOWN.
+Battery model (the eclipse survival sub-budget):
+    The :class:`Battery` charges from excess solar power in sunlight and
+    supplies up to 200 W during eclipse. An empty battery forces SHUTDOWN,
+    destroying any in-progress computation — the ultimate mission failure.
 """
 
 from __future__ import annotations

@@ -243,7 +243,7 @@ def create_orbit_figure(
         display_task = "Primary Payload" if cur_task == "LLM_Fine_Tuning" else cur_task.replace("_", " ")
         cur_temp = cur_step.get("temperature_c", 45.0)
 
-        # Spacecraft Payload / Orbital Compute Node Marker
+        # Spacecraft Payload / Orbital Data Center Marker
         fig.add_trace(go.Scatter3d(
             x=[sat_x], y=[sat_y], z=[sat_z],
             mode="markers+text",
@@ -253,11 +253,11 @@ def create_orbit_figure(
                 symbol="diamond",
                 line=dict(color="#ffffff", width=2)
             ),
-            text=[f"🛰️ Orbital Compute Node ({display_task})"],
+            text=[f"🛰️ Orbital Data Center (Payload) ({display_task})"],
             textposition="top center",
             textfont=dict(color="#ffffff", size=12),
-            name="🛰️ Orbital Compute Node",
-            hovertext=[f"Orbital Compute Node<br>Temp: {cur_temp:.1f}°C<br>Active Payload: {display_task}<br>Radiator: {cur_facing}"],
+            name="🛰️ Orbital Data Center (Payload)",
+            hovertext=[f"Orbital Data Center (Payload)<br>Temp: {cur_temp:.1f}°C<br>Active Payload: {display_task}<br>Radiator: {cur_facing}"],
             hoverinfo="text"
         ))
 

@@ -124,6 +124,14 @@ with st.sidebar:
         index=0,
         help="(🎮 Engineering Decision) Determines orbital altitude, inclination, eclipse fraction, and simulation duration. Each scenario imposes different power and thermal constraints."
     )
+    if "LEO" in scenario_name:
+        st.markdown(
+            "*Mission Brief: Deploy an Orbital AI Data Center to process Earth data. Manage thermal trade-offs to prevent server meltdown!*"
+        )
+    else:
+        st.markdown(
+            "*Mission Brief: Establish a Deep Space Compute Node. Survive extreme eclipse cycles and limited solar power.*"
+        )
     profile = MISSION_PROFILES[scenario_name]
     st.info(profile["description"])
 
@@ -306,9 +314,8 @@ st.caption("Evaluating how your engineering decisions shaped mission success —
 if max_temp_primary >= 95.0:
     st.markdown(
         "<div class='banner banner-fail'>"
-        "🔴 MISSION FAILED: THERMAL SHUTDOWN — Hardware temperature reached "
-        f"{max_temp_primary:.1f}°C, exceeding the 95°C hard limit. "
-        f"Your hardware configuration could not manage the thermal budget for the chosen scenario. "
+        "🔴 MISSION FAILED: Data Center Thermal Shutdown. Critical payload lost. "
+        f"Chassis reached {max_temp_primary:.1f}°C (>95°C limit). "
         f"{primary_res['thermal_shutdowns']} shutdown event(s) destroyed "
         f"{primary_res['lost_compute_seconds']/60:.1f} min of active compute. "
         "Adjust your radiator area, battery, or switch to LumenOS to recover."
@@ -318,10 +325,9 @@ if max_temp_primary >= 95.0:
 elif is_lumenos:
     st.markdown(
         "<div class='banner banner-success'>"
-        "🟢 MISSION SUCCESS: All thermal constraints managed — "
-        f"LumenOS kept the spacecraft at {max_temp_primary:.1f}°C peak "
-        f"with 0 crashes. Your engineering decisions paid off: "
-        f"{useful_mins_lumen:.1f} min of useful computation completed."
+        "🟢 MISSION SUCCESS: Data Center Operational. Compute uptime maximized. "
+        f"LumenOS maintained thermal equilibrium at {max_temp_primary:.1f}°C peak "
+        f"with 0 crashes. {useful_mins_lumen:.1f} min of useful computation completed."
         "</div>",
         unsafe_allow_html=True
     )

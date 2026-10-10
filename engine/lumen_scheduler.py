@@ -1,5 +1,15 @@
-"""Lumen Scheduler — the LumenOS brain.
+"""Lumen Scheduler — the mission OS that makes engineering decisions in orbit.
 
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+The challenge asks participants to make engineering decisions, manage limited
+resources, and evaluate how each choice shapes the success of their mission.
+This module is the heart of that trade-off: it is the spacecraft's operating
+system, running every 30 seconds, deciding which workloads can safely execute
+given competing orbital constraints.
+
+The engineering decision problem
+=================================
 Scheduling philosophy
 =====================
 A data-centre scheduler on Earth (Kubernetes, Slurm, ...) asks:
@@ -7,23 +17,24 @@ A data-centre scheduler on Earth (Kubernetes, Slurm, ...) asks:
 
 In orbit that question is not enough. In a vacuum there is no air to carry heat
 away — the **only** exit for heat is a radiator glowing infrared into space, and
-how well it works depends on where the satellite is:
+how well it works depends on where the spacecraft is — a competing orbital demand
+the mission designer cannot ignore:
 
-* radiator facing **deep space** (3 K)       -> excellent cooling
-* radiator facing **night-side Earth** (220 K) -> moderate cooling
-* radiator facing **day-side Earth** (280 K)   -> poor cooling
-* **eclipse** -> no solar power, only a small battery
+* radiator facing **deep space** (3 K)          → excellent thermal budget
+* radiator facing **night-side Earth** (220 K)  → moderate thermal budget
+* radiator facing **day-side Earth** (280 K)    → critical thermal danger zone
+* **eclipse**                                   → no solar power, battery only
 
-So LumenOS asks a different question every 30 seconds:
+So LumenOS asks a richer engineering question every 30 seconds:
 
     "Given where we are in orbit, how hot we are, and how much power we have,
      which job can run *right now* without pushing the hardware toward a
-     thermal shutdown?"
+     thermal shutdown that destroys mission progress?"
 
-Decision rules (evaluated every step)
--------------------------------------
-1. **SHUTDOWN** (>= 95 °C or battery empty): pause everything and wait until the
-   server has cooled below ``SHUTDOWN_RECOVERY_CELSIUS``.
+Decision rules (the mission OS policy, evaluated every step)
+-------------------------------------------------------------
+1. **SHUTDOWN** (≥ 95 °C or battery empty): pause everything and wait until the
+   spacecraft has cooled below ``SHUTDOWN_RECOVERY_CELSIUS``.
 2. **CRITICAL** (80-95 °C): only COLD jobs.
 3. **WARNING** (60-80 °C): only MEDIUM and COLD jobs.
 4. **NOMINAL** (< 60 °C): the highest-priority job that fits, where "fits" means:
@@ -34,22 +45,25 @@ Decision rules (evaluated every step)
      server will still be below that job's category limit (HEAVY 60 °C,
      MEDIUM 80 °C, COLD 95 °C) after the next few minutes of running it.
 
-   The look-ahead is what makes LumenOS *proactive* instead of reactive: it
-   pauses a heavy job *before* the temperature crosses a threshold, not after.
+   The look-ahead is what makes LumenOS *proactive* — it pauses a heavy job
+   *before* the temperature crosses a threshold, not after, preserving mission
+   compute resources through the thermally dangerous EARTH_DAY arc.
 
 Jobs are **preemptible with checkpointing**: when LumenOS pauses a job its
-progress is kept and it resumes later (e.g. when the radiator swings back to deep
-space). A *thermal shutdown*, by contrast, is a hard power-off — the job that was
-running loses all its progress.
+progress is kept and it resumes later (e.g., when the radiator swings back to
+deep space). A *thermal shutdown*, by contrast, is a hard power-off — all
+progress is lost, directly reducing mission science return.
 
-The naive baseline
-------------------
+The naive baseline — evaluating your engineering decision
+----------------------------------------------------------
 ``compare_with_naive_scheduler`` runs the same orbit with a scheduler that only
 checks power (it physically cannot run a job without electricity) but ignores
 temperature entirely: it always runs the highest-priority job it can power.
+This is the counterfactual: what happens if you design a mission without a
+thermodynamics-aware OS? The Mission Report Card quantifies the difference.
 
-Workloads are treated as a recurring stream: when a job finishes, a fresh copy is
-queued again, so the queue never runs dry during a simulation.
+Workloads are treated as a recurring stream: when a job finishes, a fresh copy
+is queued again, so the queue never runs dry during a simulation.
 """
 
 from __future__ import annotations

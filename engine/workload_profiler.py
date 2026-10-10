@@ -1,16 +1,27 @@
-"""Workload Profiler — which AI jobs exist, and what do they cost in watts and heat?
+"""Workload Profiler — scientific instruments & AI payloads vs. limited resources.
 
-Each workload has a power draw (what the solar array/battery must supply) and a
-heat generation (what the radiator must reject — typically ~90 % of power draw).
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+A central challenge in space mission design is balancing competing demands:
+mission objectives demand high-throughput data processing and AI inference,
+while spacecraft design imposes rigid constraints on available power and heat
+dissipation.
 
-Task selection (``get_next_task``) uses the LumenOS category rules:
+Each computational payload / workload in this catalogue represents a mission
+task with distinct resource demands:
+* **Power draw (W)** — what the solar arrays or battery must supply.
+* **Heat generation (W)** — thermal dissipation that the radiator must reject
+  into space (~90% of electrical power converts directly into heat).
+
+Task selection (``get_next_task``) manages these competing demands using
+LumenOS's thermodynamics-aware category rules:
 
 =========  ===================================================
-Category   May START only while the server is below
+Category   May START only while the spacecraft is below
 =========  ===================================================
-HEAVY      60 °C  (NOMINAL)
-MEDIUM     80 °C  (NOMINAL / WARNING)
-COLD       95 °C  (anything except SHUTDOWN)
+HEAVY      60 °C  (NOMINAL — maximum cooling capacity available)
+MEDIUM     80 °C  (NOMINAL / WARNING — throttled compute)
+COLD       95 °C  (CRITICAL — minimal battery-safe survival tasks)
 =========  ===================================================
 """
 

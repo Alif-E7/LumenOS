@@ -19,6 +19,10 @@ Replace this placeholder with a concise description of what this project does, w
 - Scheduler semantics: recurring job stream (finished jobs re-queued), LumenOS pauses with checkpoint (progress kept), hard thermal SHUTDOWN destroys running job progress, shutdown latched until <70C. LumenOS uses 5-min look-ahead vs category limits (HEAVY 60, MEDIUM 80, COLD 95). Naive = power-aware but thermally blind.
 - Dashboard v2 architecture: Interactive simulation runner with custom duration & presets, 3D Earth globe with continental references, color-coded orbit paths (DEEP_SPACE/EARTH_DAY/ECLIPSE), AI Data Center satellite with dynamic radiator normal vector & solar radiation vector, synchronized orbit time scrubber, and dark aerospace telemetry HUD.
 - Streamlined UI architecture: Removed extraneous tabs in favor of a single unified screen featuring live real-time orbital playback (30s, 60s, 120s real-time for 90m orbit), physical 3D Sun, deep space stars, half-illuminated Earth (warm bright day / dark grey night), dynamic satellite radiator vector, and synchronized live thermal graph.
+- Completed global consistency sweep aligning all docstrings, comments, tests, demo scripts, and UI labels across the project with the NASA Space Apps 2026 'Space Mission Design Game' challenge narrative.
+- Standardized on make_demo_video.py (producing demo_video.mp4) as the single mission simulator demo video generator featuring the 4-quadrant live telemetry dashboard, and removed generate_demo_video.py and lumenos_demo.mp4.
+- Replaced AI Data Center and LLM_Fine_Tuning with Orbital Compute Node and Primary Payload in dashboard UI layer.
+- Refined UX wording in dashboard/app.py and dashboard/orbit_view.py: added scenario-specific Mission Briefs, updated satellite label to Orbital Data Center (Payload), and refined Mission Report Card status headers.
 
 ## Notes
 - Stefan-Boltzmann cooling with eps=0.85, A=2m2, T_rad=350K gives ~1446W (DEEP_SPACE 3K), ~1221W (EARTH_NIGHT 220K), ~854W (EARTH_DAY 280K) - higher than the 650W example in the original story.
@@ -27,6 +31,8 @@ Replace this placeholder with a concise description of what this project does, w
 - IDE (Pyrefly) uses Python 3.14 interpreter without packages -> false 'Cannot find module numpy/skyfield' lints. Project runs on 'python' = 3.11.9 where deps are installed.
 - Prepared for Streamlit Cloud deployment: Added exact sys.path cloud fix to top of dashboard/app.py; converted requirements.txt from UTF-16LE to clean UTF-8 without BOM.
 - Rewrote README.md with professional NASA Space Apps 2026 Space Mission Design Game documentation, badges, physics breakdown, how-to-play guide, tech stack, and team roster.
+- Cleaned repository and updated .gitignore: removed tracked __pycache__ bytecode files, .jolli memory databases, and .gemini local configs from git index; added comprehensive rules for Python, virtualenvs, secrets, OS, and tool caches.
+- Added 'Why a Game for Data Centers?' section to README.md bridging the core orbital data center hypervisor with the NASA Space Mission Design Game simulator.
 
 ## Key files
 - `e.g`
@@ -48,6 +54,7 @@ Replace this placeholder with a concise description of what this project does, w
 - `sys.path`
 - `requirements.txt`
 - `README.md`
+- `make_demo_video.py`
 
 ## Open questions
 - None logged yet.

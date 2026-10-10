@@ -1,6 +1,12 @@
-"""Verification script for the Orbital Engine.
+"""Orbital Constraints & Thermal Environment Verification.
 
-Run directly for a printed table + assertions:
+NASA Space Apps 2026 — "Space Mission Design Game"
+===================================================
+Validates the astrodynamic and orbital constraints that define the mission's
+operating environment: solar power generation, eclipse duration, and radiative
+sink temperatures across orbit.
+
+Run directly for a printed orbital telemetry table + assertions:
     python tests/test_orbital.py
 
 Also pytest-compatible:
@@ -85,4 +91,4 @@ if __name__ == "__main__":
     for test in tests:
         test()
         print(f"PASS  {test.__name__}")
-    print("\nAll orbital checks passed.")
+    print("\nAll orbital environment checks passed. Constraints verified.")

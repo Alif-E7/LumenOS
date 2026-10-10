@@ -1,4 +1,9 @@
-"""LumenOS simulation and scheduling engine."""
+"""LumenOS: Space Mission Design Game — simulation and scheduling engine.
+
+Built for the NASA Space Apps Challenge 2026.
+Empowers participants to make engineering decisions, manage limited resources
+(thermal, power, compute), and evaluate mission outcomes.
+"""
 
 from engine.orbital_engine import OrbitalEngine
 from engine.thermal_engine import Battery, ThermalEngine
