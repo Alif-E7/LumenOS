@@ -1,6 +1,6 @@
 # projectmem - LumenOS
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-17_
 
 ## Project purpose
 Replace this placeholder with a concise description of what this project does, who it serves, and the main technologies or runtime assumptions.
@@ -23,6 +23,8 @@ Replace this placeholder with a concise description of what this project does, w
 - Standardized on make_demo_video.py (producing demo_video.mp4) as the single mission simulator demo video generator featuring the 4-quadrant live telemetry dashboard, and removed generate_demo_video.py and lumenos_demo.mp4.
 - Replaced AI Data Center and LLM_Fine_Tuning with Orbital Compute Node and Primary Payload in dashboard UI layer.
 - Refined UX wording in dashboard/app.py and dashboard/orbit_view.py: added scenario-specific Mission Briefs, updated satellite label to Orbital Data Center (Payload), and refined Mission Report Card status headers.
+- Committed and pushed full Space Mission Design Game challenge alignment, UX refinements, and removed video binaries from git tracking.
+- Replaced README.md content with project overview landing page link (https://mohammademon10.github.io/lumenos-space-apps-2026-Landingpage/) per user request
 
 ## Notes
 - Stefan-Boltzmann cooling with eps=0.85, A=2m2, T_rad=350K gives ~1446W (DEEP_SPACE 3K), ~1221W (EARTH_NIGHT 220K), ~854W (EARTH_DAY 280K) - higher than the 650W example in the original story.
