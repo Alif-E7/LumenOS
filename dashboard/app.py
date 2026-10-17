@@ -77,8 +77,18 @@ st.markdown("""
     .badge-eclipse{ background:rgba(59,130,246,.18); color:#60a5fa; border:1px solid #3b82f6; }
 
     /* HUD strip */
-    .hud { background:rgba(15,23,42,.8); border:1px solid rgba(99,179,237,.22);
+    .hud { background:rgba(15,23,42,.85); border:1px solid rgba(99,179,237,.25);
            border-radius:8px; padding:10px 18px; margin-bottom:10px; font-size:.9rem; }
+
+    /* Primary Payload Data Center Card */
+    .payload-card {
+        background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,41,59,0.85));
+        border: 1px solid rgba(56,189,248,0.3);
+        border-radius: 10px;
+        padding: 12px 18px;
+        margin-bottom: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -450,14 +460,26 @@ def render_frame(idx: int):
                    else f"<b style='color:#fde047;'>{temp_n:.1f}°C</b>")
 
     hud_ph.markdown(f"""
-    <div class='hud'>
-    <b>⏱ Mission Time:</b> <span style='color:#38bdf8;'>{t_min:.1f} min</span> &nbsp;|&nbsp;
-    {env} &nbsp;|&nbsp;
-    <b>Cooling:</b> <b style='color:#4ade80;'>{cool:.0f} W</b> &nbsp;|&nbsp;
-    <b>Solar:</b> {solar:.0f} W &nbsp;|&nbsp;
-    <b>Battery:</b> {batt:.0f}% &nbsp;|&nbsp;
-    <b>{os_choice.split()[0]}:</b> <b style='color:#38bdf8;'>{temp_p:.1f}°C</b> | <code>{task}</code> &nbsp;|&nbsp;
-    <b>Naive:</b> {naive_label} | <code>{task_n}</code>
+    <div class='payload-card'>
+        <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;'>
+            <div>
+                <span style='font-size: 1.05rem; font-weight: 700; color: #38bdf8;'>🛰️ PRIMARY PAYLOAD DATA CENTER</span>
+                &nbsp;|&nbsp; <span style='color: #94a3b8;'>Mission Clock:</span> <b>{t_min:.1f} min</b>
+                &nbsp;|&nbsp; {env}
+            </div>
+            <div>
+                <span style='color: #94a3b8;'>Active AI Compute:</span>
+                <code style='color: #38bdf8; font-weight: 600; background: rgba(56,189,248,0.15); padding: 2px 8px; border-radius: 4px;'>{task}</code>
+            </div>
+        </div>
+        <hr style='margin: 8px 0; border-top: 1px solid rgba(255,255,255,0.08);'>
+        <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; font-size: 0.88rem; gap: 12px;'>
+            <div>❄️ <b>Radiator Sink:</b> <b style='color:#4ade80;'>{cool:.0f} W</b> capacity</div>
+            <div>☀️ <b>Solar Power:</b> <b>{solar:.0f} W</b></div>
+            <div>🔋 <b>Battery Bank:</b> <b>{batt:.0f}%</b></div>
+            <div>🖥️ <b>{os_choice.split()[0]} Core:</b> <b style='color:#38bdf8;'>{temp_p:.1f}°C</b></div>
+            <div>🔥 <b>Naive Benchmark:</b> {naive_label}</div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 

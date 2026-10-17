@@ -25,6 +25,7 @@ Replace this placeholder with a concise description of what this project does, w
 - Refined UX wording in dashboard/app.py and dashboard/orbit_view.py: added scenario-specific Mission Briefs, updated satellite label to Orbital Data Center (Payload), and refined Mission Report Card status headers.
 - Committed and pushed full Space Mission Design Game challenge alignment, UX refinements, and removed video binaries from git tracking.
 - Replaced README.md content with project overview landing page link (https://mohammademon10.github.io/lumenos-space-apps-2026-Landingpage/) per user request
+- Enhanced 3D Earth visualization (photorealistic continents, oceans, night-side city lights, and atmospheric glow) and upgraded Primary Payload Data Center satellite architecture and telemetry dashboard in dashboard/orbit_view.py and dashboard/app.py
 
 ## Notes
 - Stefan-Boltzmann cooling with eps=0.85, A=2m2, T_rad=350K gives ~1446W (DEEP_SPACE 3K), ~1221W (EARTH_NIGHT 220K), ~854W (EARTH_DAY 280K) - higher than the 650W example in the original story.
