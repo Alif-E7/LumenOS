@@ -62,6 +62,24 @@ temperature entirely: it always runs the highest-priority job it can power.
 This is the counterfactual: what happens if you design a mission without a
 thermodynamics-aware OS? The Mission Report Card quantifies the difference.
 
+Thermal-aware quantization (AI + systems co-design)
+---------------------------------------------------
+When the server is warm, pausing HEAVY work is not the only lever: LumenOS can
+*quantize* it instead. Below 60 °C jobs run in FP32; from 60 °C the policy
+downgrades them to INT8 (~50 % of the heat, ~98 % accuracy) and from 80 °C to
+a TINY lookup mode (~25 % of the heat, ~90 % accuracy). A quantized job may
+start hotter than its category normally allows because it heats far less —
+this is why a thermally-aware mission OS keeps producing science instead of
+going idle. The Naive scheduler never quantizes.
+
+Emergency safe mode (space weather)
+-----------------------------------
+When a geomagnetic storm is declared (``solar_storm=True``; see
+``engine.space_weather`` for the live Kp feed), mission doctrine takes over:
+heavy workloads are grounded and battery reserves are kept above
+``solar_storm_battery_reserve_percent`` so communications and commanding stay
+alive through the storm.
+
 Workloads are treated as a recurring stream: when a job finishes, a fresh copy
 is queued again, so the queue never runs dry during a simulation.
 """
@@ -73,7 +91,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable, Optional
 
-from engine.orbital_engine import OrbitalEngine
+from engine.orbital_engine import OrbitalEngine, OrbitalProfile, get_orbital_profile
 from engine.thermal_engine import (
     CRITICAL,
     NOMINAL,
@@ -84,12 +102,16 @@ from engine.thermal_engine import (
     ThermalEngine,
 )
 from engine.workload_profiler import (
-    CATEGORY_MAX_START_TEMP_CELSIUS,
     COLD,
+    FP32,
     HEAVY,
+    INT8,
     MEDIUM,
+    PRECISION_LEVELS,
+    TINY,
     AIWorkload,
     WorkloadProfiler,
+    relaxed_start_ceiling,
 )
 
 #: Scheduler tick (seconds).
@@ -101,7 +123,13 @@ LOOKAHEAD_MINUTES: float = 5.0
 #: After a thermal shutdown, hardware stays off until it cools below this (°C).
 SHUTDOWN_RECOVERY_CELSIUS: float = 70.0
 
-#: Job categories permitted in each thermal status.
+#: In eclipse, heavy work is locked out once the battery has aged past this
+#: State-of-Health (ageing packs cannot carry a full eclipse load).
+SOH_HEAVY_LOCKOUT: float = 0.80
+
+#: Job categories permitted in each thermal status under the unquantized
+#: doctrine. With quantization enabled a lower-precision tier relaxes the
+#: start ceiling instead (see ``workload_profiler.relaxed_start_ceiling``).
 ALLOWED_CATEGORIES: dict[str, tuple[str, ...]] = {
     NOMINAL: (HEAVY, MEDIUM, COLD),
     WARNING: (MEDIUM, COLD),
@@ -144,6 +172,7 @@ class _Decision:
     job: Optional[_Job]
     reason: str
     shutdown_risk_avoided: bool = False
+    precision: str = FP32
 
 
 #: Signature of a scheduling policy:
@@ -172,6 +201,10 @@ class LumenScheduler:
         start_time: Optional[datetime] = None,
         *,
         scenario: Optional[str] = None,
+        orbit_profile: Optional[Any] = None,
+        enable_quantization: bool = True,
+        solar_storm: bool = False,
+        solar_storm_battery_reserve_percent: float = 50.0,
         radiator_area: Optional[float] = None,
         radiator_area_m2: Optional[float] = None,
         battery_capacity: Optional[float] = None,
@@ -194,9 +227,19 @@ class LumenScheduler:
             workload_profiler: Provides the AI job catalogue.
             step_seconds: Scheduler tick length.
             lookahead_minutes: Prediction horizon used before running a job.
-            start_time: Simulation start (UTC). Defaults to the first orbital
-                sunrise after the orbit epoch.
+            start_time: Simulation start (UTC). Defaults to the orbit's mission
+                start (first sunrise, or pre-eclipse for GEO profiles).
             scenario: Mission scenario name ('LEO', 'Lunar Gateway', 'Mars Transit').
+            orbit_profile: :class:`OrbitalProfile` or its key/alias ('LEO', 'GEO',
+                'LUNAR', 'MARS') — parameterizes altitude, inclination, solar
+                array, radiator sinks, battery and mission window in one shot.
+            enable_quantization: LumenOS thermal-aware quantization policy
+                (FP32 -> INT8 -> TINY as the server warms). The Naive baseline
+                never quantizes.
+            solar_storm: Emergency safe mode — pause heavy workloads and keep
+                the battery above ``solar_storm_battery_reserve_percent``.
+            solar_storm_battery_reserve_percent: Battery floor reserved for
+                communications during a storm.
             radiator_area: Radiator area in m^2.
             radiator_area_m2: Alias for radiator_area.
             battery_capacity: Battery capacity in Wh.
@@ -214,12 +257,17 @@ class LumenScheduler:
 
         self.scenario: Optional[str] = scenario
         self.os_type: Optional[str] = os_type
+        self.profile: Optional[OrbitalProfile] = None
+        self.enable_quantization: bool = bool(enable_quantization)
+        self.solar_storm: bool = bool(solar_storm)
+        self.solar_storm_battery_reserve_percent: float = float(solar_storm_battery_reserve_percent)
         self.radiator_area: Optional[float] = float(radiator_area) if radiator_area is not None else (float(radiator_area_m2) if radiator_area_m2 is not None else None)
         self.battery_capacity: Optional[float] = float(battery_capacity) if battery_capacity is not None else (float(battery_capacity_wh) if battery_capacity_wh is not None else None)
         self.server_mass: Optional[float] = float(server_mass) if server_mass is not None else (float(server_mass_kg) if server_mass_kg is not None else None)
 
         self._configure_engines(
             scenario=scenario,
+            orbit_profile=orbit_profile,
             radiator_area=radiator_area,
             radiator_area_m2=radiator_area_m2,
             battery_capacity=battery_capacity,
@@ -235,13 +283,14 @@ class LumenScheduler:
         )
 
         self.start_time: datetime = (
-            start_time if start_time is not None else self.orbital_engine.next_sunrise()
+            start_time if start_time is not None else self.orbital_engine.mission_start_time()
         )
 
     def _configure_engines(
         self,
         *,
         scenario: Optional[str] = None,
+        orbit_profile: Optional[Any] = None,
         radiator_area: Optional[float] = None,
         radiator_area_m2: Optional[float] = None,
         battery_capacity: Optional[float] = None,
@@ -258,8 +307,22 @@ class LumenScheduler:
         """Internal helper to instantiate or update engine parameters."""
         import engine.orbital_engine as oe
 
+        if orbit_profile is not None:
+            resolved: OrbitalProfile = (
+                get_orbital_profile(orbit_profile)
+                if isinstance(orbit_profile, str)
+                else orbit_profile
+            )
+            self.profile = resolved
+            self.radiator_area = resolved.radiator_area_m2
+            self.battery_capacity = resolved.battery_capacity_wh
+            self.server_mass = resolved.server_mass_kg
+            self.orbital_engine = OrbitalEngine(profile=resolved)
+            self._orbit_cache.clear()
+            self.start_time = self.orbital_engine.mission_start_time()
+
         rad_area = radiator_area if radiator_area is not None else radiator_area_m2
-        if rad_area is not None:
+        if rad_area is not None and orbit_profile is None:
             self.radiator_area = float(rad_area)
             oe.RADIATOR_AREA_M2 = float(rad_area)
 
@@ -311,7 +374,7 @@ class LumenScheduler:
                     solar_array_max_watts=s_watts,
                     radiator_area=self.radiator_area,
                 )
-            elif self.radiator_area is not None:
+            elif self.radiator_area is not None and orbit_profile is None:
                 self.orbital_engine.radiator_area_m2 = self.radiator_area
                 self.orbital_engine._cooling_by_facing = {
                     facing: oe.radiator_cooling_capacity(t_sink)
@@ -348,6 +411,7 @@ class LumenScheduler:
         total_minutes: Optional[float] = None,
         *,
         scenario: Optional[str] = None,
+        orbit_profile: Optional[Any] = None,
         radiator_area: Optional[float] = None,
         radiator_area_m2: Optional[float] = None,
         battery_capacity: Optional[float] = None,
@@ -366,6 +430,8 @@ class LumenScheduler:
         Args:
             total_minutes: Simulated duration. Defaults to 90 min (or scenario default).
             scenario: Mission scenario override ('LEO', 'Lunar Gateway', 'Mars Transit').
+            orbit_profile: Orbit theater — an :class:`OrbitalProfile` or its
+                key/alias ('LEO', 'GEO', 'LUNAR', 'MARS').
             radiator_area: Radiator area override (m^2).
             battery_capacity: Battery capacity override (Wh).
             server_mass: Server mass override (kg).
@@ -374,9 +440,10 @@ class LumenScheduler:
         Returns:
             A results dict with timeline, total_tasks_completed, max_temperature_reached, etc.
         """
-        if any(v is not None for v in (scenario, radiator_area, radiator_area_m2, battery_capacity, battery_capacity_wh, server_mass, server_mass_kg, os_type)) or kwargs:
+        if any(v is not None for v in (scenario, orbit_profile, radiator_area, radiator_area_m2, battery_capacity, battery_capacity_wh, server_mass, server_mass_kg, os_type)) or kwargs:
             self._configure_engines(
                 scenario=scenario,
+                orbit_profile=orbit_profile,
                 radiator_area=radiator_area,
                 radiator_area_m2=radiator_area_m2,
                 battery_capacity=battery_capacity,
@@ -390,7 +457,9 @@ class LumenScheduler:
 
         if total_minutes is None:
             scen_str = (self.scenario or "").upper()
-            if "LUNAR" in scen_str or "MOON" in scen_str or "NRHO" in scen_str:
+            if self.profile is not None:
+                total_minutes = self.profile.mission_minutes
+            elif "LUNAR" in scen_str or "MOON" in scen_str or "NRHO" in scen_str:
                 total_minutes = 180.0
             elif "MARS" in scen_str:
                 total_minutes = 120.0
@@ -410,6 +479,7 @@ class LumenScheduler:
         total_minutes: Optional[float] = None,
         *,
         scenario: Optional[str] = None,
+        orbit_profile: Optional[Any] = None,
         radiator_area: Optional[float] = None,
         radiator_area_m2: Optional[float] = None,
         battery_capacity: Optional[float] = None,
@@ -429,6 +499,7 @@ class LumenScheduler:
         Args:
             total_minutes: Simulated duration. Defaults to 90 min (or scenario default).
             scenario: Mission scenario override.
+            orbit_profile: Orbit theater profile override (see :meth:`run_simulation`).
             radiator_area: Radiator area override (m^2).
             battery_capacity: Battery capacity override (Wh).
             server_mass: Server mass override (kg).
@@ -438,9 +509,10 @@ class LumenScheduler:
             A results dict in the same format as :meth:`run_simulation`
             (``thermal_shutdowns_avoided`` is always 0).
         """
-        if any(v is not None for v in (scenario, radiator_area, radiator_area_m2, battery_capacity, battery_capacity_wh, server_mass, server_mass_kg, os_type)) or kwargs:
+        if any(v is not None for v in (scenario, orbit_profile, radiator_area, radiator_area_m2, battery_capacity, battery_capacity_wh, server_mass, server_mass_kg, os_type)) or kwargs:
             self._configure_engines(
                 scenario=scenario,
+                orbit_profile=orbit_profile,
                 radiator_area=radiator_area,
                 radiator_area_m2=radiator_area_m2,
                 battery_capacity=battery_capacity,
@@ -454,7 +526,9 @@ class LumenScheduler:
 
         if total_minutes is None:
             scen_str = (self.scenario or "").upper()
-            if "LUNAR" in scen_str or "MOON" in scen_str or "NRHO" in scen_str:
+            if self.profile is not None:
+                total_minutes = self.profile.mission_minutes
+            elif "LUNAR" in scen_str or "MOON" in scen_str or "NRHO" in scen_str:
                 total_minutes = 180.0
             elif "MARS" in scen_str:
                 total_minutes = 120.0
@@ -468,6 +542,23 @@ class LumenScheduler:
     # ------------------------------------------------------------------ #
     # Policies
     # ------------------------------------------------------------------ #
+    def _levels_for_status(self, status: str) -> tuple[str, ...]:
+        """Precision levels the policy may try, per thermal status & policy flag.
+
+        Matches the thermal-aware quantization doctrine: FP32 below 60 °C,
+        INT8 from 60 °C, TINY from 80 °C. With quantization disabled this is
+        always FP32 (the legacy behavior).
+        """
+        if not self.enable_quantization:
+            return (FP32,)
+        if status == NOMINAL:
+            return PRECISION_LEVELS  # FP32 first; downgrade only if FP32 does not fit
+        if status == WARNING:
+            return (INT8, TINY)
+        if status == CRITICAL:
+            return (TINY,)
+        return ()
+
     def _lumen_policy(
         self,
         queue: list[_Job],
@@ -476,37 +567,23 @@ class LumenScheduler:
         status: str,
         power_budget: float,
     ) -> _Decision:
-        """LumenOS: status-gated, look-ahead, highest-priority-first selection."""
-        allowed = ALLOWED_CATEGORIES[status]
+        """LumenOS: status-gated, look-ahead, quantization-aware task selection."""
         sink_k = state["sink_temperature_kelvin"]
         cooling_cap = state["max_cooling_capacity_watts"]
+        levels = self._levels_for_status(status)
         naive_choice_checked = False
         shutdown_risk = False
         held_back: list[str] = []
 
         for job in queue:
             workload = job.workload
-            if workload.power_draw_watts > power_budget:
-                continue
-
-            fits = workload.category in allowed
-            if fits:
-                horizon = min(self.lookahead_minutes, job.remaining_seconds / 60.0)
-                predicted = self.thermal_engine.predict_temperature(
-                    temp,
-                    workload.heat_generation_watts,
-                    cooling_cap,
-                    duration_minutes=horizon,
-                    sink_temperature_kelvin=sink_k,
-                )
-                fits = predicted < CATEGORY_MAX_START_TEMP_CELSIUS[workload.category]
 
             if not naive_choice_checked:
-                # This is the job a thermally-blind scheduler would run now.
+                # This is the job a thermally-blind scheduler would run now —
+                # always in FP32. Would running it for a full task length drive
+                # the hardware into SHUTDOWN?
                 naive_choice_checked = True
-                if not fits:
-                    # Would a thermally-blind scheduler running this job for a
-                    # full task length drive the hardware into SHUTDOWN?
+                if workload.power_draw_watts <= power_budget:
                     end_temp = self.thermal_engine.predict_temperature(
                         temp,
                         workload.heat_generation_watts,
@@ -516,12 +593,41 @@ class LumenScheduler:
                     )
                     shutdown_risk = end_temp >= SHUTDOWN_THRESHOLD_CELSIUS
 
-            if fits:
+            chosen: Optional[tuple[str, float]] = None
+            for level in levels:
+                if workload.power_for_precision(level) > power_budget:
+                    continue
+                heat = workload.heat_for_precision(level)
+                ceiling = relaxed_start_ceiling(workload.category, level)
+                if temp >= ceiling:
+                    continue
+                horizon = min(self.lookahead_minutes, job.remaining_seconds / 60.0)
+                predicted = self.thermal_engine.predict_temperature(
+                    temp,
+                    heat,
+                    cooling_cap,
+                    duration_minutes=horizon,
+                    sink_temperature_kelvin=sink_k,
+                )
+                if predicted < ceiling:
+                    chosen = (level, heat)
+                    break
+
+            if chosen is None:
+                held_back.append(workload.name)
+                continue
+
+            level, _heat = chosen
+            if level == FP32:
                 reason = f"{status}: run {workload.name} ({workload.category})"
-                if held_back:
-                    reason += f"; held back {', '.join(held_back)} (thermal)"
-                return _Decision(job, reason, shutdown_risk)
-            held_back.append(workload.name)
+            else:
+                reason = (
+                    f"{status}: run {workload.name} ({workload.category}@{level}, "
+                    f"quantized — accuracy {workload.accuracy_for_precision(level) * 100:.0f}%)"
+                )
+            if held_back:
+                reason += f"; held back {', '.join(held_back)} (thermal)"
+            return _Decision(job, reason, shutdown_risk, level)
 
         if not held_back:
             return _Decision(None, f"{status}: no job fits the power budget", shutdown_risk)
@@ -580,14 +686,18 @@ class LumenScheduler:
         completed: Counter[str] = Counter()
         compute_seconds = 0.0
         lost_compute_seconds = 0.0
+        time_in_precision: dict[str, float] = {level: 0.0 for level in PRECISION_LEVELS}
+        accuracy_weighted_seconds = 0.0
         max_temp = thermal.current_temp_celsius
         min_battery = battery.percent
         shutdowns = 0
         shutdown_steps = 0
         shutdowns_avoided = 0
+        safe_mode_steps = 0
         previous_risk = False
         in_shutdown = False
         running_job: Optional[_Job] = None
+        safe_mode = self.solar_storm
 
         for state in self._orbital_states(total_minutes):
             temp = thermal.current_temp_celsius
@@ -616,11 +726,41 @@ class LumenScheduler:
                 decision = _Decision(None, "SHUTDOWN: all tasks paused, waiting to cool")
             else:
                 decision = policy(self._sorted_queue(queue), state, temp, status, power_budget)
-            job = decision.job
 
-            # --- Apply physics -----------------------------------------------
-            task_heat = job.workload.heat_generation_watts if job else 0.0
-            task_power = job.workload.power_draw_watts if job else 0.0
+            # --- Emergency safe mode (geomagnetic storm doctrine) ------------
+            if safe_mode and decision.job is not None:
+                if battery.percent <= self.solar_storm_battery_reserve_percent:
+                    decision = _Decision(
+                        None,
+                        f"SAFE MODE: battery reserved for comms "
+                        f"({battery.percent:.0f}% <= {self.solar_storm_battery_reserve_percent:.0f}%)",
+                    )
+                elif decision.job.workload.category != COLD:
+                    decision = _Decision(
+                        None,
+                        f"SAFE MODE (geomagnetic storm): {decision.job.workload.name} grounded — "
+                        "heavy tasks paused, battery reserved for comms",
+                    )
+
+            # --- Ageing battery protection (SoH) ------------------------------
+            if (
+                decision.job is not None
+                and not state["is_sunlit"]
+                and battery.state_of_health < SOH_HEAVY_LOCKOUT
+                and decision.job.workload.category != COLD
+            ):
+                decision = _Decision(
+                    None,
+                    f"BATTERY PROTECTION: SoH {battery.state_of_health * 100:.0f}% < 80% — "
+                    "heavy tasks disabled in eclipse",
+                )
+
+            job = decision.job
+            level = decision.precision
+
+            # --- Apply physics (precision-aware heat & power) ----------------
+            task_heat = job.workload.heat_for_precision(level) if job else 0.0
+            task_power = job.workload.power_for_precision(level) if job else 0.0
             if in_shutdown:
                 q_in, load = 0.0, 0.0  # electronics powered off
             else:
@@ -629,19 +769,22 @@ class LumenScheduler:
             q_out = thermal.radiator_heat_rejection(
                 state["sink_temperature_kelvin"], state["max_cooling_capacity_watts"]
             )
-            battery.step(state["is_sunlit"], state["solar_power_watts"], load, dt)
+            battery.step(state["is_sunlit"], state["solar_power_watts"], load, dt, temp_celsius=temp)
             new_temp = thermal.update_temperature(q_in, q_out, dt)
 
             # --- Book-keeping ------------------------------------------------
             max_temp = max(max_temp, new_temp)
             min_battery = min(min_battery, battery.percent)
             shutdown_steps += int(in_shutdown)
+            safe_mode_steps += int(safe_mode)
             if decision.shutdown_risk_avoided and not previous_risk:
                 shutdowns_avoided += 1
             previous_risk = decision.shutdown_risk_avoided
 
             finished: Optional[str] = None
             if job is not None:
+                time_in_precision[level] = time_in_precision.get(level, 0.0) + dt
+                accuracy_weighted_seconds += dt * job.workload.accuracy_for_precision(level)
                 job.remaining_seconds -= dt
                 compute_seconds += dt
                 if job.remaining_seconds <= 1e-9:
@@ -662,12 +805,18 @@ class LumenScheduler:
                     "cooling_watts": q_out,
                     "thermal_status": status,
                     "battery_percent": battery.percent,
+                    "battery_soh": battery.state_of_health,
                     "power_available_watts": power_available,
+                    "precision": level if decision.job else None,
+                    "safe_mode": safe_mode,
                     "decision": decision.reason,
                     "task_completed": finished,
                 }
             )
 
+        mean_accuracy = (
+            accuracy_weighted_seconds / compute_seconds if compute_seconds > 0 else 1.0
+        )
         return {
             "scheduler": name,
             "timeline": timeline,
@@ -680,4 +829,13 @@ class LumenScheduler:
             "shutdown_minutes": shutdown_steps * dt / 60.0,
             "min_battery_percent": min_battery,
             "completed_by_task": dict(completed),
+            "mean_accuracy": mean_accuracy,
+            "precision_seconds": dict(time_in_precision),
+            "battery_soh_final": battery.state_of_health,
+            "battery_eclipse_cycles": battery.eclipse_cycles,
+            "battery_hot_cycles": battery.hot_eclipse_cycles,
+            "safe_mode_minutes": safe_mode_steps * dt / 60.0,
+            "enable_quantization": self.enable_quantization,
+            "solar_storm": safe_mode,
+            "profile": self.profile.key if self.profile is not None else None,
         }

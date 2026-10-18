@@ -82,13 +82,27 @@ def _clamp(temp_celsius: float) -> float:
 # Battery
 # --------------------------------------------------------------------------- #
 class Battery:
-    """Simple energy-bucket battery.
+    """Simple energy-bucket battery with State-of-Health (SoH) tracking.
 
     * **Sunlit:** the solar array powers the load; any excess solar charges
       the battery. If the load exceeds solar, the battery covers the deficit.
     * **Eclipse:** the battery is the only source and supplies at most
       ``max_discharge_watts`` (200 W by default).
     * **0 %:** no power at all — the system must SHUTDOWN.
+
+    Battery health (SoH)
+    --------------------
+    Real batteries lose capacity when they are worked hard while hot. Every
+    eclipse *entered while the server is hotter than*
+    ``hot_threshold_celsius`` (default 40 °C) permanently degrades the pack:
+    the maximum discharge power drops by ``hot_eclipse_penalty`` (0.5 % per
+    hot cycle, a simple educational heuristic standing in for
+    ``capacity_loss = f(cycles, avg_temp)``). The available energy capacity is
+    derated by the same factor, so an ageing battery can no longer cover the
+    critical loads of a full eclipse.
+
+    ``state_of_health`` starts at 1.0 (100 %) and is reset by
+    :meth:`reset` at the start of a new mission simulation.
     """
 
     def __init__(
@@ -96,6 +110,9 @@ class Battery:
         capacity_wh: float = 500,
         max_discharge_watts: float = 200,
         initial_percent: float = 100,
+        hot_threshold_celsius: float = 40.0,
+        hot_eclipse_penalty: float = 0.005,
+        soh_floor: float = 0.5,
     ) -> None:
         """Create the battery.
 
@@ -103,6 +120,10 @@ class Battery:
             capacity_wh: Usable capacity in watt-hours.
             max_discharge_watts: Maximum power the battery can deliver.
             initial_percent: Starting state of charge (0-100).
+            hot_threshold_celsius: Eclipse entry above this temperature counts
+                as a "hot cycle" that costs SoH.
+            hot_eclipse_penalty: SoH fraction lost per hot eclipse cycle.
+            soh_floor: Never degrade below this SoH fraction.
 
         Raises:
             ValueError: If capacity or discharge limit is not positive.
@@ -115,6 +136,15 @@ class Battery:
         self.max_discharge_watts: float = float(max_discharge_watts)
         self.initial_percent: float = max(0.0, min(100.0, float(initial_percent)))
         self.charge_wh: float = self.capacity_wh * self.initial_percent / 100.0
+        self.hot_threshold_celsius: float = float(hot_threshold_celsius)
+        self.hot_eclipse_penalty: float = max(0.0, float(hot_eclipse_penalty))
+        self.soh_floor: float = max(0.1, min(1.0, float(soh_floor)))
+        #: State of health, 1.0 = factory-new pack.
+        self.state_of_health: float = 1.0
+        #: Total eclipse cycles seen (and how many were entered hot).
+        self.eclipse_cycles: int = 0
+        self.hot_eclipse_cycles: int = 0
+        self._in_eclipse: bool = False
 
     @property
     def percent(self) -> float:
@@ -126,9 +156,20 @@ class Battery:
         """``True`` when the battery is empty."""
         return self.charge_wh <= 1e-9
 
+    @property
+    def effective_capacity_wh(self) -> float:
+        """Usable capacity after SoH degradation (watt-hours)."""
+        return self.capacity_wh * self.state_of_health
+
+    @property
+    def effective_max_discharge_watts(self) -> float:
+        """Maximum discharge power after SoH degradation (watts)."""
+        return self.max_discharge_watts * self.state_of_health
+
     def _max_discharge_for(self, dt_seconds: float) -> float:
         """Most power the battery can deliver for ``dt_seconds`` (rate + energy limited)."""
-        return min(self.max_discharge_watts, self.charge_wh * 3600.0 / dt_seconds)
+        usable_wh = self.effective_capacity_wh * self.percent / 100.0
+        return min(self.effective_max_discharge_watts, usable_wh * 3600.0 / dt_seconds)
 
     def available_power(
         self, is_sunlit: bool, solar_power_watts: float, dt_seconds: float = 30
@@ -153,31 +194,50 @@ class Battery:
         solar_power_watts: float,
         load_watts: float,
         dt_seconds: float = 30,
+        temp_celsius: Optional[float] = None,
     ) -> float:
-        """Charge or discharge for one time step.
+        """Charge or discharge for one time step, tracking hot eclipse cycles.
 
         Args:
             is_sunlit: Whether the satellite is in sunlight.
             solar_power_watts: Current solar array output.
             load_watts: Total electrical load (base electronics + workload).
             dt_seconds: Step length.
+            temp_celsius: Server temperature — entering an eclipse while hotter
+                than ``hot_threshold_celsius`` degrades the pack (SoH).
 
         Returns:
             New state of charge in percent.
         """
+        if self._in_eclipse and is_sunlit:
+            self._in_eclipse = False
+        elif not self._in_eclipse and not is_sunlit:
+            self._in_eclipse = True
+            self.eclipse_cycles += 1
+            if temp_celsius is not None and temp_celsius > self.hot_threshold_celsius:
+                self.hot_eclipse_cycles += 1
+                self.state_of_health = max(
+                    self.soh_floor, self.state_of_health - self.hot_eclipse_penalty
+                )
+
         hours = dt_seconds / 3600.0
         supply = solar_power_watts if is_sunlit else 0.0
         net_watts = supply - load_watts
         if net_watts >= 0:
-            self.charge_wh = min(self.capacity_wh, self.charge_wh + net_watts * hours)
+            ceiling = self.effective_capacity_wh
+            self.charge_wh = min(ceiling, self.charge_wh + net_watts * hours)
         else:
             drawn = min(-net_watts, self._max_discharge_for(dt_seconds))
             self.charge_wh = max(0.0, self.charge_wh - drawn * hours)
         return self.percent
 
     def reset(self) -> None:
-        """Restore the initial state of charge."""
+        """Restore the initial charge and a factory-new SoH (new mission run)."""
         self.charge_wh = self.capacity_wh * self.initial_percent / 100.0
+        self.state_of_health = 1.0
+        self.eclipse_cycles = 0
+        self.hot_eclipse_cycles = 0
+        self._in_eclipse = False
 
 
 # --------------------------------------------------------------------------- #

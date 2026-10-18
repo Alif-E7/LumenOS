@@ -54,8 +54,9 @@ Modelling assumptions (deliberately simplified for educational clarity):
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Mapping, Optional, Union
 
 import numpy as np
 from sgp4.api import WGS72, Satrec
@@ -90,6 +91,183 @@ DEFAULT_EPOCH: datetime = datetime(2026, 3, 20, 12, 0, 0, tzinfo=timezone.utc)
 _J2000_JD: float = 2451545.0
 _J2000_DATETIME: datetime = datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 _SGP4_EPOCH_ORIGIN_JD: float = 2433281.5  # 1949-12-31 00:00 UT
+
+
+# --------------------------------------------------------------------------- #
+# Orbital profiles — one object per mission theater
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class OrbitalProfile:
+    """Parameter set for one mission theater (LEO / GEO / Lunar / Mars).
+
+    Everything that differs between orbits lives here — altitude, solar
+    availability, what the radiator can see, and how the mission window
+    should start — so new theaters can be added without touching the physics
+    code. The numbers are educational approximations tuned for the game, not
+    flight-dynamics grade values.
+
+    Attributes:
+        key: Short profile key (``"LEO"``, ``"GEO"``, ``"LUNAR"``, ``"MARS"``).
+        label: UI label, e.g. ``"GEO · Comms Belt"``.
+        theater: Environment family (``"EARTH"``, ``"LUNAR"``, ``"MARS"``).
+        description: One-line mission framing for the dashboard.
+        altitude_km: Equivalent circular orbit altitude (propagator input).
+        inclination_deg: Orbit inclination.
+        solar_scale: Solar intensity multiplier vs 1 AU.
+        solar_array_max_watts: Array output at normal sun incidence.
+        radiator_area_m2: Radiator area.
+        sink_temperatures_k: What the radiator sees per facing (sink temp, K).
+        battery_capacity_wh: Usable battery capacity.
+        server_mass_kg: Server block mass (thermal capacitance).
+        mission_minutes: Length of one game mission window.
+        start_phase: ``"sunrise"`` (start at first sunrise) or
+            ``"pre_eclipse"`` (start shortly before eclipse entry).
+        earth_ir: Whether the radiator can see a warm central body's IR
+            (False for interplanetary cruise — always deep space).
+        eclipse_enabled: Whether the central body ever shadows the vehicle.
+        eclipse_note: UI copy about this theater's orbital hazard.
+    """
+
+    key: str
+    label: str
+    theater: str
+    description: str
+    altitude_km: float
+    inclination_deg: float
+    solar_scale: float
+    solar_array_max_watts: float
+    radiator_area_m2: float
+    sink_temperatures_k: Mapping[str, float]
+    battery_capacity_wh: float
+    server_mass_kg: float
+    mission_minutes: float
+    start_phase: str
+    earth_ir: bool
+    eclipse_enabled: bool
+    eclipse_note: str
+
+
+#: All mission theaters the game supports, keyed by canonical key.
+ORBITAL_PROFILES: dict[str, OrbitalProfile] = {
+    "LEO": OrbitalProfile(
+        key="LEO",
+        label="LEO · ISS-like 550 km",
+        theater="EARTH",
+        description="Low Earth orbit — power is plentiful, the radiator view factor is the killer.",
+        altitude_km=550.0,
+        inclination_deg=53.0,
+        solar_scale=1.0,
+        solar_array_max_watts=2000.0,
+        radiator_area_m2=1.5,
+        sink_temperatures_k={DEEP_SPACE: 3.0, EARTH_DAY: 280.0, EARTH_NIGHT: 220.0},
+        battery_capacity_wh=500.0,
+        server_mass_kg=15.0,
+        mission_minutes=90.0,
+        start_phase="sunrise",
+        earth_ir=True,
+        eclipse_enabled=True,
+        eclipse_note="~35 min eclipse per 96-min orbit — battery-only during the dark arc.",
+    ),
+    "GEO": OrbitalProfile(
+        key="GEO",
+        label="GEO · Comms Belt 35,786 km",
+        theater="EARTH",
+        description="Geostationary belt — a 24-hour orbit with brutal equinox eclipses.",
+        altitude_km=35786.0,
+        inclination_deg=0.0,
+        solar_scale=1.0,
+        solar_array_max_watts=2000.0,
+        radiator_area_m2=1.5,
+        sink_temperatures_k={DEEP_SPACE: 3.0, EARTH_DAY: 280.0, EARTH_NIGHT: 220.0},
+        battery_capacity_wh=500.0,
+        server_mass_kg=15.0,
+        mission_minutes=90.0,
+        start_phase="pre_eclipse",
+        earth_ir=True,
+        eclipse_enabled=True,
+        eclipse_note="Equinox eclipse ~70 min per 24-h orbit — the window opens just before entry.",
+    ),
+    "LUNAR": OrbitalProfile(
+        key="LUNAR",
+        label="LUNAR · Gateway NRHO",
+        theater="LUNAR",
+        description="Near-rectilinear halo orbit — lunar IR eats your cooling margin and eclipses run long.",
+        altitude_km=5000.0,
+        inclination_deg=90.0,
+        solar_scale=0.65,
+        solar_array_max_watts=1300.0,
+        radiator_area_m2=1.5,
+        sink_temperatures_k={DEEP_SPACE: 3.0, EARTH_DAY: 250.0, EARTH_NIGHT: 150.0},
+        battery_capacity_wh=500.0,
+        server_mass_kg=15.0,
+        mission_minutes=90.0,
+        start_phase="sunrise",
+        earth_ir=True,
+        eclipse_enabled=True,
+        eclipse_note="Lunar eclipses up to ~70 min — deep reserves decide the mission.",
+    ),
+    "MARS": OrbitalProfile(
+        key="MARS",
+        label="MARS · Transit Cruise",
+        theater="MARS",
+        description="Interplanetary cruise — 43 % solar flux, no Earth IR. Power becomes the bottleneck.",
+        altitude_km=1000.0,
+        inclination_deg=5.0,
+        solar_scale=0.43,
+        solar_array_max_watts=860.0,
+        radiator_area_m2=1.5,
+        sink_temperatures_k={DEEP_SPACE: 3.0, EARTH_DAY: 3.0, EARTH_NIGHT: 3.0},
+        battery_capacity_wh=500.0,
+        server_mass_kg=15.0,
+        mission_minutes=90.0,
+        start_phase="sunrise",
+        earth_ir=False,
+        eclipse_enabled=False,
+        eclipse_note="Continuous sunlight, but only 43 % flux — FP32 heavy jobs no longer fit the array.",
+    ),
+}
+
+#: Canonical orbit keys in display order.
+ORBIT_KEYS: tuple[str, ...] = ("LEO", "GEO", "LUNAR", "MARS")
+
+_PROFILE_ALIASES: dict[str, str] = {
+    "LEO": "LEO", "ISS": "LEO", "EARTH": "LEO", "LOW": "LEO",
+    "GEO": "GEO", "GEOSTATIONARY": "GEO", "COMMS": "GEO",
+    "LUNAR": "LUNAR", "MOON": "LUNAR", "NRHO": "LUNAR", "GATEWAY": "LUNAR", "ARTEMIS": "LUNAR",
+    "MARS": "MARS", "TRANSIT": "MARS", "CRUISE": "MARS",
+}
+
+
+def get_orbital_profile(orbit_type: str) -> OrbitalProfile:
+    """Look up an :class:`OrbitalProfile` by key or common alias.
+
+    Args:
+        orbit_type: ``"LEO"``, ``"GEO"``, ``"LUNAR"``, ``"MARS"`` or an alias
+            such as ``"NRHO"`` / ``"Moon"`` / ``"Mars Transit"``.
+
+    Returns:
+        The matching (frozen) profile.
+
+    Raises:
+        ValueError: If the orbit type is not recognized.
+
+    Example:
+        >>> profile = get_orbital_profile("GEO")
+        >>> profile.altitude_km > 35000
+        True
+    """
+    token = str(orbit_type).strip().upper().replace("-", " ").replace("_", " ")
+    key = _PROFILE_ALIASES.get(token)
+    if key is None:
+        for alias, canonical in _PROFILE_ALIASES.items():
+            if alias in token:
+                key = canonical
+                break
+    if key is None:
+        raise ValueError(
+            f"unknown orbit type {orbit_type!r}; expected one of {sorted(ORBITAL_PROFILES)} or an alias"
+        )
+    return ORBITAL_PROFILES[key]
 
 
 # --------------------------------------------------------------------------- #
@@ -149,6 +327,7 @@ def sun_unit_vector(time_utc: datetime) -> np.ndarray:
 def radiator_cooling_capacity(
     sink_temperature_kelvin: float,
     radiator_temp_kelvin: float = RADIATOR_TEMP_K,
+    area_m2: Optional[float] = None,
 ) -> float:
     """Heat the radiator can reject, via the Stefan-Boltzmann law.
 
@@ -161,14 +340,16 @@ def radiator_cooling_capacity(
     Args:
         sink_temperature_kelvin: Effective temperature of what the radiator sees.
         radiator_temp_kelvin: Radiator surface temperature (defaults to design point).
+        area_m2: Radiator area; defaults to the module-level design area.
 
     Returns:
         Cooling in watts (never negative).
     """
+    area = RADIATOR_AREA_M2 if area_m2 is None else float(area_m2)
     q = (
         RADIATOR_EMISSIVITY
         * STEFAN_BOLTZMANN
-        * RADIATOR_AREA_M2
+        * area
         * (radiator_temp_kelvin**4 - sink_temperature_kelvin**4)
     )
     return max(q, 0.0)
@@ -199,6 +380,10 @@ class OrbitalEngine:
         radiator_area_m2: Optional[float] = None,
         scenario: Optional[str] = None,
         solar_scale: Optional[float] = None,
+        profile: Optional[Union[str, OrbitalProfile]] = None,
+        sink_temperatures_k: Optional[Mapping[str, float]] = None,
+        earth_ir: Optional[bool] = None,
+        eclipse_enabled: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:
         """Build the orbit.
@@ -215,11 +400,35 @@ class OrbitalEngine:
             radiator_area_m2: Alias for radiator_area.
             scenario: Mission scenario name ('LEO', 'Lunar Gateway', 'Mars Transit').
             solar_scale: Solar intensity multiplier (e.g. 0.65 for lunar, 0.43 for mars).
+            profile: An :class:`OrbitalProfile` (or its key/alias) that overrides
+                altitude, inclination, array size, radiator area and sink
+                temperatures in one shot — the multi-orbit parameterization.
+            sink_temperatures_k: Explicit facing -> sink temperature mapping.
+            earth_ir: Whether the radiator can see a warm central body
+                (False = interplanetary cruise, always deep space).
+            eclipse_enabled: Whether the central body can shadow the vehicle.
 
         Raises:
             ValueError: If altitude or inclination is out of range.
         """
-        if scenario is not None:
+        resolved_profile: Optional[OrbitalProfile] = None
+        if profile is not None:
+            resolved_profile = (
+                get_orbital_profile(profile) if isinstance(profile, str) else profile
+            )
+            altitude_km = resolved_profile.altitude_km
+            inclination_deg = resolved_profile.inclination_deg
+            solar_array_max_watts = resolved_profile.solar_array_max_watts
+            if radiator_area is None and radiator_area_m2 is None:
+                radiator_area = resolved_profile.radiator_area_m2
+            if sink_temperatures_k is None:
+                sink_temperatures_k = resolved_profile.sink_temperatures_k
+            if earth_ir is None:
+                earth_ir = resolved_profile.earth_ir
+            if eclipse_enabled is None:
+                eclipse_enabled = resolved_profile.eclipse_enabled
+
+        if scenario is not None and resolved_profile is None:
             s = str(scenario).upper()
             if "LUNAR" in s or "MOON" in s or "NRHO" in s:
                 if altitude_km == 550.0:
@@ -252,11 +461,17 @@ class OrbitalEngine:
         if not 0.0 <= inclination_deg <= 180.0:
             raise ValueError("inclination_deg must be within [0, 180]")
 
+        self.profile: Optional[OrbitalProfile] = resolved_profile
         self.altitude_km: float = float(altitude_km)
         self.inclination_deg: float = float(inclination_deg)
         self.raan_deg: float = float(raan_deg)
         self.epoch: datetime = _to_utc(epoch) if epoch is not None else DEFAULT_EPOCH
         self.solar_array_max_watts: float = float(solar_array_max_watts)
+        self.sink_temperatures_k: dict[str, float] = dict(
+            sink_temperatures_k if sink_temperatures_k is not None else SINK_TEMPERATURES_K
+        )
+        self.earth_ir: bool = True if earth_ir is None else bool(earth_ir)
+        self.eclipse_enabled: bool = True if eclipse_enabled is None else bool(eclipse_enabled)
 
         self.semi_major_axis_km: float = EARTH_RADIUS_KM + self.altitude_km
         mean_motion_rad_s = math.sqrt(EARTH_MU_KM3_S2 / self.semi_major_axis_km**3)
@@ -282,8 +497,8 @@ class OrbitalEngine:
         self._satellite = EarthSatellite.from_satrec(satrec, self._timescale)
 
         self._cooling_by_facing: dict[str, float] = {
-            facing: radiator_cooling_capacity(t_sink)
-            for facing, t_sink in SINK_TEMPERATURES_K.items()
+            facing: radiator_cooling_capacity(t_sink, area_m2=self.radiator_area_m2)
+            for facing, t_sink in self.sink_temperatures_k.items()
         }
 
     # ------------------------------------------------------------------ #
@@ -319,7 +534,7 @@ class OrbitalEngine:
         sun_hat = sun_unit_vector(timestamp)
 
         # 1. Sunlight / eclipse
-        is_sunlit = self._is_sunlit(position_km, sun_hat)
+        is_sunlit = self._is_sunlit(position_km, sun_hat) if self.eclipse_enabled else True
 
         # 2. Solar power (sun-tracking array -> incidence angle == beta angle)
         beta_rad = math.asin(float(np.clip(np.dot(sun_hat, orbit_normal), -1.0, 1.0)))
@@ -327,9 +542,13 @@ class OrbitalEngine:
 
         # 3. Radiator view factor
         on_day_side = bool(np.dot(r_hat, sun_hat) > 0.0)
-        radiator_normal = self._radiator_normal(sun_hat, orbit_normal)
-        points_toward_earth = bool(np.dot(radiator_normal, -r_hat) > 0.0)
-        radiator_facing = self._classify_radiator(on_day_side, points_toward_earth)
+        if self.earth_ir:
+            radiator_normal = self._radiator_normal(sun_hat, orbit_normal)
+            points_toward_earth = bool(np.dot(radiator_normal, -r_hat) > 0.0)
+            radiator_facing = self._classify_radiator(on_day_side, points_toward_earth)
+        else:
+            radiator_normal = self._radiator_normal(sun_hat, orbit_normal)
+            radiator_facing = DEEP_SPACE
 
         latitude, longitude = wgs84.latlon_of(geocentric)
 
@@ -338,7 +557,7 @@ class OrbitalEngine:
             "is_sunlit": is_sunlit,
             "solar_power_watts": float(solar_power),
             "radiator_facing": radiator_facing,
-            "sink_temperature_kelvin": SINK_TEMPERATURES_K[radiator_facing],
+            "sink_temperature_kelvin": self.sink_temperatures_k[radiator_facing],
             "max_cooling_capacity_watts": self._cooling_by_facing[radiator_facing],
             # Extras for the dashboard globe / debugging
             "latitude_deg": float(latitude.degrees),
@@ -408,6 +627,56 @@ class OrbitalEngine:
                 return t
             previous_sunlit = sunlit
         return start
+
+    def find_next_eclipse_entry(
+        self,
+        after: Optional[datetime] = None,
+        step_seconds: float = 60,
+    ) -> Optional[datetime]:
+        """Find the first sunlight -> eclipse transition, if any.
+
+        Args:
+            after: Search start (UTC). Defaults to the orbit epoch.
+            step_seconds: Search resolution (coarse is fine; eclipses last minutes).
+
+        Returns:
+            The first eclipsed sample's time, or ``None`` when the orbit never
+            goes dark within one orbital period (or eclipses are disabled).
+        """
+        if not self.eclipse_enabled:
+            return None
+        start = _to_utc(after) if after is not None else self.epoch
+        n_steps = int(1.2 * self.orbital_period_minutes * 60.0 // step_seconds) + 1
+        previous_sunlit = self.get_orbital_state(start)["is_sunlit"]
+        for i in range(1, n_steps):
+            t = start + timedelta(seconds=i * step_seconds)
+            sunlit = self.get_orbital_state(t)["is_sunlit"]
+            if previous_sunlit and not sunlit:
+                return t
+            previous_sunlit = sunlit
+        return None
+
+    def mission_start_time(
+        self,
+        lead_minutes_before_eclipse: float = 10.0,
+    ) -> datetime:
+        """Pick the mission window start for this theater's profile.
+
+        * ``"sunrise"`` profiles start at the first orbital sunrise (the current
+          default behavior — the spacecraft begins the window in sunlight).
+        * ``"pre_eclipse"`` profiles (e.g. GEO equinox) start a few minutes
+          before eclipse entry, so a standard-length window captures the
+          battery-critical arc.
+
+        Returns:
+            The start time (UTC).
+        """
+        phase = self.profile.start_phase if self.profile is not None else "sunrise"
+        if phase == "pre_eclipse":
+            entry = self.find_next_eclipse_entry()
+            if entry is not None:
+                return entry - timedelta(minutes=lead_minutes_before_eclipse)
+        return self.next_sunrise()
 
     # ------------------------------------------------------------------ #
     # Internals
