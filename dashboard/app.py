@@ -240,7 +240,7 @@ div[data-testid="stToolbar"], div[data-testid="stStatusWidget"] {
 }
 
 .block-container {
-    padding: 0.9rem 1.2rem 2.4rem 1.2rem;
+    padding: 0.6rem 1.0rem 1.2rem 1.0rem;
     max-width: 2100px;
 }
 
@@ -262,8 +262,8 @@ h1, h2, h3, h4 { color: #EAF6FF; letter-spacing: 0.02em; }
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 0 28px rgba(0, 240, 255, 0.03);
-    padding: 14px 16px;
-    margin-bottom: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
 }
 
 .panel-title {
@@ -271,12 +271,12 @@ h1, h2, h3, h4 { color: #EAF6FF; letter-spacing: 0.02em; }
     align-items: center;
     gap: 10px;
     font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.24em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--cyan);
-    margin-bottom: 12px;
+    margin-bottom: 9px;
     white-space: nowrap;
 }
 .panel-title::after {
@@ -528,14 +528,14 @@ h1, h2, h3, h4 { color: #EAF6FF; letter-spacing: 0.02em; }
     display: flex;
     flex-direction: column-reverse;
     overflow-y: auto;
-    height: 268px;
+    height: 176px;
     padding-right: 6px;
 }
 .log-line {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 0.72rem;
-    line-height: 1.5;
-    padding: 2px 0;
+    font-size: 0.68rem;
+    line-height: 1.45;
+    padding: 1px 0;
     border-bottom: 1px dashed rgba(127, 147, 173, 0.08);
     word-break: break-word;
 }
@@ -1531,8 +1531,8 @@ def create_comparison_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.F
         fig.add_vline(x=now_min, line_color="rgba(255,255,255,0.3)", line_width=1)
 
     fig.update_layout(
-        height=286,
-        margin=dict(l=44, r=14, t=30, b=26),
+        height=214,
+        margin=dict(l=44, r=14, t=28, b=24),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(6,10,18,0.6)",
         font=dict(color="#B9C8DC", family="JetBrains Mono, monospace", size=10),
@@ -1598,8 +1598,8 @@ def create_score_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure
         fig.add_vline(x=now_min, line_color="rgba(255,255,255,0.3)", line_width=1)
 
     fig.update_layout(
-        height=220,
-        margin=dict(l=52, r=14, t=30, b=26),
+        height=178,
+        margin=dict(l=52, r=14, t=28, b=24),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(6,10,18,0.6)",
         font=dict(color="#B9C8DC", family="JetBrains Mono, monospace", size=10),
@@ -1666,10 +1666,10 @@ def left_panel_html(G: dict[str, Any], mission: dict[str, Any], view: dict[str, 
     return f"""
     <div class="glass">
         <div class="panel-title">SYSTEM TELEMETRY</div>
-        {gauge_html("SERVER TEMP", temp, 120.0, "°C", temp_color, size=176, sub=warn_sub)}
+        {gauge_html("SERVER TEMP", temp, 120.0, "°C", temp_color, size=150, sub=warn_sub)}
         <div class="dual-gauges">
-            <div>{gauge_html("BATTERY", battery, 100.0, "%", batt_color, size=124, decimals=0)}</div>
-            <div>{gauge_html("SOLAR PWR", solar, 2000.0, "W", solar_color, size=124, decimals=0)}</div>
+            <div>{gauge_html("BATTERY", battery, 100.0, "%", batt_color, size=104, decimals=0)}</div>
+            <div>{gauge_html("SOLAR PWR", solar, 2000.0, "W", solar_color, size=104, decimals=0)}</div>
         </div>
         <div class="op-meta" style="margin:2px 0 8px 0">
             <span>BATTERY STATE OF HEALTH</span>
@@ -1759,41 +1759,6 @@ def hud_html(G: dict[str, Any], mission: dict[str, Any], view: dict[str, Any]) -
             <div class="stat-v" style="color:{status_color}; text-shadow:0 0 16px {status_color}88;">{status}</div>
             <div class="stat-sub">{view['temp']:.1f}°C · cap {view['cooling']:.0f} W</div>
         </div>
-    </div>
-    """
-
-
-def brief_html(mission: dict[str, Any]) -> str:
-    """CENTER — mission briefing card (visible until the first turn)."""
-    profile = mission["profile"]
-    return f"""
-    <div class="glass">
-        <div class="panel-title">MISSION BRIEF · ORBITAL AI DATA CENTER “AURORA-1”</div>
-        <div class="brief-h">You are the MISSION DIRECTOR — theater: {html.escape(profile.label)}.</div>
-        <div class="brief-p">
-            {html.escape(profile.description)} Process as many AI workloads as possible over one
-            90-minute mission window — without letting the server melt. Compute generates heat,
-            and in a vacuum the only way out is radiation.
-        </div>
-        <div class="brief-grid">
-            <div class="brief-item"><span class="chip chip-cyan">POWER</span><br>
-                Solar array: {profile.solar_array_max_watts:,.0f} W in sunlight, 0 W in eclipse.
-                Battery: {profile.battery_capacity_wh:,.0f} Wh, 200 W discharge bus.</div>
-            <div class="brief-item"><span class="chip chip-amber">HEAT</span><br>
-                Radiator capacity depends on view factor — check the big card on the left as the
-                mission clock runs. {html.escape(profile.eclipse_note)}</div>
-            <div class="brief-item"><span class="chip chip-red">DANGER</span><br>
-                Server starts at 25°C. At 95°C hardware protection trips — the mission ends and
-                in-flight work is destroyed. Space weather storms add safe-mode grounding;
-                hot eclipse cycles age the battery (SoH).</div>
-            <div class="brief-item"><span class="chip chip-emerald">TOOLS</span><br>
-                MANUAL mode gives you a precision selector: run FP32 for full fidelity, or
-                quantize (INT8 / TINY / AUTO) to cut heat and power at some accuracy cost.
-                LumenOS does this automatically.</div>
-        </div>
-        <div class="brief-hint">▸ MANUAL: pick a workload → press NEXT TURN. When (not if) it melts down,
-        activate the LUMENOS AI hypervisor and watch it schedule around the physics. Switch theater,
-        weather, or precision from the right-hand console.</div>
     </div>
     """
 
@@ -2088,12 +2053,11 @@ def reset_game_now() -> None:
 view_now = current_view(G, mission)
 profile = mission["profile"]
 mode_pill = (
-    "<span class='pill pill-amber'>MODE · MANUAL</span>"
+    "<span class='pill pill-amber'>MANUAL</span>"
     if G["mode"] == "manual"
-    else "<span class='pill pill-emerald'>MODE · LUMENOS AI</span>"
+    else "<span class='pill pill-emerald'>LUMENOS AI</span>"
 )
 orbit_pill = f"<span class='pill pill-cyan'>{html.escape(profile.key)} · {profile.altitude_km:,.0f} KM</span>"
-eclipse_short = html.escape(profile.eclipse_note.split(" — ")[0])
 if weather.safe_mode:
     weather_pill = (
         f"<span class='pill pill-red'>☀ SWPC · G{weather.storm_level} STORM · SAFE MODE</span>"
@@ -2111,12 +2075,10 @@ st.markdown(
     f"""
     <div class="glass topbar">
         <div class="brand">◈ <b>LUMENOS</b> PROTOCOL
-            <span class="brand-sub">// ORBITAL AI DATA CENTER · MISSION CONTROL</span>
+            <span class="brand-sub">// ORBITAL AI DATA CENTER</span>
         </div>
         <div>
             {orbit_pill}
-            <span class="pill">{eclipse_short}</span>
-            <span class="pill">RADIATOR {profile.radiator_area_m2:.1f} m² · ε 0.80</span>
             {weather_pill}
             {mode_pill}
         </div>
@@ -2126,21 +2088,22 @@ st.markdown(
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LAYOUT — 3-column command center
+# LAYOUT — single-screen command center: 3D visual | telemetry | controls
 # ─────────────────────────────────────────────────────────────────────────────
-left_col, center_col, right_col = st.columns([1.0, 1.9, 1.25], gap="small")
+hud_ph = st.empty()
+
+vis_col, tel_col, ctrl_col = st.columns([1.62, 1.0, 1.02], gap="small")
 
 # Placeholders (renderers write into these on every frame / animation step)
-with left_col:
-    left_ph = st.empty()
-
-with center_col:
-    hud_ph = st.empty()
-    brief_ph = st.empty()
+with vis_col:
     orbit_ph = st.empty()
-    log_ph = st.empty()
+    thermal_ph = st.empty()
 
-with right_col:
+with tel_col:
+    telemetry_ph = st.empty()
+    score_ph = st.empty()
+
+with ctrl_col:
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>MISSION THEATER</div>", unsafe_allow_html=True)
     st.selectbox(
         "Mission theater",
@@ -2150,7 +2113,7 @@ with right_col:
         on_change=on_orbit_change,
         label_visibility="collapsed",
     )
-    st.caption(profile.description)
+    st.caption(html.escape(profile.description))
 
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>SPACE WEATHER · NOAA SWPC</div>", unsafe_allow_html=True)
     st.selectbox(
@@ -2160,36 +2123,6 @@ with right_col:
         key="weather_sel",
         label_visibility="collapsed",
     )
-    if weather.safe_mode:
-        st.caption("⚠ Geomagnetic storm doctrine: heavy tasks grounded, battery reserved for comms.")
-    elif weather_mode == "live":
-        st.caption(f"Live SWPC feed · Kp {weather.kp_index if weather.kp_index is not None else '—'} · {weather.note}")
-    else:
-        st.caption("Simulated conditions. STORM DRILL demonstrates safe-mode doctrine.")
-
-    st.markdown("<div class='panel-title' style='color:#E8F6FF'>COMPUTE PRECISION</div>", unsafe_allow_html=True)
-    if G["mode"] == "manual":
-        st.radio(
-            "Compute precision",
-            options=PRECISION_OPTIONS,
-            key="precision_sel",
-            horizontal=True,
-            label_visibility="collapsed",
-        )
-        _policy = st.session_state.get("precision_sel", FP32)
-        if _policy == AUTO:
-            st.caption("AUTO: FP32 below 60°C → INT8 (heat ×0.50) → TINY above 80°C, per temperature.")
-        else:
-            _spec = PRECISION_PROFILES.get(_policy, PRECISION_PROFILES[FP32])
-            st.caption(
-                f"{_spec.label} · power ×{_spec.power_scale:.2f} · heat ×{_spec.heat_scale:.2f} · "
-                f"accuracy {_spec.accuracy * 100:.0f}%. Lower precision runs cooler but banks fewer TFLOPs."
-            )
-    else:
-        st.caption(
-            "Hypervisor-managed: LumenOS quantizes automatically (FP32 → INT8 → TINY) as the "
-            "server warms, instead of idling through heat windows."
-        )
 
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>OS SELECTION</div>", unsafe_allow_html=True)
     mode_choice = st.radio(
@@ -2199,7 +2132,16 @@ with right_col:
         on_change=on_mode_change,
         label_visibility="collapsed",
     )
-    st.caption("Switching OS or theater restarts the mission from T+00:00.")
+
+    if G["mode"] == "manual":
+        st.markdown("<div class='panel-title' style='color:#E8F6FF'>COMPUTE PRECISION</div>", unsafe_allow_html=True)
+        st.radio(
+            "Compute precision",
+            options=PRECISION_OPTIONS,
+            key="precision_sel",
+            horizontal=True,
+            label_visibility="collapsed",
+        )
 
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>WORKLOAD QUEUE</div>", unsafe_allow_html=True)
     task_phs: dict[str, Any] = {}
@@ -2211,52 +2153,57 @@ with right_col:
             f"▶ RUN · {task.name.replace('_', ' ')}",
             key=f"run_{name}",
             disabled=(G["mode"] != "manual"),
-            help="Select this workload for the next turns (Manual mode)."
+            help="Select this workload (Manual mode)."
             if G["mode"] == "manual"
             else "Autopilot engaged — the hypervisor owns the queue.",
         )
 
-    st.markdown("<div class='panel-title' style='color:#E8F6FF'>FLIGHT CONTROLS</div>", unsafe_allow_html=True)
     if G["mode"] == "manual":
         next_turn_clicked = st.button("⏭ NEXT TURN · +5:00", type="primary", key="next_turn")
         auto_clicked = False
         pause_clicked = st.button("⏸ PAUSE TASK · NO CHECKPOINT", key="pause_task")
     else:
-        auto_clicked = st.button("⚡ AUTO-PLAY FULL ORBIT · ~10 s", type="primary", key="autoplay")
+        auto_clicked = st.button("⚡ AUTO-PLAY FULL ORBIT", type="primary", key="autoplay")
         next_turn_clicked = st.button("⏭ NEXT TURN · AUTOPILOT", key="next_turn_lumen")
         pause_clicked = False
     reset_clicked = st.button("🔄 RESET MISSION", key="reset_mission")
 
-    turn_no = min(int(G["t_index"] // TURN_STEPS) + 1, 18)
-    st.caption(f"TURN {turn_no}/18 · mission clock T+{fmt_mmss(G['t_index'] * STEP_SECONDS)}")
-    cmp_ph = st.empty()
-    score_ph = st.empty()
+    log_ph = st.empty()
 
 report_ph = st.empty()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FRAME RENDERING
 # ─────────────────────────────────────────────────────────────────────────────
-_CHART_STATE: dict[str, Any] = {"key": None}
+_CHART_STATE: dict[str, Any] = {"key": None, "orbit": None}
 
 
-def refresh_frame(charts: bool = True) -> None:
+def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
     """Re-render every placeholder from the current game state.
 
-    Charts are only redrawn when their content would actually change —
-    Streamlit rejects two ``plotly_chart`` calls with identical parameters
-    in the same script run.
+    ``orbit`` redraws the 3D globe (so the satellite and radiator visibly move
+    each animation step); ``charts`` redraws the 2D race charts. Each chart is
+    only redrawn when its content would actually change — Streamlit rejects two
+    ``plotly_chart`` calls with identical parameters in the same script run.
     """
     view = current_view(G, mission)
-    left_ph.markdown(left_panel_html(G, mission, view), unsafe_allow_html=True)
+    telemetry_ph.markdown(left_panel_html(G, mission, view), unsafe_allow_html=True)
     hud_ph.markdown(hud_html(G, mission, view), unsafe_allow_html=True)
     log_ph.markdown(log_panel_html(G), unsafe_allow_html=True)
-    if G["t_index"] < 1 and G["phase"] == "briefing":
-        brief_ph.markdown(brief_html(mission), unsafe_allow_html=True)
-    else:
-        brief_ph.empty()
     for name, ph in task_phs.items():
         ph.markdown(task_card_html(G, mission, mission["tasks_by_name"][name]), unsafe_allow_html=True)
+
+    orbit_key = (G["t_index"], G["mode"])
+    if orbit and orbit_key != _CHART_STATE["orbit"]:
+        _CHART_STATE["orbit"] = orbit_key
+        orbit_ph.plotly_chart(
+            create_orbit_figure(
+                orbit_display_timeline(G, mission),
+                current_step_idx=min(G["t_index"], TOTAL_STEPS - 1),
+            ),
+            width="stretch",
+            config=PLOTLY_CONFIG,
+        )
 
     chart_key = (
         G["t_index"],
@@ -2266,15 +2213,7 @@ def refresh_frame(charts: bool = True) -> None:
     )
     if charts and chart_key != _CHART_STATE["key"]:
         _CHART_STATE["key"] = chart_key
-        orbit_ph.plotly_chart(
-            create_orbit_figure(
-                orbit_display_timeline(G, mission),
-                current_step_idx=min(G["t_index"], TOTAL_STEPS - 1),
-            ),
-            width="stretch",
-            config=PLOTLY_CONFIG,
-        )
-        cmp_ph.plotly_chart(create_comparison_figure(G, mission), width="stretch", config=PLOTLY_CONFIG)
+        thermal_ph.plotly_chart(create_comparison_figure(G, mission), width="stretch", config=PLOTLY_CONFIG)
         score_ph.plotly_chart(create_score_figure(G, mission), width="stretch", config=PLOTLY_CONFIG)
     report_ph.markdown(
         report_html(G, mission) if G["phase"] in ("failed", "complete") else "",
@@ -2293,10 +2232,10 @@ def advance_manual(G: dict[str, Any], mission: dict[str, Any], n_steps: int, ani
             level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
             log_event(G, level, msg, t)
         if animate:
-            refresh_frame(charts=False)
-            time.sleep(0.055)
+            refresh_frame(charts=False, orbit=True)
+            time.sleep(0.05)
             if k % 5 == 0 or k == n_steps or G["phase"] == "failed":
-                refresh_frame(charts=True)
+                refresh_frame(charts=True, orbit=False)
     if G["t_index"] >= TOTAL_STEPS and G["phase"] != "failed":
         G["phase"] = "complete"
         checkpoints = "all work preserved" if G["mode"] == "manual" else "zero TFLOPs lost"
@@ -2312,7 +2251,7 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
     G["phase"] = "running"
     frame = 0
     while G["t_index"] < TOTAL_STEPS:
-        for _ in range(6):
+        for _ in range(3):
             if G["t_index"] >= TOTAL_STEPS:
                 break
             lumen_replay_step(G, mission)
@@ -2320,8 +2259,8 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
                 level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
                 log_event(G, level, msg, t)
         frame += 1
-        refresh_frame(charts=(frame % 2 == 0))
-        time.sleep(0.06)
+        refresh_frame(charts=(frame % 4 == 0), orbit=True)
+        time.sleep(0.02)
     G["phase"] = "complete"
     log_event(G, "ok", f"ORBIT COMPLETE — hypervisor delivered {fmt_num(player_score(G, mission))} TFLOPs with 0 shutdowns.", TOTAL_STEPS * STEP_SECONDS)
     refresh_frame(charts=True)
@@ -2334,9 +2273,9 @@ def advance_lumen_turn(G: dict[str, Any], mission: dict[str, Any]) -> None:
         if G["t_index"] >= TOTAL_STEPS:
             break
         lumen_replay_step(G, mission)
-        if k % 5 == 4:
-            refresh_frame(charts=False)
-            time.sleep(0.08)
+        if k % 2 == 1:
+            refresh_frame(charts=False, orbit=True)
+            time.sleep(0.05)
     if G["t_index"] % TURN_STEPS == 0:
         level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
         log_event(G, level, msg, t)
@@ -2501,73 +2440,51 @@ if G["phase"] == "failed" and G["crash"] is not None:
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# EDUCATIONAL FOOTER
+# PHYSICS NOTE — collapsed so the console stays on one screen
 # ─────────────────────────────────────────────────────────────────────────────
-st.markdown(
-    f"""
-    <div class="glass">
-        <div class="panel-title">WHY ORBITAL COMPUTE IS HARD · THE PHYSICS BEHIND THE GAME</div>
+with st.expander("WHY ORBITAL COMPUTE IS HARD · the physics behind the game", expanded=False):
+    st.markdown(
+        f"""
         <div class="brief-grid">
             <div class="brief-item explain-card">
                 <div class="explain-h" style="color:{CYAN}">1 · NO AIR TO CARRY HEAT</div>
                 <div class="explain-p">
-                    In a vacuum, convection and conduction are gone. Heat can only leave as infrared
+                    In vacuum, convection and conduction are gone. Heat only leaves as infrared
                     radiation: Q = ε·σ·A·(T⁴ − T_sink⁴). The {profile.radiator_area_m2:.1f} m² radiator at
-                    ε 0.80 rejects 909 W into deep space — but far less when it faces a warm body:
-                    Earth-day 491 W, lunar-surface 575 W, and so on.
+                    ε 0.80 rejects ~909 W into deep space — far less when it faces a warm body
+                    (Earth-day 491 W).
                 </div>
             </div>
             <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{AMBER}">2 · POWER VS HEAT: THE FLIP</div>
+                <div class="explain-h" style="color:{AMBER}">2 · POWER VS HEAT</div>
                 <div class="explain-p">
-                    In LEO the solar array gives {profile.solar_array_max_watts:,.0f} W exactly when the
-                    radiator view factor is worst — power abundance masks the thermal trap. Change theater
-                    and the bottleneck flips: on MARS transit ({profile.solar_array_max_watts:,.0f} W) even
-                    POWER becomes scarce, and only quantized workloads fit the bus.
+                    In LEO the solar array peaks exactly when the radiator view factor is worst —
+                    power abundance masks the thermal trap. Change theater and the bottleneck flips:
+                    on Mars transit POWER is the scarce resource.
                 </div>
             </div>
             <div class="brief-item explain-card">
                 <div class="explain-h" style="color:{EMERALD}">3 · SCHEDULING SAVES THE MISSION</div>
                 <div class="explain-p">
-                    LumenOS treats cooling as the scarce resource: 5-minute thermal look-ahead, checkpoint
-                    &amp; pause before thresholds, resume at sunrise or over cold sky. Projection for this
-                    theater: {fmt_num(mission['lumen_final_score'])} TFLOPs, peak {mission['lumen_max_temp']:.1f}°C,
-                    0 shutdowns{' — vs the naive baseline shutdown at T+' + fmt_mmss(mission['naive_crash_time_min'] * 60) if mission.get('naive_crashed', True) else ' — the naive baseline is power-starved and never even launches the heavy jobs'}.
+                    LumenOS treats cooling as the scarce resource: 5-minute thermal look-ahead,
+                    checkpoint &amp; pause before thresholds, resume over cold sky. Projection here:
+                    {fmt_num(mission['lumen_final_score'])} TFLOPs, peak {mission['lumen_max_temp']:.1f}°C,
+                    0 shutdowns.
                 </div>
             </div>
             <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{RED}">4 · SHUTDOWN = LOST SCIENCE</div>
+                <div class="explain-h" style="color:{RED}">4 · QUANTIZE, DON'T IDLE</div>
                 <div class="explain-p">
-                    A hard thermal trip above 95°C is not a hiccup on orbit: in-flight computation is
-                    destroyed and — in this game — the mission ends. That is why the OS, not the GPU,
-                    is the real engineering decision for orbital data centers.
-                </div>
-            </div>
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{AMBER}">5 · QUANTIZE, DON'T IDLE</div>
-                <div class="explain-p">
-                    When the server warms, LumenOS doesn't just pause HEAVY work — it co-designs the AI
-                    stack with the thermal budget: INT8 cuts heat to 50 % at 98 % accuracy, TINY to 25 %
-                    at 90 %. A hot server still produces science. The naive OS has no such lever.
-                </div>
-            </div>
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{CYAN}">6 · WEATHER &amp; AGEING</div>
-                <div class="explain-p">
-                    Real missions watch NOAA's planetary K index: a G3+ geomagnetic storm triggers safe
-                    mode — heavy tasks grounded, battery reserved for comms. And every hot eclipse entry
-                    costs battery capacity (SoH); fly too rough and the packs can no longer carry heavy
-                    work through the dark arc at all.
+                    When warm, LumenOS quantizes instead of idling: INT8 cuts heat to 50 % at 98 %
+                    accuracy, TINY to 25 % at 90 %. A hot server still produces science.
                 </div>
             </div>
         </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.caption(
     "LUMENOS PROTOCOL · NASA Space Apps 2026 — Space Mission Design Game · "
-    "physics: engine.orbital_engine / engine.thermal_engine / engine.lumen_scheduler (validated) · "
-    "scoring: 1 TFLOP/s per kW of workload draw"
+    "engine.orbital_engine / engine.thermal_engine / engine.lumen_scheduler (validated)"
 )
