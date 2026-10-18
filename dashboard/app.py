@@ -52,6 +52,7 @@ cooling capacities, lumped-capacitance thermal model and battery model all
 come from those modules — nothing here re-implements the physics.
 """
 
+import copy
 import html
 import math
 import os
@@ -107,7 +108,9 @@ st.set_page_config(
 STEP_SECONDS = 30.0            # physics tick (matches LumenScheduler)
 TOTAL_STEPS = 180              # 90-minute mission window (all theaters)
 TURN_STEPS = 10                # one manual turn = 5 minutes
-ORBIT_HEIGHT = 520             # pixel height of the 3D globe viewport
+ORBIT_HEIGHT = 390             # pixel height of the 3D globe viewport
+THERMAL_CHART_HEIGHT = 188     # pixel height of the temperature race chart
+SCORE_CHART_HEIGHT = 188       # pixel height of the compute race chart
 
 SHUTDOWN_C = SHUTDOWN_THRESHOLD_CELSIUS  # 95 °C
 BASE_HEAT_W = 100.0
@@ -531,7 +534,7 @@ h1, h2, h3, h4 { color: #EAF6FF; letter-spacing: 0.02em; }
     display: flex;
     flex-direction: column-reverse;
     overflow-y: auto;
-    height: 176px;
+    height: 80px;
     padding-right: 6px;
 }
 .log-line {
@@ -782,13 +785,15 @@ div[role="radiogroup"] p {
     color: #D7F7FF !important;
 }
 
-div[data-testid="stPlotlyChart"] {
+/* Glass card look for the embedded 3D globe and the two race charts.
+   Both are mounted as isolated iframes (st.iframe / components.html). */
+iframe[data-testid="stIFrame"],
+div[data-testid="stCustomComponentV1"] {
     background: rgba(10, 16, 28, 0.5);
     border: 1px solid var(--line);
     border-radius: 16px;
-    padding: 6px 6px 2px 6px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 div[data-testid="stDialog"] > div {
@@ -1484,8 +1489,25 @@ def current_view(G: dict[str, Any], mission: dict[str, Any]) -> dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────────
 # CHART BUILDERS
 # ─────────────────────────────────────────────────────────────────────────────
-def create_comparison_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure:
-    """Temperature race: You vs LumenOS vs the Naive baseline."""
+def _add_now_trace(fig: go.Figure, now_min: Optional[float], y_span: tuple[float, float]) -> None:
+    """Vertical 'current orbit minute' cursor, drawn as a trace so frames can move it."""
+    xs = [now_min, now_min] if now_min is not None else []
+    ys = list(y_span) if now_min is not None else []
+    fig.add_trace(go.Scatter(
+        x=xs, y=ys, mode="lines", name="NOW",
+        line=dict(color="rgba(255,255,255,0.32)", width=1),
+        hoverinfo="skip", showlegend=False,
+    ))
+
+
+def _thermal_race_figure(
+    G: dict[str, Any],
+    mission: dict[str, Any],
+    you_series: list[float],
+    now_min: Optional[float],
+    height: int = THERMAL_CHART_HEIGHT,
+) -> go.Figure:
+    """Temperature race figure; ``you_series`` is the manual player's temps so far."""
     fig = go.Figure()
     xs = [i * 0.5 for i in range(TOTAL_STEPS)]
     lumen_temps = [row["temperature_c"] for row in mission["lumen"]]
@@ -1521,20 +1543,18 @@ def create_comparison_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.F
             hoverinfo="skip",
         ))
 
-    if G["mode"] == "manual" and G["temp_series"]:
-        xs_you = [i * 0.5 for i in range(1, len(G["temp_series"]) + 1)]
+    if G["mode"] == "manual":
+        xs_you = [i * 0.5 for i in range(1, len(you_series) + 1)]
         fig.add_trace(go.Scatter(
-            x=xs_you, y=G["temp_series"], mode="lines", name="YOU (MANUAL)",
+            x=xs_you, y=list(you_series), mode="lines", name="YOU (MANUAL)",
             line=dict(color=AMBER, width=3),
             hovertemplate="You %{y:.1f}°C @ %{x:.0f} min<extra></extra>",
         ))
 
-    now_min = min(G["t_index"] * 0.5, 90.0)
-    if G["t_index"] > 0:
-        fig.add_vline(x=now_min, line_color="rgba(255,255,255,0.3)", line_width=1)
+    _add_now_trace(fig, now_min, (-10.0, 112.0))
 
     fig.update_layout(
-        height=214,
+        height=height,
         margin=dict(l=44, r=14, t=28, b=24),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(6,10,18,0.6)",
@@ -1556,8 +1576,15 @@ def create_comparison_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.F
     return fig
 
 
-def create_score_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure:
-    """Compute race: cumulative TFLOPs for You vs LumenOS vs Naive."""
+def _score_race_figure(
+    G: dict[str, Any],
+    mission: dict[str, Any],
+    you_series: list[float],
+    now_min: Optional[float],
+    height: int = SCORE_CHART_HEIGHT,
+    y_range: Optional[list[float]] = None,
+) -> go.Figure:
+    """Compute race figure; ``you_series`` is the manual player's banked TFLOPs."""
     fig = go.Figure()
     xs_lumen = [i * 0.5 for i in range(TOTAL_STEPS + 1)]
     fig.add_trace(go.Scatter(
@@ -1588,20 +1615,18 @@ def create_score_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure
             font=dict(color=RED, size=8, family="JetBrains Mono, monospace"),
         )
 
-    if G["mode"] == "manual" and G["score_series"]:
-        xs_you = [i * 0.5 for i in range(1, len(G["score_series"]) + 1)]
+    if G["mode"] == "manual":
+        xs_you = [i * 0.5 for i in range(1, len(you_series) + 1)]
         fig.add_trace(go.Scatter(
-            x=xs_you, y=G["score_series"], mode="lines", name="YOU (MANUAL)",
+            x=xs_you, y=list(you_series), mode="lines", name="YOU (MANUAL)",
             line=dict(color=AMBER, width=2.8),
             hovertemplate="You %{y:,.0f} TFLOPs<extra></extra>",
         ))
 
-    now_min = min(G["t_index"] * 0.5, 90.0)
-    if G["t_index"] > 0:
-        fig.add_vline(x=now_min, line_color="rgba(255,255,255,0.3)", line_width=1)
+    _add_now_trace(fig, now_min, tuple(y_range) if y_range else (0.0, max(you_series) if you_series else 1.0))
 
     fig.update_layout(
-        height=178,
+        height=height,
         margin=dict(l=52, r=14, t=28, b=24),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(6,10,18,0.6)",
@@ -1614,9 +1639,121 @@ def create_score_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure
         legend=dict(orientation="h", y=1.16, x=0.0, bgcolor="rgba(0,0,0,0)", font=dict(size=9)),
         hovermode="x unified",
         xaxis=dict(range=[0, 90], gridcolor="rgba(255,255,255,0.05)", zeroline=False),
-        yaxis=dict(gridcolor="rgba(255,255,255,0.05)", zeroline=False, rangemode="tozero"),
+        yaxis=dict(
+            gridcolor="rgba(255,255,255,0.05)", zeroline=False,
+            rangemode=None if y_range else "tozero",
+            range=y_range,
+        ),
     )
     return fig
+
+
+def _animation_html(
+    fig: go.Figure,
+    frames: list[go.Frame],
+    div_id: str,
+    duration_ms: int,
+) -> str:
+    """Wrap a framed figure into a self-contained, auto-playing HTML document."""
+    fig.frames = frames
+    config = {"displayModeBar": False, "responsive": True}
+    if len(frames) > 1:
+        return fig.to_html(
+            include_plotlyjs="cdn",
+            full_html=True,
+            div_id=div_id,
+            config=config,
+            auto_play=True,
+            animation_opts={
+                "frame": {"duration": duration_ms, "redraw": False},
+                "transition": {"duration": 0},
+                "mode": "immediate",
+                "fromcurrent": False,
+            },
+        )
+    return fig.to_html(
+        include_plotlyjs="cdn", full_html=True, div_id=div_id,
+        config=config, auto_play=False,
+    )
+
+
+def create_comparison_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure:
+    """Static temperature race for the live step."""
+    now = min(G["t_index"] * 0.5, 90.0) if G["t_index"] > 0 else None
+    return _thermal_race_figure(G, mission, G["temp_series"], now)
+
+
+def create_score_figure(G: dict[str, Any], mission: dict[str, Any]) -> go.Figure:
+    """Static compute race for the live step."""
+    now = min(G["t_index"] * 0.5, 90.0) if G["t_index"] > 0 else None
+    y_max = max(mission["lumen_prefix"]) * 1.08 if mission.get("lumen_prefix") else None
+    return _score_race_figure(G, mission, G["score_series"], now, y_range=[0.0, y_max] if y_max else None)
+
+
+def create_race_animation_html(
+    shadow: dict[str, Any],
+    mission: dict[str, Any],
+    from_idx: int,
+    to_idx: int,
+    chart: str,
+    height: int = THERMAL_CHART_HEIGHT,
+) -> str:
+    """Animated race chart: the YOU line grows and the NOW cursor sweeps.
+
+    ``shadow`` is the pre-simulated game state whose series already contains the
+    whole turn, so the chart can be mounted once and animated client-side while
+    the server replays the telemetry text.
+    """
+    thermal = chart == "thermal"
+    series = shadow["temp_series"] if thermal else shadow["score_series"]
+    lo = max(0, min(int(from_idx), TOTAL_STEPS))
+    hi = max(lo, min(int(to_idx), TOTAL_STEPS))
+
+    y_range: Optional[list[float]] = None
+    if thermal:
+        base = _thermal_race_figure(shadow, mission, series[:lo], lo * 0.5 if lo else None, height)
+        y_span = (-10.0, 112.0)
+        frame_hover = "You %{y:.1f}°C @ %{x:.0f} min<extra></extra>"
+    else:
+        y_max = max(mission["lumen_prefix"]) * 1.08 if mission.get("lumen_prefix") else None
+        y_range = [0.0, y_max] if y_max else None
+        base = _score_race_figure(
+            shadow, mission, series[:lo], lo * 0.5 if lo else None, height, y_range=y_range
+        )
+        y_span = (0.0, y_max if y_max else (max(series) if series else 1.0))
+        frame_hover = "You %{y:,.0f} TFLOPs<extra></extra>"
+
+    idx_you = next((i for i, t in enumerate(base.data) if t.name == "YOU (MANUAL)"), None)
+    idx_now = next((i for i, t in enumerate(base.data) if t.name == "NOW"), None)
+
+    frames: list[go.Frame] = []
+    for i in range(lo + 1, hi + 1):
+        data: list[Any] = []
+        traces: list[int] = []
+        if idx_you is not None:
+            ys = list(series[:i])
+            data.append(go.Scatter(
+                x=[k * 0.5 for k in range(1, len(ys) + 1)], y=ys,
+                mode="lines", line=dict(color=AMBER, width=3 if thermal else 2.8),
+                hovertemplate=frame_hover,
+            ))
+            traces.append(idx_you)
+        if idx_now is not None:
+            data.append(go.Scatter(
+                x=[i * 0.5, i * 0.5], y=list(y_span),
+                mode="lines", line=dict(color="rgba(255,255,255,0.32)", width=1),
+                hoverinfo="skip", showlegend=False,
+            ))
+            traces.append(idx_now)
+        if data:
+            frames.append(go.Frame(data=data, traces=traces, name=str(i)))
+
+    if len(frames) > 1:
+        target_ms = 1200 if len(frames) <= 14 else 7000
+        duration = max(40, min(400, target_ms // len(frames)))
+    else:
+        duration = 200
+    return _animation_html(base, frames, f"race-{chart}", duration)
 
 
 def orbit_display_timeline(G: dict[str, Any], mission: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1669,10 +1806,10 @@ def left_panel_html(G: dict[str, Any], mission: dict[str, Any], view: dict[str, 
     return f"""
     <div class="glass">
         <div class="panel-title">SYSTEM TELEMETRY</div>
-        {gauge_html("SERVER TEMP", temp, 120.0, "°C", temp_color, size=150, sub=warn_sub)}
+        {gauge_html("SERVER TEMP", temp, 120.0, "°C", temp_color, size=126, sub=warn_sub)}
         <div class="dual-gauges">
-            <div>{gauge_html("BATTERY", battery, 100.0, "%", batt_color, size=104, decimals=0)}</div>
-            <div>{gauge_html("SOLAR PWR", solar, 2000.0, "W", solar_color, size=104, decimals=0)}</div>
+            <div>{gauge_html("BATTERY", battery, 100.0, "%", batt_color, size=86, decimals=0)}</div>
+            <div>{gauge_html("SOLAR PWR", solar, 2000.0, "W", solar_color, size=86, decimals=0)}</div>
         </div>
         <div class="op-meta" style="margin:2px 0 8px 0">
             <span>BATTERY STATE OF HEALTH</span>
@@ -2091,22 +2228,28 @@ st.markdown(
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LAYOUT — single-screen command center: 3D visual | telemetry | controls
+# LAYOUT — visuals on top, mission control deck underneath the race charts
 # ─────────────────────────────────────────────────────────────────────────────
 hud_ph = st.empty()
 
-vis_col, tel_col, ctrl_col = st.columns([1.62, 1.0, 1.02], gap="small")
-
-# Placeholders (renderers write into these on every frame / animation step)
+vis_col, tel_col = st.columns([1.55, 1.0], gap="small")
 with vis_col:
     orbit_ph = st.empty()
-    thermal_ph = st.empty()
-
 with tel_col:
     telemetry_ph = st.empty()
+
+race_l, race_r = st.columns([1.55, 1.0], gap="small")
+with race_l:
+    thermal_ph = st.empty()
+with race_r:
     score_ph = st.empty()
 
-with ctrl_col:
+# ── Mission control deck (full width, below the race charts) ────────────────
+deck_1, deck_2, deck_3, deck_4, deck_5 = st.columns(
+    [1.0, 1.0, 1.42, 1.05, 1.35], gap="small"
+)
+
+with deck_1:
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>MISSION THEATER</div>", unsafe_allow_html=True)
     st.selectbox(
         "Mission theater",
@@ -2127,6 +2270,7 @@ with ctrl_col:
         label_visibility="collapsed",
     )
 
+with deck_2:
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>OS SELECTION</div>", unsafe_allow_html=True)
     mode_choice = st.radio(
         "Operating system",
@@ -2146,6 +2290,7 @@ with ctrl_col:
             label_visibility="collapsed",
         )
 
+with deck_3:
     st.markdown("<div class='panel-title' style='color:#E8F6FF'>WORKLOAD QUEUE</div>", unsafe_allow_html=True)
     task_phs: dict[str, Any] = {}
     task_buttons: dict[str, bool] = {}
@@ -2161,6 +2306,8 @@ with ctrl_col:
             else "Autopilot engaged — the hypervisor owns the queue.",
         )
 
+with deck_4:
+    st.markdown("<div class='panel-title' style='color:#E8F6FF'>FLIGHT CONTROLS</div>", unsafe_allow_html=True)
     if G["mode"] == "manual":
         next_turn_clicked = st.button("⏭ NEXT TURN · +5:00", type="primary", key="next_turn")
         auto_clicked = False
@@ -2171,6 +2318,7 @@ with ctrl_col:
         pause_clicked = False
     reset_clicked = st.button("🔄 RESET MISSION", key="reset_mission")
 
+with deck_5:
     log_ph = st.empty()
 
 report_ph = st.empty()
@@ -2181,6 +2329,17 @@ report_ph = st.empty()
 _CHART_STATE: dict[str, Any] = {"key": None, "orbit": None}
 
 
+def _tidy_html(html_doc: str) -> str:
+    """Kill the default browser body margin so the plot fills the iframe exactly."""
+    marker = "html, body {height: 100%;}"
+    if marker in html_doc:
+        return html_doc.replace(
+            marker,
+            "html, body {height: 100%; margin: 0; padding: 0; overflow: hidden;}",
+        )
+    return html_doc
+
+
 def _embed_html(html_doc: str, height: int) -> None:
     """Embed a self-contained HTML document in an isolated iframe.
 
@@ -2188,6 +2347,7 @@ def _embed_html(html_doc: str, height: int) -> None:
     ``st.components.v1.html`` on Streamlit versions that predate it
     (``requirements.txt`` allows ``streamlit>=1.36``).
     """
+    html_doc = _tidy_html(html_doc)
     if hasattr(st, "iframe"):
         st.iframe(html_doc, height=height)
     else:  # pragma: no cover - older Streamlit fallback
@@ -2213,6 +2373,48 @@ def render_orbit(from_idx: int, to_idx: int) -> None:
     _CHART_STATE["orbit"] = (min(to_idx, TOTAL_STEPS - 1), G["mode"])
 
 
+def render_charts(shadow: dict[str, Any], from_idx: int, to_idx: int) -> None:
+    """Mount both race charts once and let the browser animate them.
+
+    ``shadow`` is the pre-simulated game state: it already carries the whole
+    turn's temperature / score series, so the growing "YOU" line and the NOW
+    cursor are keyed as client-side Plotly frames. With ``from_idx == to_idx``
+    the chart is a plain static frame (initial paint, idle reruns).
+    """
+    thermal_html = create_race_animation_html(
+        shadow, mission, from_idx, to_idx, "thermal", height=THERMAL_CHART_HEIGHT
+    )
+    score_html = create_race_animation_html(
+        shadow, mission, from_idx, to_idx, "score", height=SCORE_CHART_HEIGHT
+    )
+    with thermal_ph.container():
+        _embed_html(thermal_html, THERMAL_CHART_HEIGHT)
+    with score_ph.container():
+        _embed_html(score_html, SCORE_CHART_HEIGHT)
+    _CHART_STATE["key"] = (
+        min(to_idx, TOTAL_STEPS),
+        G["mode"],
+        len(shadow["temp_series"]),
+        len(shadow["score_series"]),
+    )
+
+
+def _shadow_turn(G: dict[str, Any], mission: dict[str, Any], n_steps: int) -> dict[str, Any]:
+    """Fast-forward a throwaway copy of the game by one turn.
+
+    Returns the shadow state whose ``temp_series`` / ``score_series`` already
+    hold the result of the whole turn, letting the globe and both charts be
+    pre-built and mounted once while the server replays the telemetry text.
+    """
+    shadow = copy.deepcopy(G)
+    for _ in range(max(0, int(n_steps))):
+        if shadow["t_index"] >= TOTAL_STEPS or shadow["phase"] == "failed":
+            break
+        manual_step(shadow, mission, shadow["t_index"])
+        shadow["t_index"] += 1
+    return shadow
+
+
 def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
     """Re-render every placeholder from the current game state.
 
@@ -2233,15 +2435,13 @@ def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
         render_orbit(G["t_index"], G["t_index"])
 
     chart_key = (
-        G["t_index"],
+        min(G["t_index"], TOTAL_STEPS),
         G["mode"],
         len(G["temp_series"]),
         len(G["score_series"]),
     )
     if charts and chart_key != _CHART_STATE["key"]:
-        _CHART_STATE["key"] = chart_key
-        thermal_ph.plotly_chart(create_comparison_figure(G, mission), width="stretch", config=PLOTLY_CONFIG)
-        score_ph.plotly_chart(create_score_figure(G, mission), width="stretch", config=PLOTLY_CONFIG)
+        render_charts(G, G["t_index"], G["t_index"])
     report_ph.markdown(
         report_html(G, mission) if G["phase"] in ("failed", "complete") else "",
         unsafe_allow_html=True,
@@ -2251,10 +2451,15 @@ def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
 def advance_manual(G: dict[str, Any], mission: dict[str, Any], n_steps: int, animate: bool = True) -> None:
     """Advance the manual run up to ``n_steps`` physics steps, optionally animated."""
     start_idx = G["t_index"]
-    end_idx = min(TOTAL_STEPS - 1, start_idx + n_steps)
-    if animate and end_idx > start_idx:
-        # Mount the globe once, then let the browser sweep the whole turn.
-        render_orbit(start_idx, end_idx)
+    if animate and start_idx < TOTAL_STEPS:
+        # Pre-simulate the turn on a copy so the globe AND both race charts can
+        # be mounted once, then animate client-side while the server replays the
+        # telemetry text — every visual moves at the same time, no remounts.
+        shadow = _shadow_turn(G, mission, n_steps)
+        end_idx = shadow["t_index"]
+        if end_idx > start_idx:
+            render_orbit(start_idx, end_idx)
+            render_charts(shadow, start_idx, end_idx)
     for k in range(1, n_steps + 1):
         if G["t_index"] >= TOTAL_STEPS or G["phase"] == "failed":
             break
@@ -2266,8 +2471,6 @@ def advance_manual(G: dict[str, Any], mission: dict[str, Any], n_steps: int, ani
         if animate:
             refresh_frame(charts=False, orbit=False)
             time.sleep(0.05)
-            if k % 5 == 0 or k == n_steps or G["phase"] == "failed":
-                refresh_frame(charts=True, orbit=False)
     if G["t_index"] >= TOTAL_STEPS and G["phase"] != "failed":
         G["phase"] = "complete"
         checkpoints = "all work preserved" if G["mode"] == "manual" else "zero TFLOPs lost"
@@ -2281,9 +2484,10 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
     if G["t_index"] >= TOTAL_STEPS:
         return
     G["phase"] = "running"
+    start_idx = G["t_index"]
     # One client-side sweep across the whole remaining orbit — no per-step redraw.
-    render_orbit(G["t_index"], TOTAL_STEPS - 1)
-    frame = 0
+    render_orbit(start_idx, TOTAL_STEPS)
+    render_charts(G, start_idx, TOTAL_STEPS)
     while G["t_index"] < TOTAL_STEPS:
         for _ in range(3):
             if G["t_index"] >= TOTAL_STEPS:
@@ -2292,8 +2496,7 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
             if G["t_index"] % TURN_STEPS == 0:
                 level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
                 log_event(G, level, msg, t)
-        frame += 1
-        refresh_frame(charts=(frame % 4 == 0), orbit=False)
+        refresh_frame(charts=False, orbit=False)
         time.sleep(0.02)
     G["phase"] = "complete"
     log_event(G, "ok", f"ORBIT COMPLETE — hypervisor delivered {fmt_num(player_score(G, mission))} TFLOPs with 0 shutdowns.", TOTAL_STEPS * STEP_SECONDS)
@@ -2307,6 +2510,7 @@ def advance_lumen_turn(G: dict[str, Any], mission: dict[str, Any]) -> None:
     end_idx = min(TOTAL_STEPS - 1, start_idx + TURN_STEPS)
     if end_idx > start_idx:
         render_orbit(start_idx, end_idx)
+        render_charts(G, start_idx, end_idx + 1)
     for k in range(TURN_STEPS):
         if G["t_index"] >= TOTAL_STEPS:
             break
@@ -2476,52 +2680,3 @@ if G["phase"] == "failed" and G["crash"] is not None:
         failure_content()
         st.markdown("</div>", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# PHYSICS NOTE — collapsed so the console stays on one screen
-# ─────────────────────────────────────────────────────────────────────────────
-with st.expander("WHY ORBITAL COMPUTE IS HARD · the physics behind the game", expanded=False):
-    st.markdown(
-        f"""
-        <div class="brief-grid">
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{CYAN}">1 · NO AIR TO CARRY HEAT</div>
-                <div class="explain-p">
-                    In vacuum, convection and conduction are gone. Heat only leaves as infrared
-                    radiation: Q = ε·σ·A·(T⁴ − T_sink⁴). The {profile.radiator_area_m2:.1f} m² radiator at
-                    ε 0.80 rejects ~909 W into deep space — far less when it faces a warm body
-                    (Earth-day 491 W).
-                </div>
-            </div>
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{AMBER}">2 · POWER VS HEAT</div>
-                <div class="explain-p">
-                    In LEO the solar array peaks exactly when the radiator view factor is worst —
-                    power abundance masks the thermal trap. Change theater and the bottleneck flips:
-                    on Mars transit POWER is the scarce resource.
-                </div>
-            </div>
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{EMERALD}">3 · SCHEDULING SAVES THE MISSION</div>
-                <div class="explain-p">
-                    LumenOS treats cooling as the scarce resource: 5-minute thermal look-ahead,
-                    checkpoint &amp; pause before thresholds, resume over cold sky. Projection here:
-                    {fmt_num(mission['lumen_final_score'])} TFLOPs, peak {mission['lumen_max_temp']:.1f}°C,
-                    0 shutdowns.
-                </div>
-            </div>
-            <div class="brief-item explain-card">
-                <div class="explain-h" style="color:{RED}">4 · QUANTIZE, DON'T IDLE</div>
-                <div class="explain-p">
-                    When warm, LumenOS quantizes instead of idling: INT8 cuts heat to 50 % at 98 %
-                    accuracy, TINY to 25 % at 90 %. A hot server still produces science.
-                </div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-st.caption(
-    "LUMENOS PROTOCOL · NASA Space Apps 2026 — Space Mission Design Game · "
-    "engine.orbital_engine / engine.thermal_engine / engine.lumen_scheduler (validated)"
-)

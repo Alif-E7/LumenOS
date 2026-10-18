@@ -254,14 +254,17 @@ def _scene_traces(
     ))
 
     # ── Earth: physically lit sphere ──────────────────────────────────────
+    # Low ambient + full diffuse so the sunlit hemisphere blazes while the
+    # deep-space night side falls to a dark silhouette — the day/night split
+    # must be obvious to a judge at a glance.
     light_pos = _lightposition(sun_hat, 45000.0)
     traces.append(go.Surface(
         x=_XE, y=_YE, z=_ZE,
         surfacecolor=_TERRAIN, cmin=0.0, cmax=1.0,
         colorscale=_EARTH_SCALE,
         showscale=False, opacity=1.0,
-        lighting=dict(ambient=0.30, diffuse=1.0, specular=0.22,
-                      roughness=0.85, fresnel=0.12),
+        lighting=dict(ambient=0.06, diffuse=1.0, specular=0.30,
+                      roughness=0.80, fresnel=0.10),
         lightposition=light_pos,
         hoverinfo="text",
         hovertext="Earth · 280 K day-side IR / 220 K night-side IR",
@@ -292,7 +295,7 @@ def _scene_traces(
     ) * r_term
     traces.append(go.Scatter3d(
         x=term[:, 0], y=term[:, 1], z=term[:, 2],
-        mode="lines", line=dict(color="rgba(255, 209, 102, 0.7)", width=3),
+        mode="lines", line=dict(color="rgba(255, 226, 150, 0.95)", width=5),
         hoverinfo="skip", showlegend=False, name="Terminator",
     ))
 
