@@ -85,7 +85,9 @@ from engine.workload_profiler import (  # noqa: E402
     WorkloadProfiler,
     resolve_precision,
 )
-from dashboard.orbit_view import create_orbit_figure  # noqa: E402
+from dashboard.orbit_view import create_orbit_animation_html  # noqa: E402
+
+import streamlit.components.v1 as components  # noqa: E402
 
 import plotly.graph_objects as go  # noqa: E402
 
@@ -105,6 +107,7 @@ st.set_page_config(
 STEP_SECONDS = 30.0            # physics tick (matches LumenScheduler)
 TOTAL_STEPS = 180              # 90-minute mission window (all theaters)
 TURN_STEPS = 10                # one manual turn = 5 minutes
+ORBIT_HEIGHT = 520             # pixel height of the 3D globe viewport
 
 SHUTDOWN_C = SHUTDOWN_THRESHOLD_CELSIUS  # 95 °C
 BASE_HEAT_W = 100.0
@@ -2178,13 +2181,44 @@ report_ph = st.empty()
 _CHART_STATE: dict[str, Any] = {"key": None, "orbit": None}
 
 
+def _embed_html(html_doc: str, height: int) -> None:
+    """Embed a self-contained HTML document in an isolated iframe.
+
+    Prefers the newer ``st.iframe`` and falls back to
+    ``st.components.v1.html`` on Streamlit versions that predate it
+    (``requirements.txt`` allows ``streamlit>=1.36``).
+    """
+    if hasattr(st, "iframe"):
+        st.iframe(html_doc, height=height)
+    else:  # pragma: no cover - older Streamlit fallback
+        components.html(html_doc, height=height, scrolling=False)
+
+
+def render_orbit(from_idx: int, to_idx: int) -> None:
+    """Mount the 3D globe once and let the browser sweep it from ``from_idx``.
+
+    Writing the scene a single time (instead of re-drawing it every physics
+    step) means the WebGL canvas is created once per turn and then animated
+    client-side by Plotly — the fix for the flashing / disappearing globe.
+    """
+    timeline = orbit_display_timeline(G, mission)
+    html_doc = create_orbit_animation_html(
+        timeline,
+        from_idx=from_idx,
+        to_idx=to_idx,
+        height=ORBIT_HEIGHT,
+    )
+    with orbit_ph.container():
+        _embed_html(html_doc, ORBIT_HEIGHT)
+    _CHART_STATE["orbit"] = (min(to_idx, TOTAL_STEPS - 1), G["mode"])
+
+
 def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
     """Re-render every placeholder from the current game state.
 
-    ``orbit`` redraws the 3D globe (so the satellite and radiator visibly move
-    each animation step); ``charts`` redraws the 2D race charts. Each chart is
-    only redrawn when its content would actually change — Streamlit rejects two
-    ``plotly_chart`` calls with identical parameters in the same script run.
+    ``orbit`` redraws the 3D globe at the live step; ``charts`` redraws the 2D
+    race charts. Each chart is only redrawn when its content would actually
+    change so an idle rerun never re-mounts the globe.
     """
     view = current_view(G, mission)
     telemetry_ph.markdown(left_panel_html(G, mission, view), unsafe_allow_html=True)
@@ -2193,17 +2227,10 @@ def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
     for name, ph in task_phs.items():
         ph.markdown(task_card_html(G, mission, mission["tasks_by_name"][name]), unsafe_allow_html=True)
 
-    orbit_key = (G["t_index"], G["mode"])
+    orbit_key = (min(G["t_index"], TOTAL_STEPS - 1), G["mode"])
     if orbit and orbit_key != _CHART_STATE["orbit"]:
         _CHART_STATE["orbit"] = orbit_key
-        orbit_ph.plotly_chart(
-            create_orbit_figure(
-                orbit_display_timeline(G, mission),
-                current_step_idx=min(G["t_index"], TOTAL_STEPS - 1),
-            ),
-            width="stretch",
-            config=PLOTLY_CONFIG,
-        )
+        render_orbit(G["t_index"], G["t_index"])
 
     chart_key = (
         G["t_index"],
@@ -2223,6 +2250,11 @@ def refresh_frame(charts: bool = True, orbit: bool = True) -> None:
 
 def advance_manual(G: dict[str, Any], mission: dict[str, Any], n_steps: int, animate: bool = True) -> None:
     """Advance the manual run up to ``n_steps`` physics steps, optionally animated."""
+    start_idx = G["t_index"]
+    end_idx = min(TOTAL_STEPS - 1, start_idx + n_steps)
+    if animate and end_idx > start_idx:
+        # Mount the globe once, then let the browser sweep the whole turn.
+        render_orbit(start_idx, end_idx)
     for k in range(1, n_steps + 1):
         if G["t_index"] >= TOTAL_STEPS or G["phase"] == "failed":
             break
@@ -2232,7 +2264,7 @@ def advance_manual(G: dict[str, Any], mission: dict[str, Any], n_steps: int, ani
             level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
             log_event(G, level, msg, t)
         if animate:
-            refresh_frame(charts=False, orbit=True)
+            refresh_frame(charts=False, orbit=False)
             time.sleep(0.05)
             if k % 5 == 0 or k == n_steps or G["phase"] == "failed":
                 refresh_frame(charts=True, orbit=False)
@@ -2249,6 +2281,8 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
     if G["t_index"] >= TOTAL_STEPS:
         return
     G["phase"] = "running"
+    # One client-side sweep across the whole remaining orbit — no per-step redraw.
+    render_orbit(G["t_index"], TOTAL_STEPS - 1)
     frame = 0
     while G["t_index"] < TOTAL_STEPS:
         for _ in range(3):
@@ -2259,30 +2293,33 @@ def autoplay_lumenos(G: dict[str, Any], mission: dict[str, Any]) -> None:
                 level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
                 log_event(G, level, msg, t)
         frame += 1
-        refresh_frame(charts=(frame % 4 == 0), orbit=True)
+        refresh_frame(charts=(frame % 4 == 0), orbit=False)
         time.sleep(0.02)
     G["phase"] = "complete"
     log_event(G, "ok", f"ORBIT COMPLETE — hypervisor delivered {fmt_num(player_score(G, mission))} TFLOPs with 0 shutdowns.", TOTAL_STEPS * STEP_SECONDS)
-    refresh_frame(charts=True)
+    refresh_frame(charts=True, orbit=False)
 
 
 def advance_lumen_turn(G: dict[str, Any], mission: dict[str, Any]) -> None:
     """One 5-minute autopilot turn (animated)."""
     G["phase"] = "running"
+    start_idx = G["t_index"]
+    end_idx = min(TOTAL_STEPS - 1, start_idx + TURN_STEPS)
+    if end_idx > start_idx:
+        render_orbit(start_idx, end_idx)
     for k in range(TURN_STEPS):
         if G["t_index"] >= TOTAL_STEPS:
             break
         lumen_replay_step(G, mission)
-        if k % 2 == 1:
-            refresh_frame(charts=False, orbit=True)
-            time.sleep(0.05)
+        refresh_frame(charts=False, orbit=False)
+        time.sleep(0.05)
     if G["t_index"] % TURN_STEPS == 0:
         level, msg, t = turn_summary_event(G, mission, G["t_index"] - 1)
         log_event(G, level, msg, t)
     if G["t_index"] >= TOTAL_STEPS:
         G["phase"] = "complete"
         log_event(G, "ok", f"ORBIT COMPLETE — hypervisor delivered {fmt_num(player_score(G, mission))} TFLOPs with 0 shutdowns.", TOTAL_STEPS * STEP_SECONDS)
-    refresh_frame(charts=True)
+    refresh_frame(charts=True, orbit=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2372,7 +2409,7 @@ if next_turn_clicked and G["phase"] != "failed":
         advance_manual(G, mission, TURN_STEPS, animate=True)
     else:
         advance_lumen_turn(G, mission)
-    refresh_frame(charts=True)
+    refresh_frame(charts=True, orbit=False)
 
 if auto_clicked and G["mode"] == "lumenos" and G["phase"] not in ("failed", "complete"):
     autoplay_lumenos(G, mission)

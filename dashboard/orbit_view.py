@@ -14,6 +14,15 @@ Primary Payload Orbital Data Center in real-time 3D:
 4. PRIMARY PAYLOAD DATA CENTER — dual solar wings, a compute chassis, and a
    radiator panel whose normal tracks the current view factor (deep space /
    Earth-day / Earth-night). The radiator glows green, blue or red to match.
+
+Two entry points are exported:
+
+* :func:`create_orbit_figure` — a static figure for ``st.plotly_chart``.
+* :func:`create_orbit_animation_html` — a self-contained HTML document whose
+  spacecraft traces animate client-side inside ``st.components.v1.html``. This
+  is what keeps the 3D view smooth: the WebGL canvas is mounted once per turn
+  and then interpolated in the browser instead of being torn down and rebuilt
+  on every simulation step (which caused the old flashing / disappearing bug).
 """
 
 import math
@@ -151,30 +160,8 @@ def _lightposition(vec: np.ndarray, distance: float) -> dict[str, float]:
     return {"x": float(p[0]), "y": float(p[1]), "z": float(p[2])}
 
 
-def create_orbit_figure(
-    timeline: list[dict[str, Any]],
-    current_step_idx: Optional[int] = None,
-) -> go.Figure:
-    """Build the 3D deep-space scene for the current simulation step.
-
-    Args:
-        timeline: Full-orbit timeline rows (each with an ``orbital_state``).
-        current_step_idx: Index of the live satellite marker.
-
-    Returns:
-        A styled Plotly 3D figure ready for ``st.plotly_chart``.
-    """
-    fig = go.Figure()
-
-    # ── Deep space starfield ──────────────────────────────────────────────
-    fig.add_trace(go.Scatter3d(
-        x=STAR_X, y=STAR_Y, z=STAR_Z,
-        mode="markers",
-        marker=dict(size=STAR_SIZES, color="#dbe6f2", opacity=0.85),
-        hoverinfo="skip", showlegend=False, name="Stars",
-    ))
-
-    # ── Sun direction (from the current orbital state) ────────────────────
+def _sun_direction(timeline: list[dict[str, Any]]) -> np.ndarray:
+    """Unit vector pointing from Earth toward the Sun for this orbit."""
     sun_hat = np.array([1.0, 0.0, 0.0])
     if timeline and "orbital_state" in timeline[0]:
         sv = timeline[0]["orbital_state"].get("sun_vector")
@@ -183,24 +170,56 @@ def create_orbit_figure(
             norm = float(np.linalg.norm(sun_hat))
             if norm > 1e-9:
                 sun_hat = sun_hat / norm
+    return sun_hat
+
+
+def _position_km(state: dict[str, Any]) -> tuple[float, float, float]:
+    """Resolve a step's shell position (km), falling back to lat/lon/altitude."""
+    if state.get("position_km"):
+        px, py, pz = state["position_km"]
+        return float(px), float(py), float(pz)
+    phi = math.radians(state["latitude_deg"])
+    lam = math.radians(state["longitude_deg"])
+    r = EARTH_RADIUS_KM + state["altitude_km"]
+    return (
+        r * math.cos(phi) * math.cos(lam),
+        r * math.cos(phi) * math.sin(lam),
+        r * math.sin(phi),
+    )
+
+
+def _scene_traces(
+    timeline: list[dict[str, Any]],
+    sun_hat: np.ndarray,
+) -> list[go.Scatter3d | go.Surface]:
+    """Static scene traces shared by every step: stars, Sun, rays, Earth, orbit."""
+    traces: list[Any] = []
+
+    # ── Deep space starfield ──────────────────────────────────────────────
+    traces.append(go.Scatter3d(
+        x=STAR_X, y=STAR_Y, z=STAR_Z,
+        mode="markers",
+        marker=dict(size=STAR_SIZES, color="#dbe6f2", opacity=0.85),
+        hoverinfo="skip", showlegend=False, name="Stars",
+    ))
 
     sun_dist = 11500.0
     sun_pos = sun_hat * sun_dist
 
     # ── Sun (small bright core + soft corona glow) ────────────────────────
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=[sun_pos[0]], y=[sun_pos[1]], z=[sun_pos[2]],
         mode="markers",
         marker=dict(size=52, color="#ffb703", opacity=0.10),
         hoverinfo="skip", showlegend=False, name="Corona-outer",
     ))
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=[sun_pos[0]], y=[sun_pos[1]], z=[sun_pos[2]],
         mode="markers",
         marker=dict(size=30, color="#ffca3a", opacity=0.28),
         hoverinfo="skip", showlegend=False, name="Corona-inner",
     ))
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=[sun_pos[0]], y=[sun_pos[1]], z=[sun_pos[2]],
         mode="markers+text",
         marker=dict(size=16, color="#ffca3a", symbol="circle",
@@ -228,7 +247,7 @@ def create_orbit_figure(
         rx.extend([s[0], e[0], None])
         ry.extend([s[1], e[1], None])
         rz.extend([s[2], e[2], None])
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=rx, y=ry, z=rz, mode="lines",
         line=dict(color="rgba(255, 209, 102, 0.32)", width=2, dash="dash"),
         hoverinfo="skip", showlegend=False, name="Rays",
@@ -236,7 +255,7 @@ def create_orbit_figure(
 
     # ── Earth: physically lit sphere ──────────────────────────────────────
     light_pos = _lightposition(sun_hat, 45000.0)
-    fig.add_surface(
+    traces.append(go.Surface(
         x=_XE, y=_YE, z=_ZE,
         surfacecolor=_TERRAIN, cmin=0.0, cmax=1.0,
         colorscale=_EARTH_SCALE,
@@ -247,10 +266,10 @@ def create_orbit_figure(
         hoverinfo="text",
         hovertext="Earth · 280 K day-side IR / 220 K night-side IR",
         name="Earth",
-    )
+    ))
 
     # ── Atmosphere glow shell ─────────────────────────────────────────────
-    fig.add_surface(
+    traces.append(go.Surface(
         x=_AX, y=_AY, z=_AZ,
         surfacecolor=np.zeros_like(_XE),
         cmin=0.0, cmax=1.0,
@@ -258,7 +277,7 @@ def create_orbit_figure(
         showscale=False, opacity=0.16,
         lighting=dict(ambient=1.0, diffuse=0.0, specular=0.0),
         hoverinfo="skip", showlegend=False, name="Atmosphere",
-    )
+    ))
 
     # ── Day/night terminator ring ─────────────────────────────────────────
     t_angles = np.linspace(0.0, 2 * np.pi, 90)
@@ -271,34 +290,23 @@ def create_orbit_figure(
     term = (
         np.outer(np.cos(t_angles), t_v1) + np.outer(np.sin(t_angles), t_v2)
     ) * r_term
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=term[:, 0], y=term[:, 1], z=term[:, 2],
         mode="lines", line=dict(color="rgba(255, 209, 102, 0.7)", width=3),
         hoverinfo="skip", showlegend=False, name="Terminator",
     ))
 
     if not timeline:
-        _style_scene(fig)
-        return fig
+        return traces
 
     # ── Orbit path, colour-coded by radiator view factor ──────────────────
     deep = {"x": [], "y": [], "z": []}
     earth = {"x": [], "y": [], "z": []}
     ecl = {"x": [], "y": [], "z": []}
-    all_pts = []
 
     for step in timeline:
         state = step["orbital_state"]
-        if state.get("position_km"):
-            px, py, pz = state["position_km"]
-        else:
-            phi = math.radians(state["latitude_deg"])
-            lam = math.radians(state["longitude_deg"])
-            r = EARTH_RADIUS_KM + state["altitude_km"]
-            px = r * math.cos(phi) * math.cos(lam)
-            py = r * math.cos(phi) * math.sin(lam)
-            pz = r * math.sin(phi)
-        all_pts.append((px, py, pz))
+        px, py, pz = _position_km(state)
 
         if not state.get("is_sunlit", True):
             target = ecl
@@ -312,124 +320,242 @@ def create_orbit_figure(
             bucket["y"].append(py if flag else None)
             bucket["z"].append(pz if flag else None)
 
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=deep["x"], y=deep["y"], z=deep["z"], mode="lines",
         line=dict(color="#10b981", width=5), name="Deep space (3 K)",
         hoverinfo="skip",
     ))
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=earth["x"], y=earth["y"], z=earth["z"], mode="lines",
         line=dict(color="#f43f5e", width=5), name="Earth-facing IR",
         hoverinfo="skip",
     ))
-    fig.add_trace(go.Scatter3d(
+    traces.append(go.Scatter3d(
         x=ecl["x"], y=ecl["y"], z=ecl["z"], mode="lines",
         line=dict(color="#3b82f6", width=5), name="Eclipse",
         hoverinfo="skip",
     ))
+    return traces
 
-    # ── Primary Payload Data Center (spacecraft) ──────────────────────────
-    n_points = len(all_pts)
-    if n_points:
-        idx = min(max(current_step_idx if current_step_idx is not None else 0, 0), n_points - 1)
-        sat_pos = np.array(all_pts[idx])
-        cur_state = timeline[idx]["orbital_state"]
-        cur_facing = cur_state.get("radiator_facing", "DEEP_SPACE")
-        cur_sun = cur_state.get("is_sunlit", True)
-        cur_task = timeline[idx].get("task_running") or "Idle"
-        display_task = "Payload · LLM" if cur_task == "LLM_Fine_Tuning" else str(cur_task).replace("_", " ")
-        cur_temp = timeline[idx].get("temperature_c", 45.0)
 
-        r_hat = sat_pos / max(float(np.linalg.norm(sat_pos)), 1e-9)
+def _spacecraft_traces(
+    timeline: list[dict[str, Any]],
+    current_step_idx: int,
+    sun_hat: np.ndarray,
+) -> list[go.Scatter3d]:
+    """Satellite + radiator traces for a single timeline step (4 traces)."""
+    if not timeline:
+        return []
 
-        npm = cur_state.get("radiator_normal")
-        if npm:
-            rad_norm = np.array(npm, dtype=float)
-        else:
-            rad_norm = (1.0 if cur_facing == "DEEP_SPACE" else -1.0) * r_hat
-        rad_norm = rad_norm / max(float(np.linalg.norm(rad_norm)), 1e-9)
+    n_points = len(timeline)
+    idx = min(max(int(current_step_idx), 0), n_points - 1)
+    sat_pos = np.array(_position_km(timeline[idx]["orbital_state"]))
+    cur_state = timeline[idx]["orbital_state"]
+    cur_facing = cur_state.get("radiator_facing", "DEEP_SPACE")
+    cur_sun = cur_state.get("is_sunlit", True)
+    cur_task = timeline[idx].get("task_running") or "Idle"
+    display_task = "Payload · LLM" if cur_task == "LLM_Fine_Tuning" else str(cur_task).replace("_", " ")
+    cur_temp = timeline[idx].get("temperature_c", 45.0)
 
-        wing_axis = np.cross(r_hat, sun_hat)
-        if np.linalg.norm(wing_axis) < 1e-4:
-            wing_axis = np.cross(r_hat, np.array([0.0, 0.0, 1.0]))
-        wing_axis = wing_axis / np.linalg.norm(wing_axis)
+    r_hat = sat_pos / max(float(np.linalg.norm(sat_pos)), 1e-9)
 
-        rad_color = {
-            "DEEP_SPACE": "#10b981",
-            "EARTH_DAY": "#f43f5e",
-            "EARTH_NIGHT": "#38bdf8",
-        }.get(cur_facing, "#10b981")
+    npm = cur_state.get("radiator_normal")
+    if npm:
+        rad_norm = np.array(npm, dtype=float)
+    else:
+        rad_norm = (1.0 if cur_facing == "DEEP_SPACE" else -1.0) * r_hat
+    rad_norm = rad_norm / max(float(np.linalg.norm(rad_norm)), 1e-9)
 
-        # Solar array wings
-        span = 850.0
-        left = sat_pos - wing_axis * span
-        right = sat_pos + wing_axis * span
-        fig.add_trace(go.Scatter3d(
-            x=[left[0], sat_pos[0], right[0]],
-            y=[left[1], sat_pos[1], right[1]],
-            z=[left[2], sat_pos[2], right[2]],
-            mode="lines+markers",
-            line=dict(color="#2563eb", width=9),
-            marker=dict(size=[8, 0, 8], color="#60a5fa", symbol="square"),
-            name="Solar arrays", hoverinfo="skip",
-        ))
+    wing_axis = np.cross(r_hat, sun_hat)
+    if np.linalg.norm(wing_axis) < 1e-4:
+        wing_axis = np.cross(r_hat, np.array([0.0, 0.0, 1.0]))
+    wing_axis = wing_axis / np.linalg.norm(wing_axis)
 
-        # Compute chassis
-        core_color = "#38bdf8" if cur_temp < 60.0 else ("#f59e0b" if cur_temp < 80.0 else "#ef4444")
-        fig.add_trace(go.Scatter3d(
-            x=[sat_pos[0]], y=[sat_pos[1]], z=[sat_pos[2]],
-            mode="markers+text",
-            marker=dict(size=15, color="#fbbf24", symbol="diamond",
-                        line=dict(color=core_color, width=3)),
-            text=[f"ODC · {cur_temp:.0f}°C"],
-            textposition="top center",
-            textfont=dict(color="#f8fafc", size=11, family="JetBrains Mono, monospace"),
-            name="Orbital Data Center",
-            hovertext=[
-                f"<b>Orbital Data Center</b><br>Workload: {display_task}<br>"
-                f"Core temp: {cur_temp:.1f}°C<br>Radiator facing: {cur_facing}<br>"
-                f"{'Sunlit' if cur_sun else 'Eclipse · battery mode'}"
-            ],
-            hoverinfo="text",
-        ))
+    rad_color = {
+        "DEEP_SPACE": "#10b981",
+        "EARTH_DAY": "#f43f5e",
+        "EARTH_NIGHT": "#38bdf8",
+    }.get(cur_facing, "#10b981")
 
-        # Radiator panel
-        rad_offset = sat_pos + rad_norm * 520.0
-        rad_wing = np.cross(rad_norm, wing_axis)
-        rad_wing = rad_wing / max(float(np.linalg.norm(rad_wing)), 1e-9) * 380.0
-        p1 = rad_offset - rad_wing
-        p2 = rad_offset + rad_wing
-        fig.add_trace(go.Scatter3d(
-            x=[p1[0], rad_offset[0], p2[0]],
-            y=[p1[1], rad_offset[1], p2[1]],
-            z=[p1[2], rad_offset[2], p2[2]],
-            mode="lines+markers",
-            line=dict(color=rad_color, width=8),
-            marker=dict(size=[7, 0, 7], color=rad_color, symbol="square"),
-            name=f"Radiator · {cur_facing}", hoverinfo="skip",
-        ))
+    traces: list[go.Scatter3d] = []
 
-        # Radiator normal vector
-        arrow = sat_pos + rad_norm * 1800.0
-        fig.add_trace(go.Scatter3d(
-            x=[sat_pos[0], arrow[0]],
-            y=[sat_pos[1], arrow[1]],
-            z=[sat_pos[2], arrow[2]],
-            mode="lines+markers",
-            line=dict(color=rad_color, width=5, dash="dot"),
-            marker=dict(size=[0, 9], color=rad_color, symbol="diamond"),
-            name=f"Radiator vector → {cur_facing}",
-            hovertext=[None, f"Radiator faces: {cur_facing}"], hoverinfo="text",
-        ))
+    # Solar array wings
+    span = 850.0
+    left = sat_pos - wing_axis * span
+    right = sat_pos + wing_axis * span
+    traces.append(go.Scatter3d(
+        x=[left[0], sat_pos[0], right[0]],
+        y=[left[1], sat_pos[1], right[1]],
+        z=[left[2], sat_pos[2], right[2]],
+        mode="lines+markers",
+        line=dict(color="#2563eb", width=9),
+        marker=dict(size=[8, 0, 8], color="#60a5fa", symbol="square"),
+        name="Solar arrays", hoverinfo="skip",
+    ))
 
+    # Compute chassis
+    core_color = "#38bdf8" if cur_temp < 60.0 else ("#f59e0b" if cur_temp < 80.0 else "#ef4444")
+    traces.append(go.Scatter3d(
+        x=[sat_pos[0]], y=[sat_pos[1]], z=[sat_pos[2]],
+        mode="markers+text",
+        marker=dict(size=15, color="#fbbf24", symbol="diamond",
+                    line=dict(color=core_color, width=3)),
+        text=[f"ODC · {cur_temp:.0f}°C"],
+        textposition="top center",
+        textfont=dict(color="#f8fafc", size=11, family="JetBrains Mono, monospace"),
+        name="Orbital Data Center",
+        hovertext=[
+            f"<b>Orbital Data Center</b><br>Workload: {display_task}<br>"
+            f"Core temp: {cur_temp:.1f}°C<br>Radiator facing: {cur_facing}<br>"
+            f"{'Sunlit' if cur_sun else 'Eclipse · battery mode'}"
+        ],
+        hoverinfo="text",
+    ))
+
+    # Radiator panel
+    rad_offset = sat_pos + rad_norm * 520.0
+    rad_wing = np.cross(rad_norm, wing_axis)
+    rad_wing = rad_wing / max(float(np.linalg.norm(rad_wing)), 1e-9) * 380.0
+    p1 = rad_offset - rad_wing
+    p2 = rad_offset + rad_wing
+    traces.append(go.Scatter3d(
+        x=[p1[0], rad_offset[0], p2[0]],
+        y=[p1[1], rad_offset[1], p2[1]],
+        z=[p1[2], rad_offset[2], p2[2]],
+        mode="lines+markers",
+        line=dict(color=rad_color, width=8),
+        marker=dict(size=[7, 0, 7], color=rad_color, symbol="square"),
+        name=f"Radiator · {cur_facing}", hoverinfo="skip",
+    ))
+
+    # Radiator normal vector
+    arrow = sat_pos + rad_norm * 1800.0
+    traces.append(go.Scatter3d(
+        x=[sat_pos[0], arrow[0]],
+        y=[sat_pos[1], arrow[1]],
+        z=[sat_pos[2], arrow[2]],
+        mode="lines+markers",
+        line=dict(color=rad_color, width=5, dash="dot"),
+        marker=dict(size=[0, 9], color=rad_color, symbol="diamond"),
+        name=f"Radiator vector → {cur_facing}",
+        hovertext=[None, f"Radiator faces: {cur_facing}"], hoverinfo="text",
+    ))
+    return traces
+
+
+def create_orbit_figure(
+    timeline: list[dict[str, Any]],
+    current_step_idx: Optional[int] = None,
+) -> go.Figure:
+    """Build a static 3D deep-space scene for the current simulation step.
+
+    Args:
+        timeline: Full-orbit timeline rows (each with an ``orbital_state``).
+        current_step_idx: Index of the live satellite marker.
+
+    Returns:
+        A styled Plotly 3D figure ready for ``st.plotly_chart``.
+    """
+    sun_hat = _sun_direction(timeline)
+    fig = go.Figure()
+    for trace in _scene_traces(timeline, sun_hat):
+        fig.add_trace(trace)
+    for trace in _spacecraft_traces(
+        timeline,
+        current_step_idx if current_step_idx is not None else 0,
+        sun_hat,
+    ):
+        fig.add_trace(trace)
     _style_scene(fig)
     return fig
 
 
-def _style_scene(fig: go.Figure) -> None:
+def create_orbit_animation_html(
+    timeline: list[dict[str, Any]],
+    from_idx: int = 0,
+    to_idx: int = 0,
+    height: int = 520,
+) -> str:
+    """Render a self-contained HTML page whose spacecraft sweeps the orbit.
+
+    The scene (stars, Sun, Earth, orbit path) is drawn once; only the four
+    spacecraft traces are keyed as Plotly animation frames between ``from_idx``
+    and ``to_idx``. Plotly's ``auto_play`` then interpolates them in the browser
+    on load, so the WebGL canvas is never rebuilt mid-turn — no flicker.
+
+    Args:
+        timeline: Full-orbit timeline rows (each with an ``orbital_state``).
+        from_idx: First frame (inclusive) — where the sweep starts.
+        to_idx: Last frame (inclusive) — where the sweep ends.
+        height: Pixel height of the embedded scene.
+
+    Returns:
+        A complete HTML document string for ``st.components.v1.html``.
+    """
+    sun_hat = _sun_direction(timeline)
+    fig = go.Figure()
+
+    scene = _scene_traces(timeline, sun_hat)
+    for trace in scene:
+        fig.add_trace(trace)
+    base = len(scene)
+
+    n = len(timeline)
+    if n:
+        lo = max(0, min(int(from_idx), n - 1))
+        hi = max(lo, min(int(to_idx), n - 1))
+
+        # Seed the plot at the first frame so playback starts seamlessly.
+        for trace in _spacecraft_traces(timeline, lo, sun_hat):
+            fig.add_trace(trace)
+
+        frames = []
+        for i in range(lo, hi + 1):
+            data = _spacecraft_traces(timeline, i, sun_hat)
+            if not data:
+                continue
+            frames.append(go.Frame(
+                data=data,
+                traces=list(range(base, base + len(data))),
+                name=str(i),
+            ))
+        fig.frames = frames
+
+    _style_scene(fig, height=height)
+
+    config = {"displayModeBar": False, "responsive": True}
+    n_frames = len(fig.frames)
+    if n_frames > 1:
+        # ~1.2 s for a 5-minute turn (10 frames), capped at ~7 s for a
+        # full-orbit autoplay (180 frames).
+        target_ms = 1200 if n_frames <= 14 else 7000
+        duration = max(40, min(400, int(target_ms / n_frames)))
+        return fig.to_html(
+            include_plotlyjs="cdn",
+            full_html=True,
+            div_id="orbit3d",
+            config=config,
+            auto_play=True,
+            animation_opts={
+                "frame": {"duration": duration, "redraw": True},
+                "transition": {"duration": 0},
+                "mode": "immediate",
+                "fromcurrent": False,
+            },
+        )
+    return fig.to_html(
+        include_plotlyjs="cdn",
+        full_html=True,
+        div_id="orbit3d",
+        config=config,
+        auto_play=False,
+    )
+
+
+def _style_scene(fig: go.Figure, height: int = 520) -> None:
     """Apply the shared dark aerospace scene styling."""
     fig.update_layout(
-        height=520,
+        height=height,
         scene=dict(
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
