@@ -1,9 +1,0 @@
-skyfield>=1.49
-sgp4>=2.23
-numpy>=1.26
-pandas>=2.2
-matplotlib>=3.9
-plotly>=5.22
-streamlit>=1.36
-scipy>=1.13
-requests>=2.32

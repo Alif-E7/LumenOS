@@ -1,0 +1,5 @@
+# #0010 3D JS globe view and homepage visualizations hidden inside secondary tab instead of being displayed front-and-center on page load
+
+- 2026-10-22T15:32:13Z `issue`: 3D JS globe view and homepage visualizations hidden inside secondary tab instead of being displayed front-and-center on page load [dashboard/app.py]
+- 2026-10-22T15:34:14Z `attempt`: Removed the top-level tab wrapper that hid the 3D globe and telemetry dials in dashboard/app.py. Restored the 3D rotating Earth globe, simulation control console, telemetry HUD, gauges, and race charts directly at the root level of the homepage. Integrated the multi-satellite constellation deck and real API specification cleanly below the flight deck. (worked)
+- 2026-10-22T15:35:01Z `fix`: Homepage layout restored: 3D rotating WebGL globe, simulation controls, gauges, and race charts are mounted front-and-center on load. Multi-satellite fleet load balancer and API architecture guide are positioned seamlessly below the single-node flight deck. All unit tests passing 100%.
