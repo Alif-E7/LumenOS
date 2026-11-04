@@ -7,14 +7,17 @@ on startup.
 
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.database import init_db
 from api.routers import health, missions, spacecraft
+from api.routers import game as game_router
+from api.routers import rooms as rooms_router
 
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────
@@ -51,4 +54,35 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(spacecraft.router, prefix="/api")
 app.include_router(missions.router, prefix="/api")
+app.include_router(game_router.router, prefix="/api")
+app.include_router(rooms_router.router, prefix="/api")
 
+
+# ── WebSocket health endpoint ────────────────────────────────────────────────
+# NOTE: When deploying behind a reverse proxy (nginx, Caddy, Traefik), make sure
+# to proxy /ws/* paths with WebSocket upgrade support:
+#   location /ws/ {
+#       proxy_pass http://backend;
+#       proxy_http_version 1.1;
+#       proxy_set_header Upgrade $http_upgrade;
+#       proxy_set_header Connection "upgrade";
+#   }
+
+
+@app.websocket("/ws/health")
+async def ws_health(websocket: WebSocket):
+    """WebSocket smoke/health endpoint for connectivity verification."""
+    await websocket.accept()
+    await websocket.send_json({
+        "type": "connected",
+        "status": "ok",
+        "app": "LumenOS",
+    })
+    try:
+        data = await websocket.receive_text()
+        message = json.loads(data)
+        if message.get("type") == "ping":
+            await websocket.send_json({"type": "pong"})
+    except (WebSocketDisconnect, json.JSONDecodeError):
+        pass
+    await websocket.close()

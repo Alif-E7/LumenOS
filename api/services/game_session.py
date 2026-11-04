@@ -1,0 +1,517 @@
+"""
+Game Session Service — Orchestrates simulation + game layer into playable sessions.
+
+This is the central service that:
+1. Creates a mission session from a contract + spacecraft config
+2. Runs the simulation step loop
+3. Feeds simulation state into the game layer (events, objectives, scoring)
+4. Validates and applies player actions through the role permission system
+5. Produces the unified GameState for clients
+
+Both solo and co-op modes use this same service. The multiplayer layer
+(rooms, WebSocket) wraps this service with session coordination.
+"""
+
+from __future__ import annotations
+
+import secrets
+import time
+from typing import Any, Optional
+from uuid import uuid4
+
+import yaml
+from pathlib import Path
+
+from api.config import settings
+from api.models.mission import MissionDetail
+from game.contracts import MissionContract, ObjectiveDefinition, Difficulty, OutcomeType
+from game.events import EventDirector, EventConsequence
+from game.objectives import ObjectiveEvaluator
+from game.roles import RoleName, RoleAssignment, assign_roles, has_permission
+from game.actions import ActionType, build_action, PlayerAction
+from game.scoring import MissionScorer, ScoreBreakdown
+from game.state import GameState
+from simulation.core import (
+    SimulationRunner, SimulationConfig, SpacecraftConfig, SimulationSnapshot,
+)
+from simulation.physics.orbital import OrbitalElements
+
+
+class GameSession:
+    """
+    A single playable mission session (solo or co-op).
+
+    Owns the simulation runner, event director, objective evaluator,
+    and game state. The WebSocket room layer delegates all game logic here.
+    """
+
+    def __init__(
+        self,
+        session_id: str,
+        mission: MissionDetail,
+        spacecraft_config: SpacecraftConfig,
+        seed: int = 42,
+        player_ids: list[str] | None = None,
+        time_step_seconds: float = 60.0,
+    ):
+        self.session_id = session_id
+        self.mission = mission
+        self.seed = seed
+        self.created_at = time.time()
+
+        # Derive max steps from mission duration
+        max_steps = int((mission.duration_hours * 3600) / time_step_seconds)
+
+        # Simulation engine
+        self._sim = SimulationRunner(
+            config=SimulationConfig(
+                seed=seed,
+                time_step_seconds=time_step_seconds,
+                max_steps=max_steps,
+            ),
+            spacecraft=spacecraft_config,
+        )
+
+        # Contract (game rules for this session)
+        objectives = [
+            ObjectiveDefinition(
+                id=obj.id,
+                description=obj.description,
+                target_value=obj.target_value,
+                unit=obj.unit,
+                weight=obj.weight,
+                is_primary=(obj.weight >= 0.8),  # High-weight = primary
+            )
+            for obj in mission.objectives
+        ]
+        self._contract = MissionContract(
+            mission_id=mission.id,
+            mission_name=mission.name,
+            description=mission.description,
+            difficulty=Difficulty.from_int(mission.difficulty),
+            deadline_steps=max_steps,
+            budget=10000.0,
+            objectives=objectives,
+            seed=seed,
+        )
+
+        # Event director (seeded)
+        self._events = EventDirector(
+            event_pool=mission.event_pool,
+            seed=seed,
+            max_steps=max_steps,
+        )
+
+        # Objective evaluator
+        self._objectives = ObjectiveEvaluator(objectives)
+
+        # Scorer
+        self._scorer = MissionScorer()
+
+        # Role assignment
+        pids = player_ids or [f"solo_{uuid4().hex[:8]}"]
+        self._roles = assign_roles(pids)
+        self._player_ids = pids
+
+        # Game state
+        self._state = GameState(
+            session_id=session_id,
+            mission_id=mission.id,
+            seed=seed,
+            status="running",
+            budget_total=self._contract.budget,
+            budget_remaining=self._contract.budget,
+            objectives=list(self._objectives.trackers.values()),
+        )
+
+    # ── Properties ───────────────────────────────────────────────────────
+
+    @property
+    def state(self) -> GameState:
+        return self._state
+
+    @property
+    def roles(self) -> RoleAssignment:
+        return self._roles
+
+    @property
+    def is_finished(self) -> bool:
+        return self._state.status in ("completed", "failed")
+
+    @property
+    def contract(self) -> MissionContract:
+        return self._contract
+
+    # ── Core game loop ───────────────────────────────────────────────────
+
+    def step(self, num_steps: int = 1) -> list[dict[str, Any]]:
+        """
+        Advance the game by num_steps simulation steps.
+
+        Returns a list of step results (one per step), each containing:
+        - snapshot: simulation state
+        - new_events: any events triggered this step
+        - objective_updates: current objective progress
+        - game_state: current GameState summary
+        """
+        if self.is_finished:
+            return [{"error": "Session already finished"}]
+
+        results = []
+        for _ in range(num_steps):
+            if self.is_finished:
+                break
+
+            # 1. Advance simulation
+            snapshot = self._sim.step()
+
+            # 2. Tick event director
+            new_events = self._events.tick(snapshot.step)
+
+            # 3. Update objectives based on simulation state
+            self._update_objectives(snapshot)
+
+            # 4. Update game state from snapshot
+            self._sync_state(snapshot, new_events)
+
+            # 5. Check win/fail conditions
+            self._check_outcome(snapshot)
+
+            results.append({
+                "step": snapshot.step,
+                "elapsed_seconds": snapshot.elapsed_seconds,
+                "new_events": [
+                    {
+                        "event_id": e.event_id,
+                        "name": e.name,
+                        "description": e.description,
+                        "severity": e.severity.value,
+                        "choices": [
+                            {"id": c.id, "label": c.label, "description": c.description}
+                            for c in e.choices
+                        ],
+                        "deadline_step": e.deadline_step,
+                    }
+                    for e in new_events
+                ],
+                "game_state": self._state.to_summary(),
+            })
+
+        return results
+
+    def perform_action(
+        self,
+        player_id: str,
+        action_type: str,
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """
+        Validate and apply a player action.
+
+        Checks:
+        1. Session is running
+        2. Player is in the session
+        3. Player's role permits this action
+        4. Budget is sufficient
+        5. Action parameters are valid
+
+        Returns result dict with success/failure and details.
+        """
+        if self.is_finished:
+            return {"success": False, "error": "Session is finished"}
+
+        # Player membership check
+        if player_id not in self._player_ids:
+            return {"success": False, "error": "Player not in this session"}
+
+        # Parse action type
+        try:
+            at = ActionType(action_type)
+        except ValueError:
+            return {"success": False, "error": f"Unknown action type: {action_type}"}
+
+        # Role permission check (server-side, never trust client)
+        if not self._roles.can_perform(player_id, at):
+            return {
+                "success": False,
+                "error": f"Role does not permit action: {action_type}",
+                "player_roles": [r.value for r in self._roles.player_roles.get(player_id, [])],
+            }
+
+        # Build the action
+        action = build_action(at, params or {})
+
+        # Budget check
+        if action.budget_cost > 0:
+            if not self._state.spend_budget(action.budget_cost):
+                return {
+                    "success": False,
+                    "error": f"Insufficient budget. Need {action.budget_cost}, have {self._state.budget_remaining}",
+                }
+
+        # Apply to simulation (translate game actions to sim actions)
+        sim_result = self._apply_to_simulation(at, params or {})
+
+        # Log the action
+        self._state.log_action(
+            step=self._sim.current_step,
+            player_id=player_id,
+            action_type=action_type,
+            params=params,
+            result=str(sim_result.get("changes", [])),
+            budget_cost=action.budget_cost,
+        )
+
+        return {
+            "success": True,
+            "action_type": action_type,
+            "budget_cost": action.budget_cost,
+            "budget_remaining": self._state.budget_remaining,
+            "sim_result": sim_result,
+        }
+
+    def resolve_event(
+        self,
+        player_id: str,
+        event_id: str,
+        choice_id: str,
+    ) -> dict[str, Any]:
+        """Resolve a pending event with the player's choice."""
+        if self.is_finished:
+            return {"success": False, "error": "Session is finished"}
+
+        if player_id not in self._player_ids:
+            return {"success": False, "error": "Player not in this session"}
+
+        # Mission Director or solo player can respond to events
+        if not self._roles.can_perform(player_id, ActionType.RESPOND_TO_EVENT):
+            return {"success": False, "error": "Role does not permit event responses"}
+
+        consequence = self._events.resolve_event(event_id, choice_id)
+        if consequence is None:
+            return {"success": False, "error": "Event not found or already resolved"}
+
+        # Apply event effects to simulation
+        for key, value in consequence.effects.items():
+            self._sim.apply_action({"type": "adjust_" + key, "delta": value})
+
+        self._state.resolved_event_count += 1
+        self._state.well_handled_event_count += 1  # Simplified: any response = handled
+
+        # Log
+        self._state.log_action(
+            step=self._sim.current_step,
+            player_id=player_id,
+            action_type="respond_to_event",
+            params={"event_id": event_id, "choice_id": choice_id},
+            result=consequence.choice_label,
+        )
+
+        return {
+            "success": True,
+            "event_id": event_id,
+            "choice": consequence.choice_label,
+            "effects": consequence.effects,
+            "description": consequence.description,
+        }
+
+    def get_score_breakdown(self) -> ScoreBreakdown:
+        """Calculate current score breakdown."""
+        obj_results = self._objectives.get_results()
+
+        # Determine data target from mission objectives
+        data_target = 500.0  # default
+        for obj in self.mission.objectives:
+            if "data" in obj.id.lower() or "downlink" in obj.id.lower():
+                data_target = obj.target_value
+
+        return self._scorer.calculate(
+            objective_results=obj_results,
+            spacecraft_health_pct=self._state.spacecraft_health_pct,
+            data_collected_mb=self._state.data_collected_mb,
+            data_target_mb=data_target,
+            steps_elapsed=self._state.current_step,
+            deadline_steps=self._contract.deadline_steps,
+            events_resolved_well=self._state.well_handled_event_count,
+            total_events=max(1, self._state.resolved_event_count),
+            budget_remaining=self._state.budget_remaining,
+            total_budget=self._state.budget_total,
+        )
+
+    # ── Internal helpers ─────────────────────────────────────────────────
+
+    def _update_objectives(self, snapshot: SimulationSnapshot) -> None:
+        """Map simulation state to objective progress."""
+        for obj in self.mission.objectives:
+            if "data" in obj.id.lower() or "downlink" in obj.id.lower():
+                self._objectives.update(obj.id, snapshot.comms.data_downlinked_mb)
+            elif "coverage" in obj.id.lower() or "monitoring" in obj.id.lower() or "mapping" in obj.id.lower():
+                # Approximate: zones covered ~ data collected / data per zone
+                zones = snapshot.comms.data_collected_mb / 100.0
+                self._objectives.update(obj.id, zones)
+            elif "health" in obj.id.lower():
+                self._objectives.update(obj.id, snapshot.spacecraft_health_pct)
+            elif "duration" in obj.id.lower() or "uptime" in obj.id.lower() or "continuous" in obj.id.lower():
+                hours = snapshot.elapsed_seconds / 3600.0
+                self._objectives.update(obj.id, hours)
+            elif "detection" in obj.id.lower() or "so2" in obj.id.lower() or "flare" in obj.id.lower():
+                # Event-driven objectives — tracked via event resolution
+                pass
+            elif "latency" in obj.id.lower() or "warning" in obj.id.lower() or "rapid" in obj.id.lower():
+                # Timing objectives — tracked via event resolution
+                pass
+            elif "volume" in obj.id.lower() or "sar" in obj.id.lower():
+                self._objectives.update(obj.id, snapshot.comms.data_collected_mb)
+            elif "survival" in obj.id.lower():
+                self._objectives.update(obj.id, snapshot.spacecraft_health_pct)
+
+        # Sync tracker state back to game state
+        self._state.objectives = list(self._objectives.trackers.values())
+
+    def _sync_state(self, snapshot: SimulationSnapshot, new_events: list) -> None:
+        """Sync simulation snapshot into game state."""
+        self._state.current_step = snapshot.step
+        self._state.elapsed_seconds = snapshot.elapsed_seconds
+        self._state.spacecraft_health_pct = snapshot.spacecraft_health_pct
+        self._state.data_collected_mb = snapshot.comms.data_collected_mb
+        self._state.data_downlinked_mb = snapshot.comms.data_downlinked_mb
+        self._state.active_events = self._events.active_events
+
+        # Update score
+        breakdown = self.get_score_breakdown()
+        self._state.current_score = breakdown.total_score
+
+    def _check_outcome(self, snapshot: SimulationSnapshot) -> None:
+        """Check win/partial/fail conditions.
+
+        During normal play, only hard failures (health=0, budget<0) end the
+        mission early. Full win/partial/fail evaluation happens when the
+        simulation reaches its deadline (max_steps) or when the simulation
+        runner reports "completed".
+        """
+        # Hard failure checks — these end the mission immediately
+        if snapshot.spacecraft_health_pct <= 0:
+            self._state.status = "failed"
+            self._state.outcome = OutcomeType.FAILURE
+            return
+        if self._state.budget_remaining < 0:
+            self._state.status = "failed"
+            self._state.outcome = OutcomeType.FAILURE
+            return
+
+        # Simulation reached the deadline or runner signals completion
+        if snapshot.status == "completed":
+            obj_scores = self._objectives.get_scores()
+            outcome = self._contract.evaluate_outcome(
+                objective_scores=obj_scores,
+                budget_remaining=self._state.budget_remaining,
+                spacecraft_health_pct=snapshot.spacecraft_health_pct,
+                steps_elapsed=snapshot.step,
+            )
+            self._state.status = "completed"
+            self._state.outcome = outcome
+            return
+
+        # Check for early win — all primary objectives completed
+        obj_scores = self._objectives.get_scores()
+        primaries = self._contract.primary_objectives
+        if primaries:
+            all_primary_done = all(
+                obj_scores.get(o.id, 0.0) >= 1.0 for o in primaries
+            )
+            if all_primary_done:
+                overall = sum(
+                    obj_scores.get(o.id, 0.0) * o.weight
+                    for o in self._contract.objectives
+                ) / max(self._contract.total_weight, 0.01)
+                if overall >= self._contract.win_condition.min_overall_score_pct:
+                    self._state.status = "completed"
+                    self._state.outcome = OutcomeType.WIN
+
+    def _apply_to_simulation(self, action_type: ActionType, params: dict) -> dict:
+        """Translate game actions to simulation engine actions."""
+        sim_action_map = {
+            ActionType.TOGGLE_SUBSYSTEM: {
+                "type": "set_payload_active",
+                "active": params.get("active", True),
+            },
+            ActionType.SET_POWER_MODE: {
+                "type": "shed_load" if params.get("mode") == "low_power" else "restore_load",
+                "load_name": "payload",
+            },
+            ActionType.ADJUST_THERMAL: {
+                "type": "adjust_radiator",
+                "delta_m2": params.get("delta_m2", 0.0),
+            },
+            ActionType.DOWNLINK_DATA: {
+                "type": "purge_storage",
+                "amount_mb": params.get("data_mb", 0.0),
+            },
+        }
+
+        sim_action = sim_action_map.get(action_type)
+        if sim_action:
+            return self._sim.apply_action(sim_action)
+        return {"applied": False, "changes": ["no_sim_mapping"]}
+
+
+# ── Session manager (in-memory for now) ──────────────────────────────────
+
+class SessionManager:
+    """
+    Manages active game sessions in memory.
+
+    For production co-op: sessions would be persisted to PostgreSQL
+    for reconnect/recovery. This in-memory version works for local
+    solo play and dev/hackathon co-op.
+    """
+
+    def __init__(self):
+        self._sessions: dict[str, GameSession] = {}
+
+    def create_session(
+        self,
+        mission: MissionDetail,
+        spacecraft_config: SpacecraftConfig,
+        seed: int | None = None,
+        player_ids: list[str] | None = None,
+        time_step_seconds: float = 60.0,
+    ) -> GameSession:
+        """Create and register a new game session."""
+        session_id = f"ses_{uuid4().hex[:12]}"
+        actual_seed = seed if seed is not None else secrets.randbelow(2**31)
+
+        session = GameSession(
+            session_id=session_id,
+            mission=mission,
+            spacecraft_config=spacecraft_config,
+            seed=actual_seed,
+            player_ids=player_ids,
+            time_step_seconds=time_step_seconds,
+        )
+        self._sessions[session_id] = session
+        return session
+
+    def get_session(self, session_id: str) -> GameSession | None:
+        return self._sessions.get(session_id)
+
+    def remove_session(self, session_id: str) -> bool:
+        return self._sessions.pop(session_id, None) is not None
+
+    def list_sessions(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "session_id": s.session_id,
+                "mission_id": s.state.mission_id,
+                "status": s.state.status,
+                "players": s._player_ids,
+                "step": s.state.current_step,
+                "score": s.state.current_score,
+            }
+            for s in self._sessions.values()
+        ]
+
+
+# Global singleton
+session_manager = SessionManager()
+
