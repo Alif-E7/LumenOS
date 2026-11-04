@@ -1,21 +1,59 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { listSpacecraft, createSpacecraft } from "../api/client";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
+import { Slider } from "../components/Slider";
+import { Selector } from "../components/Selector";
+import { loadMissionSession, saveMissionSession } from "../lib/mission";
 import type { SpacecraftResponse } from "../types";
 
 export function DesignPage() {
+  const navigate = useNavigate();
+  const session = loadMissionSession();
   const { data: spacecraft, loading, error, refetch } = useApi(listSpacecraft);
+  
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(session?.spacecraftId ?? null);
+
+  // Subsystem configuration states
+  const [solarArea, setSolarArea] = useState(4.0);
+  const [batteryWh, setBatteryWh] = useState(1200);
+  const [radiatorArea, setRadiatorArea] = useState(1.8);
+  const [antennaGain, setAntennaGain] = useState(12.0);
+  const [transmitPower, setTransmitPower] = useState(15.0);
+  const [payloadType, setPayloadType] = useState("thermal_infrared");
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      await createSpacecraft({ name: newName.trim() });
+      const created = await createSpacecraft({
+        name: newName.trim(),
+        power: {
+          solar_panel_area_m2: solarArea,
+          battery_capacity_wh: batteryWh,
+        },
+        thermal: {
+          radiator_area_m2: radiatorArea,
+        },
+        comms: {
+          antenna_gain_dbi: antennaGain,
+          transmit_power_w: transmitPower,
+        },
+        payload: {
+          payload_type: payloadType,
+          mass_kg: 50.0,
+          power_w: 120.0,
+        },
+      });
       setNewName("");
+      setSelectedId(created.id);
+      if (session) {
+        saveMissionSession({ ...session, spacecraftId: created.id });
+      }
       refetch();
     } catch (err) {
       console.error("Failed to create spacecraft:", err);
@@ -24,40 +62,122 @@ export function DesignPage() {
     }
   };
 
+  const handleSelectAndProceed = (id: string) => {
+    if (session) {
+      saveMissionSession({ ...session, spacecraftId: id });
+    }
+    navigate("/review");
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-white mb-2">Spacecraft Designer</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+        <h1 className="text-3xl font-bold text-white">Spacecraft Designer</h1>
+        {session && (
+          <div className="text-sm text-slate-400">
+            Target Mission: <span className="text-blue-400 font-medium">{session.missionName}</span>
+          </div>
+        )}
+      </div>
       <p className="text-slate-400 mb-8">
-        Configure your spacecraft subsystems — power, thermal, comms, propulsion, and payload.
+        Engineer your satellite bus. Configure solar array, battery reserve, radiator sizing, and primary sensor.
       </p>
 
-      {/* Quick-create form */}
-      <Card title="New Spacecraft" icon="🛠️" className="mb-8">
-        <div className="flex gap-3">
+      {/* Interactive Builder */}
+      <Card title="Build Custom Spacecraft" icon="🛠️" className="mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">⚡ Power Subsystem</h4>
+            <Slider
+              label="Solar Array Area"
+              value={solarArea}
+              min={1}
+              max={10}
+              step={0.5}
+              unit="m²"
+              onChange={setSolarArea}
+            />
+            <Slider
+              label="Battery Capacity"
+              value={batteryWh}
+              min={400}
+              max={4000}
+              step={100}
+              unit="Wh"
+              onChange={setBatteryWh}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">❄️ Thermal & Comms</h4>
+            <Slider
+              label="Radiator Area"
+              value={radiatorArea}
+              min={0.5}
+              max={5.0}
+              step={0.1}
+              unit="m²"
+              onChange={setRadiatorArea}
+            />
+            <Slider
+              label="Antenna Gain"
+              value={antennaGain}
+              min={4}
+              max={24}
+              step={1}
+              unit="dBi"
+              onChange={setAntennaGain}
+            />
+            <Slider
+              label="Transmit Power"
+              value={transmitPower}
+              min={5}
+              max={50}
+              step={5}
+              unit="W"
+              onChange={setTransmitPower}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">🔬 Payload Instrument</h4>
+            <Selector
+              label="Sensor Suite"
+              value={payloadType}
+              options={[
+                { value: "thermal_infrared", label: "Thermal Infrared (Wildfires)" },
+                { value: "synthetic_aperture_radar", label: "Synthetic Aperture Radar (Floods)" },
+                { value: "uv_coronagraph", label: "UV Coronagraph (Solar Storms)" },
+                { value: "multispectral_imager", label: "Multispectral Imager (Volcanoes)" },
+              ]}
+              onChange={setPayloadType}
+              hint="Match your sensor to the mission objective for maximum science yield."
+            />
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Enter spacecraft name..."
+            placeholder="Name your spacecraft configuration (e.g. Phoenix-1)..."
             className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700
                        text-white placeholder-slate-500 focus:outline-none focus:ring-2
-                       focus:ring-blue-500 focus:border-transparent"
+                       focus:ring-blue-500 focus:border-transparent text-sm"
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           />
           <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
-            {creating ? "Creating..." : "Create"}
+            {creating ? "Saving..." : "Save Spacecraft Configuration"}
           </Button>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
-          Creates a spacecraft with default subsystem values. You can customize everything after creation.
-        </p>
       </Card>
 
       {/* Loading */}
       {loading && (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading spacecraft...</p>
+          <p className="text-slate-400">Loading configurations...</p>
         </div>
       )}
 
@@ -65,67 +185,71 @@ export function DesignPage() {
       {error && (
         <Card title="Error" icon="⚠️">
           <p className="text-red-400">Failed to load spacecraft: {error}</p>
-          <p className="text-sm text-slate-500 mt-2">
-            Make sure the API server is running on port 8000.
-          </p>
         </Card>
       )}
 
       {/* Spacecraft list */}
+      <h2 className="text-xl font-bold text-white mb-4">Saved Configurations</h2>
       {spacecraft && spacecraft.length === 0 && !loading && (
         <Card>
           <p className="text-slate-400 text-center py-8">
-            No spacecraft configurations yet. Create your first one above!
+            No configurations saved yet. Use the builder above to craft your first satellite!
           </p>
         </Card>
       )}
 
       {spacecraft && spacecraft.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {spacecraft.map((sc: SpacecraftResponse) => (
-            <Card key={sc.id} title={sc.name} icon="🛰️">
-              <div className="space-y-2 text-sm">
+            <Card
+              key={sc.id}
+              title={sc.name}
+              icon="🛰️"
+              className={selectedId === sc.id ? "border-blue-500 bg-blue-950/20" : ""}
+            >
+              <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Total Mass</span>
-                  <span className="text-slate-300">{sc.total_mass_kg.toFixed(1)} kg</span>
+                  <span className="text-slate-300 font-mono">{sc.total_mass_kg.toFixed(1)} kg</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Solar Panels</span>
-                  <span className="text-slate-300">
-                    {sc.power.solar_panel_area_m2} m²
-                  </span>
+                  <span className="text-slate-300 font-mono">{sc.power.solar_panel_area_m2} m²</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Battery</span>
-                  <span className="text-slate-300">
-                    {sc.power.battery_capacity_wh} Wh
-                  </span>
+                  <span className="text-slate-300 font-mono">{sc.power.battery_capacity_wh} Wh</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Radiator</span>
-                  <span className="text-slate-300">
-                    {sc.thermal.radiator_area_m2} m²
-                  </span>
+                  <span className="text-slate-300 font-mono">{sc.thermal.radiator_area_m2} m²</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Payload</span>
-                  <span className="text-slate-300">
-                    {sc.payload.payload_type.replace(/_/g, " ")}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Antenna</span>
-                  <span className="text-slate-300">{sc.comms.antenna_gain_dbi} dBi</span>
+                  <span className="text-slate-500">Sensor Payload</span>
+                  <span className="text-slate-300 capitalize">{sc.payload.payload_type.replace(/_/g, " ")}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-800 text-xs text-slate-500">
-                Created {new Date(sc.created_at).toLocaleDateString()}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                <span className="text-xs text-slate-500">
+                  {new Date(sc.created_at).toLocaleDateString()}
+                </span>
+                <Button size="sm" onClick={() => handleSelectAndProceed(sc.id)}>
+                  Select & Review →
+                </Button>
               </div>
             </Card>
           ))}
         </div>
       )}
+
+      <div className="flex justify-end gap-3">
+        <Button variant="ghost" onClick={() => navigate("/missions")}>
+          ← Mission Brief
+        </Button>
+        <Button onClick={() => navigate("/review")} disabled={!spacecraft || spacecraft.length === 0}>
+          Proceed to Design Review →
+        </Button>
+      </div>
     </div>
   );
 }
-

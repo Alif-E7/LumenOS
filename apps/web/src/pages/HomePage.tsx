@@ -4,13 +4,37 @@ import { getHealth } from "../api/client";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { StatusBadge } from "../components/StatusBadge";
+import { loadMissionSession } from "../lib/mission";
 
 export function HomePage() {
   const navigate = useNavigate();
   const { data: health, loading, error } = useApi(getHealth);
+  const session = loadMissionSession();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Active Session Resume Banner */}
+      {session && session.sessionId && (
+        <div className="mb-8 p-4 rounded-xl border border-blue-500/50 bg-blue-950/40 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-pulse">🛰️</span>
+            <div>
+              <h3 className="font-semibold text-white">
+                Active Mission in Flight: {session.missionName}
+              </h3>
+              <p className="text-xs text-slate-400">
+                Mode: {session.mode === "solo" ? "Solo (All Stations)" : `Co-op (Room ${session.roomCode})`}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => navigate("/operate")}>
+              Resume Mission Control →
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <section className="text-center mb-16">
         <h1 className="text-5xl font-bold text-white mb-4">
@@ -20,25 +44,36 @@ export function HomePage() {
           </span>
         </h1>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-8">
-          Design a spacecraft. Configure your mission. Launch into orbit.
-          Monitor systems, respond to events, and analyze your performance.
+          An educational interactive space mission design & simulation platform.
+          Fly solo with full command of all four stations, or team up in real-time co-op with friends.
         </p>
-        <div className="flex items-center justify-center gap-4">
-          <Button size="lg" onClick={() => navigate("/missions")}>
-            🚀 Start a Mission
+
+        {/* Solo vs Co-op Direct Entry Points */}
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Button size="lg" onClick={() => navigate("/mode")}>
+            🚀 Start Solo Mission
           </Button>
-          <Button variant="secondary" size="lg" onClick={() => navigate("/design")}>
-            🛠️ Design Spacecraft
+          <Button variant="secondary" size="lg" onClick={() => navigate("/coop")}>
+            👥 Multiplayer Co-op Room
+          </Button>
+          <Button variant="ghost" size="lg" onClick={() => navigate("/design")}>
+            🛠️ Spacecraft Designer
           </Button>
         </div>
       </section>
 
       {/* Mission Cards */}
       <section className="mb-16">
-        <h2 className="text-2xl font-bold text-white mb-6">Mission Scenarios</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-white">Mission Scenarios</h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/missions")}>
+            View All Scenarios →
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             {
+              id: "wildfire",
               icon: "🔥",
               title: "Wildfire Scout",
               codename: "Eyes on Fire",
@@ -46,6 +81,7 @@ export function HomePage() {
               difficulty: 2,
             },
             {
+              id: "flood",
               icon: "🌊",
               title: "Flood Scout",
               codename: "Rising Waters",
@@ -53,6 +89,7 @@ export function HomePage() {
               difficulty: 3,
             },
             {
+              id: "solar_storm",
               icon: "☀️",
               title: "Solar Storm Sentinel",
               codename: "Watch the Sun",
@@ -60,6 +97,7 @@ export function HomePage() {
               difficulty: 4,
             },
             {
+              id: "volcano",
               icon: "🌋",
               title: "Volcano Watch",
               codename: "Fire Beneath the Earth",
@@ -72,16 +110,16 @@ export function HomePage() {
               icon={m.icon}
               title={m.title}
               subtitle={m.codename}
-              onClick={() => navigate("/missions")}
-              className="hover:shadow-lg hover:shadow-blue-500/5"
+              onClick={() => navigate(`/missions/${m.id}/brief`)}
+              className="hover:shadow-lg hover:shadow-blue-500/5 cursor-pointer"
             >
               <p className="text-sm text-slate-400 mb-3">{m.desc}</p>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Difficulty:</span>
-                <span className="text-xs">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                <span className="text-xs text-slate-500">
                   {"⭐".repeat(m.difficulty)}
                   {"☆".repeat(5 - m.difficulty)}
                 </span>
+                <span className="text-xs text-blue-400 font-medium">Briefing →</span>
               </div>
             </Card>
           ))}
@@ -110,19 +148,19 @@ export function HomePage() {
       {/* System status */}
       <section>
         <Card title="System Status" icon="📡">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             {loading && <StatusBadge label="Connecting..." variant="warning" />}
             {error && <StatusBadge label={`API Error: ${error}`} variant="danger" />}
             {health && (
               <>
                 <StatusBadge label={`${health.app} v${health.version}`} variant="success" />
-                <StatusBadge label="API Online" variant="success" />
+                <StatusBadge label="FastAPI Simulation Engine Online" variant="success" />
               </>
             )}
+            <StatusBadge label="WebSocket Multi-client Ready" variant="info" />
           </div>
         </Card>
       </section>
     </div>
   );
 }
-

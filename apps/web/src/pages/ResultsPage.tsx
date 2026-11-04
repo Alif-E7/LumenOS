@@ -5,7 +5,6 @@ import { Card } from "../components/Card";
 import { ScoreBreakdown } from "../components/ScoreBreakdown";
 import { RewardPanel, type Reward } from "../components/RewardPanel";
 import { ObjectiveTracker } from "../components/ObjectiveTracker";
-import { MockDataBadge } from "../components/MockDataBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { getGameScore, getGameState } from "../api/client";
 import { loadMissionSession, saveMissionSession, clearMissionSession } from "../lib/mission";

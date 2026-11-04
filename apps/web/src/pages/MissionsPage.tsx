@@ -1,6 +1,8 @@
+import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { listMissions } from "../api/client";
 import { Card } from "../components/Card";
+import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
 import type { MissionBrief } from "../types";
 
@@ -11,6 +13,7 @@ const severityBadge = (difficulty: number) => {
 };
 
 export function MissionsPage() {
+  const navigate = useNavigate();
   const { data: missions, loading, error } = useApi(listMissions);
 
   return (
@@ -71,7 +74,7 @@ export function MissionsPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
                 {severityBadge(mission.difficulty)}
                 <div className="flex gap-1">
                   {mission.tags.map((tag) => (
@@ -83,6 +86,12 @@ export function MissionsPage() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              <div className="mt-4 pt-3 flex justify-end">
+                <Button size="sm" onClick={() => navigate(`/missions/${mission.id}/brief`)}>
+                  Review Brief & Contract →
+                </Button>
               </div>
             </Card>
           ))}
