@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* LumenOS Design System - Base Layer */
+@layer base {
+  :root {
+    --color-primary: #3b82f6;
+    --color-primary-dark: #1d4ed8;
+    --color-surface: #0f172a;
+    --color-surface-light: #1e293b;
+    --color-surface-lighter: #334155;
+    --color-text: #f8fafc;
+    --color-text-muted: #94a3b8;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --color-info: #06b6d4;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-50 antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+  }
+}

@@ -1,0 +1,113 @@
+# Wildfire Scout — "Eyes on Fire"
+# Data-driven mission configuration for the Wildfire monitoring scenario.
+# All environmental values are REFERENCE (NASA/standard) or GROUND_TRUTH (scenario-defined).
+
+id: wildfire
+name: "Wildfire Scout"
+codename: "Eyes on Fire"
+description: >
+  Deploy a thermal imaging satellite to monitor active wildfire zones.
+  Your spacecraft must maintain a sun-synchronous orbit to ensure consistent
+  lighting conditions, collect thermal data over fire-prone regions, and
+  downlink imagery to ground stations before battery depletion.
+difficulty: 2
+icon: "🔥"
+recommended_payload: thermal_imager
+orbit_altitude_km: 700.0        # Typical LEO Earth observation altitude
+orbit_inclination_deg: 98.2     # Sun-synchronous inclination for ~700 km
+duration_hours: 24.0
+tags:
+  - earth_observation
+  - thermal
+  - wildfire
+  - leo
+
+objectives:
+  - id: thermal_coverage
+    description: "Collect thermal imagery over at least 3 fire zones"
+    weight: 1.0
+    target_value: 3.0
+    unit: "zones"
+  - id: data_downlink
+    description: "Successfully downlink at least 500 MB of data"
+    weight: 0.8
+    target_value: 500.0
+    unit: "MB"
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 70%"
+    weight: 0.6
+    target_value: 70.0
+    unit: "%"
+  - id: mission_duration
+    description: "Complete at least 12 hours of operations"
+    weight: 0.5
+    target_value: 12.0
+    unit: "hours"
+
+environment:
+  solar_flux_w_m2: 1361.0       # REFERENCE: NASA solar constant
+  albedo: 0.3                    # REFERENCE: Earth average albedo
+  earth_ir_w_m2: 237.0           # REFERENCE: Earth IR emission
+  magnetic_field_active: false
+  atmosphere_drag: true
+
+event_pool:
+  - id: wf_smoke_obscuration
+    name: "Smoke Obscuration"
+    description: "Dense smoke plume is blocking your thermal sensor's view of Fire Zone 2."
+    severity: warning
+    probability: 0.02
+    earliest_step: 60
+    choices:
+      - id: wait_for_clear
+        label: "Wait for next pass"
+        description: "Skip this zone and try again on the next orbit."
+        effects: {}
+      - id: switch_to_swir
+        label: "Switch to SWIR band"
+        description: "Use short-wave infrared to penetrate smoke (reduces resolution)."
+        effects:
+          payload_power_w: 10.0
+
+  - id: wf_battery_degradation
+    name: "Battery Cell Anomaly"
+    description: "One battery cell is showing higher-than-expected temperature."
+    severity: warning
+    probability: 0.01
+    earliest_step: 120
+    choices:
+      - id: reduce_payload
+        label: "Reduce payload duty cycle"
+        description: "Lower sensor usage to reduce power draw."
+        effects:
+          payload_power_w: -20.0
+      - id: increase_radiator
+        label: "Increase radiator exposure"
+        description: "Reorient to maximize radiator view of cold space."
+        effects:
+          radiator_area_m2: 0.5
+
+  - id: wf_ground_station_pass
+    name: "Extended Ground Station Pass"
+    description: "Favorable geometry allows a longer-than-expected downlink window."
+    severity: info
+    probability: 0.03
+    earliest_step: 30
+    choices:
+      - id: max_downlink
+        label: "Maximize data downlink"
+        description: "Dump all buffered data at maximum rate."
+        effects:
+          transmit_power_w: 5.0
+      - id: normal_downlink
+        label: "Normal downlink rate"
+        description: "Proceed with standard downlink to conserve power."
+        effects: {}
+
+scoring:
+  max_score: 100.0
+  time_bonus_weight: 0.1
+  data_collected_weight: 0.3
+  health_maintained_weight: 0.3
+  objectives_completed_weight: 0.3
+

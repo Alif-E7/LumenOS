@@ -1,0 +1,112 @@
+# Flood Scout — "Rising Waters"
+# Data-driven mission configuration for the Flood monitoring scenario.
+
+id: flood
+name: "Flood Scout"
+codename: "Rising Waters"
+description: >
+  Deploy a SAR-equipped satellite to monitor flood-affected regions.
+  Synthetic Aperture Radar can see through clouds, making it ideal for
+  flood mapping during monsoon or hurricane seasons. Manage power carefully —
+  SAR instruments are power-hungry.
+difficulty: 3
+icon: "🌊"
+recommended_payload: synthetic_aperture_radar
+orbit_altitude_km: 620.0
+orbit_inclination_deg: 97.8     # Sun-synchronous for ~620 km
+duration_hours: 36.0
+tags:
+  - earth_observation
+  - sar
+  - flood
+  - leo
+  - disaster_response
+
+objectives:
+  - id: flood_mapping
+    description: "Map at least 4 flood-affected regions"
+    weight: 1.0
+    target_value: 4.0
+    unit: "regions"
+  - id: sar_data_volume
+    description: "Collect at least 800 MB of SAR data"
+    weight: 0.8
+    target_value: 800.0
+    unit: "MB"
+  - id: rapid_downlink
+    description: "Downlink first flood map within 6 hours"
+    weight: 0.9
+    target_value: 6.0
+    unit: "hours"
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 60%"
+    weight: 0.5
+    target_value: 60.0
+    unit: "%"
+
+environment:
+  solar_flux_w_m2: 1361.0
+  albedo: 0.3
+  earth_ir_w_m2: 237.0
+  magnetic_field_active: false
+  atmosphere_drag: true
+
+event_pool:
+  - id: fl_heavy_rain_zone
+    name: "Intensifying Rain Zone"
+    description: "A new flooding zone has been detected. Redirect to capture urgent data."
+    severity: warning
+    probability: 0.025
+    earliest_step: 90
+    choices:
+      - id: redirect_immediately
+        label: "Emergency orbit adjust"
+        description: "Use propulsion to adjust ground track. Consumes fuel."
+        effects:
+          fuel_mass_kg: -2.0
+      - id: wait_next_pass
+        label: "Wait for next natural pass"
+        description: "Capture on next orbit — 90 min delay."
+        effects: {}
+
+  - id: fl_sar_overheat
+    name: "SAR Antenna Overheating"
+    description: "Continuous SAR operation has raised antenna temperature above nominal."
+    severity: critical
+    probability: 0.015
+    earliest_step: 180
+    choices:
+      - id: reduce_sar_duty
+        label: "Reduce SAR duty cycle to 50%"
+        description: "Cut data rate but protect hardware."
+        effects:
+          payload_power_w: -40.0
+      - id: emergency_cooldown
+        label: "Emergency cooldown — shut down SAR for 30 min"
+        description: "Full shutdown, then restart."
+        effects:
+          payload_power_w: -80.0
+
+  - id: fl_international_request
+    name: "International Aid Data Request"
+    description: "UN OCHA requests priority flood data for humanitarian response."
+    severity: info
+    probability: 0.02
+    earliest_step: 60
+    choices:
+      - id: prioritize_un
+        label: "Prioritize UN data request"
+        description: "Re-task satellite to cover requested area."
+        effects: {}
+      - id: maintain_plan
+        label: "Maintain original plan"
+        description: "Continue with pre-planned imaging schedule."
+        effects: {}
+
+scoring:
+  max_score: 100.0
+  time_bonus_weight: 0.1
+  data_collected_weight: 0.35
+  health_maintained_weight: 0.25
+  objectives_completed_weight: 0.3
+

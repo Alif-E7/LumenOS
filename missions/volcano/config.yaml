@@ -1,0 +1,113 @@
+# Volcano Watch — "Fire Beneath the Earth"
+# Data-driven mission configuration for the Volcano monitoring scenario.
+
+id: volcano
+name: "Volcano Watch"
+codename: "Fire Beneath the Earth"
+description: >
+  Deploy a multispectral imaging satellite to monitor volcanic activity.
+  Track thermal hotspots, SO₂ plumes, and ground deformation near active
+  volcanoes. Ash clouds can damage your optics — respond carefully to
+  eruption events.
+difficulty: 3
+icon: "🌋"
+recommended_payload: multispectral_imager
+orbit_altitude_km: 680.0
+orbit_inclination_deg: 98.0     # Sun-synchronous for ~680 km
+duration_hours: 30.0
+tags:
+  - earth_observation
+  - volcano
+  - multispectral
+  - leo
+  - natural_hazard
+
+objectives:
+  - id: volcano_monitoring
+    description: "Image at least 5 active volcano sites"
+    weight: 1.0
+    target_value: 5.0
+    unit: "sites"
+  - id: so2_detection
+    description: "Detect SO₂ plume from at least 1 eruption"
+    weight: 0.9
+    target_value: 1.0
+    unit: "detections"
+  - id: data_volume
+    description: "Collect at least 600 MB of multispectral data"
+    weight: 0.7
+    target_value: 600.0
+    unit: "MB"
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 65%"
+    weight: 0.6
+    target_value: 65.0
+    unit: "%"
+
+environment:
+  solar_flux_w_m2: 1361.0
+  albedo: 0.3
+  earth_ir_w_m2: 237.0
+  magnetic_field_active: false
+  atmosphere_drag: true
+
+event_pool:
+  - id: vc_ash_cloud
+    name: "Volcanic Ash Cloud Encounter"
+    description: "An eruption has sent ash to orbital altitude along your ground track."
+    severity: critical
+    probability: 0.008
+    earliest_step: 120
+    choices:
+      - id: close_optics
+        label: "Close optics cover"
+        description: "Protect the sensor but lose imaging capability for 20 minutes."
+        effects:
+          payload_power_w: -80.0
+      - id: maneuver_away
+        label: "Orbital maneuver to avoid"
+        description: "Use propulsion to adjust orbit. Consumes fuel."
+        effects:
+          fuel_mass_kg: -3.0
+
+  - id: vc_eruption_alert
+    name: "Major Eruption Detected"
+    description: "Thermal sensors detect a massive eruption at Volcano Site 3!"
+    severity: critical
+    probability: 0.012
+    earliest_step: 180
+    choices:
+      - id: priority_imaging
+        label: "Priority imaging pass"
+        description: "Re-task satellite to image eruption site immediately."
+        effects:
+          payload_power_w: 20.0
+      - id: standard_schedule
+        label: "Maintain imaging schedule"
+        description: "Continue planned observations, capture eruption on scheduled pass."
+        effects: {}
+
+  - id: vc_calibration_drift
+    name: "Sensor Calibration Drift"
+    description: "Multispectral sensor readings are drifting from calibration baseline."
+    severity: warning
+    probability: 0.02
+    earliest_step: 60
+    choices:
+      - id: recalibrate
+        label: "Run calibration sequence"
+        description: "Takes 15 minutes of downtime but restores accuracy."
+        effects:
+          payload_power_w: 10.0
+      - id: software_correction
+        label: "Apply software correction"
+        description: "Less accurate but no downtime."
+        effects: {}
+
+scoring:
+  max_score: 100.0
+  time_bonus_weight: 0.1
+  data_collected_weight: 0.3
+  health_maintained_weight: 0.3
+  objectives_completed_weight: 0.3
+

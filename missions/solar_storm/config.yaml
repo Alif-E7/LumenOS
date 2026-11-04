@@ -1,0 +1,111 @@
+# Solar Storm Sentinel — "Watch the Sun"
+# Data-driven mission configuration for the Solar observation scenario.
+
+id: solar_storm
+name: "Solar Storm Sentinel"
+codename: "Watch the Sun"
+description: >
+  Deploy a UV spectrometer satellite to monitor solar activity from a
+  high-inclination orbit. Detect coronal mass ejections and solar flares,
+  then relay early warnings to ground stations. This mission faces elevated
+  radiation and thermal challenges.
+difficulty: 4
+icon: "☀️"
+recommended_payload: uv_spectrometer
+orbit_altitude_km: 800.0
+orbit_inclination_deg: 85.0     # High inclination for polar coverage
+duration_hours: 48.0
+tags:
+  - space_weather
+  - solar
+  - radiation
+  - high_altitude
+
+objectives:
+  - id: flare_detection
+    description: "Detect and characterize at least 2 solar flare events"
+    weight: 1.0
+    target_value: 2.0
+    unit: "events"
+  - id: warning_latency
+    description: "Issue solar storm warning within 15 minutes of detection"
+    weight: 1.0
+    target_value: 15.0
+    unit: "minutes"
+  - id: continuous_monitoring
+    description: "Maintain at least 80% uptime for UV spectrometer"
+    weight: 0.7
+    target_value: 80.0
+    unit: "%"
+  - id: spacecraft_survival
+    description: "Keep all subsystems functional through radiation events"
+    weight: 0.8
+    target_value: 50.0
+    unit: "%"
+
+environment:
+  solar_flux_w_m2: 1361.0
+  albedo: 0.3
+  earth_ir_w_m2: 237.0
+  magnetic_field_active: true    # Relevant for radiation belt crossing
+  atmosphere_drag: true
+
+event_pool:
+  - id: ss_radiation_spike
+    name: "Radiation Belt Crossing"
+    description: "Spacecraft is passing through the South Atlantic Anomaly. Elevated radiation detected."
+    severity: warning
+    probability: 0.04
+    earliest_step: 30
+    choices:
+      - id: safe_mode_electronics
+        label: "Enter safe mode"
+        description: "Shut down sensitive electronics until clear."
+        effects:
+          payload_power_w: -80.0
+      - id: continue_operations
+        label: "Continue operations"
+        description: "Risk SEU (single event upset) but maintain data collection."
+        effects: {}
+
+  - id: ss_cme_detected
+    name: "Coronal Mass Ejection Detected"
+    description: "UV spectrometer has detected signatures of a CME heading toward Earth!"
+    severity: critical
+    probability: 0.01
+    earliest_step: 200
+    choices:
+      - id: emergency_downlink
+        label: "Emergency priority downlink"
+        description: "Use all available power to transmit warning data immediately."
+        effects:
+          transmit_power_w: 15.0
+      - id: wait_confirmation
+        label: "Wait for second confirmation scan"
+        description: "Take another measurement to confirm before alerting."
+        effects: {}
+
+  - id: ss_thermal_stress
+    name: "Solar Panel Thermal Stress"
+    description: "Extended sun exposure is causing thermal stress on solar panels."
+    severity: warning
+    probability: 0.02
+    earliest_step: 150
+    choices:
+      - id: rotate_panels
+        label: "Rotate panels to reduce exposure"
+        description: "Reduces power generation by 30% but protects hardware."
+        effects:
+          solar_panel_area_m2: -1.5
+      - id: accept_risk
+        label: "Accept thermal risk"
+        description: "Maintain full power but risk degradation."
+        effects: {}
+
+scoring:
+  max_score: 100.0
+  time_bonus_weight: 0.05
+  data_collected_weight: 0.25
+  health_maintained_weight: 0.35
+  objectives_completed_weight: 0.35
+

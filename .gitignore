@@ -3,11 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
 
 # Caches and logs
 *.log
 .cache/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # Media and video artifacts
 *.mp4
@@ -22,6 +25,15 @@ env/
 .env
 *.env
 .streamlit/secrets.toml
+
+# Database files (local dev)
+data/*.db
+data/*.sqlite
+
+# Node / Frontend
+node_modules/
+apps/web/dist/
+*.tsbuildinfo
 
 # IDE & Editor files
 .vscode/
