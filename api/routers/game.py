@@ -96,6 +96,12 @@ class GameStateResponse(BaseModel):
     game_state: dict[str, Any]
 
 
+class TelemetryResponse(BaseModel):
+    """Latest telemetry snapshot for a session."""
+    session_id: str
+    telemetry: dict[str, Any]
+
+
 class ScoreResponse(BaseModel):
     """Score breakdown for the current session."""
     session_id: str
@@ -208,11 +214,21 @@ async def resolve_event(session_id: str, body: EventResolveRequest):
 
 @router.get("/{session_id}/state", response_model=GameStateResponse)
 async def get_game_state(session_id: str):
-    """Get the current game state for a session."""
+    """Get the current game state for a session (summary + objectives + events)."""
     session = _get_session_or_404(session_id)
     return GameStateResponse(
         session_id=session_id,
-        game_state=session.state.to_summary(),
+        game_state=session.get_full_state(),
+    )
+
+
+@router.get("/{session_id}/telemetry", response_model=TelemetryResponse)
+async def get_telemetry(session_id: str):
+    """Get the latest full telemetry snapshot for a session."""
+    session = _get_session_or_404(session_id)
+    return TelemetryResponse(
+        session_id=session_id,
+        telemetry=session.get_telemetry(),
     )
 
 

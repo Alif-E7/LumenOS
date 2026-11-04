@@ -1,0 +1,73 @@
+import type { ScoreCategory, ScoreResponse } from "../types";
+import { cn } from "../lib/utils";
+
+interface ScoreBreakdownProps {
+  score: ScoreResponse;
+  className?: string;
+}
+
+const gradeColor: Record<string, string> = {
+  A: "text-green-400",
+  B: "text-cyan-400",
+  C: "text-amber-400",
+  D: "text-orange-400",
+  F: "text-red-400",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  objectives: "Mission Objectives",
+  data_value: "Science Data Value",
+  spacecraft_health: "Spacecraft Health",
+  time_efficiency: "Time Efficiency",
+  event_handling: "Event Handling",
+  budget_efficiency: "Budget Efficiency",
+};
+
+/** End-of-mission score card — full category breakdown from the scorer. */
+export function ScoreBreakdown({ score, className }: ScoreBreakdownProps) {
+  const pct = Math.round(score.score_fraction * 100);
+  const gradeClass = gradeColor[score.grade[0]] ?? "text-slate-300";
+
+  return (
+    <section className={cn("rounded-xl border border-slate-800 bg-slate-900/60 p-6", className)} aria-label="Mission score">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white">
+            {Math.round(score.total_score).toLocaleString()}
+            <span className="text-sm text-slate-500 font-normal"> / {Math.round(score.max_score).toLocaleString()} pts</span>
+          </h2>
+          <p className="text-sm text-slate-400">{pct}% mission success</p>
+        </div>
+        <div className={cn("text-6xl font-black", gradeClass)} aria-label={`Grade ${score.grade}`}>
+          {score.grade}
+        </div>
+      </div>
+
+      <ul className="space-y-4">
+        {score.categories.map((cat: ScoreCategory) => {
+          const catPct = cat.max_possible > 0 ? (cat.weighted_score / cat.max_possible) * 100 : 0;
+          return (
+            <li key={cat.category}>
+              <div className="flex items-baseline justify-between text-sm mb-1">
+                <span className="text-slate-200 font-medium">{CATEGORY_LABELS[cat.category] ?? cat.category}</span>
+                <span className="font-mono text-slate-400">
+                  {Math.round(cat.weighted_score)} / {Math.round(cat.max_possible)}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    catPct >= 80 ? "bg-green-500" : catPct >= 50 ? "bg-amber-500" : "bg-red-500"
+                  )}
+                  style={{ width: `${Math.min(100, catPct)}%` }}
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{cat.explanation}</p>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

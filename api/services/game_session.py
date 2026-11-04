@@ -180,6 +180,7 @@ class GameSession:
             results.append({
                 "step": snapshot.step,
                 "elapsed_seconds": snapshot.elapsed_seconds,
+                "telemetry": self._telemetry(snapshot),
                 "new_events": [
                     {
                         "event_id": e.event_id,
@@ -198,6 +199,111 @@ class GameSession:
             })
 
         return results
+
+    def get_telemetry(self) -> dict[str, Any]:
+        """Latest telemetry snapshot (for clients joining mid-mission)."""
+        if not self._sim.history:
+            return {}
+        return self._telemetry(self._sim.history[-1])
+
+    def get_active_events(self) -> list[dict[str, Any]]:
+        """Serialised pending + recently resolved events."""
+        return [
+            {
+                "event_id": e.event_id,
+                "name": e.name,
+                "description": e.description,
+                "severity": e.severity.value,
+                "phase": e.phase.value,
+                "is_pending": e.is_pending,
+                "triggered_step": e.triggered_step,
+                "deadline_step": e.deadline_step,
+                "choices": [
+                    {"id": c.id, "label": c.label, "description": c.description}
+                    for c in e.choices
+                ],
+            }
+            for e in self._state.active_events
+        ]
+
+    def get_full_state(self) -> dict[str, Any]:
+        """Game state summary plus objective progress and active events."""
+        return {
+            **self._state.to_summary(),
+            "elapsed_seconds": self._state.elapsed_seconds,
+            "data_downlinked_mb": self._state.data_downlinked_mb,
+            "resolved_event_count": self._state.resolved_event_count,
+            "objectives": [
+                {
+                    "objective_id": o.objective_id,
+                    "description": o.description,
+                    "target_value": o.target_value,
+                    "current_value": o.current_value,
+                    "unit": o.unit,
+                    "weight": o.weight,
+                    "is_primary": o.is_primary,
+                    "fraction": o.fraction,
+                    "is_complete": o.is_complete,
+                }
+                for o in self._state.objectives
+            ],
+            "active_events": self.get_active_events(),
+        }
+
+    @staticmethod
+    def _telemetry(snapshot: SimulationSnapshot) -> dict[str, Any]:
+        """Compact telemetry dict from a simulation snapshot."""
+        return {
+            "step": snapshot.step,
+            "elapsed_seconds": snapshot.elapsed_seconds,
+            "status": snapshot.status,
+            "spacecraft_health_pct": snapshot.spacecraft_health_pct,
+            "orbital": {
+                "altitude_km": snapshot.orbital.altitude_km,
+                "velocity_km_s": snapshot.orbital.velocity_km_s,
+                "latitude_deg": snapshot.orbital.latitude_deg,
+                "longitude_deg": snapshot.orbital.longitude_deg,
+                "in_eclipse": snapshot.orbital.in_eclipse,
+                "true_anomaly_deg": snapshot.orbital.true_anomaly_deg,
+            },
+            "power": {
+                "solar_output_w": snapshot.power.solar_output_w,
+                "total_load_w": snapshot.power.total_load_w,
+                "net_power_w": snapshot.power.net_power_w,
+                "battery_soc_pct": snapshot.power.battery_soc_pct,
+                "in_eclipse": snapshot.power.in_eclipse,
+                "low_power_warning": snapshot.power.low_power_warning,
+                "power_critical": snapshot.power.power_critical,
+            },
+            "thermal": {
+                "temperature_c": snapshot.thermal.temperature_c,
+                "heat_input_w": snapshot.thermal.heat_input_w,
+                "heat_rejected_w": snapshot.thermal.heat_rejected_w,
+                "overtemp_warning": snapshot.thermal.overtemp_warning,
+                "undertemp_warning": snapshot.thermal.undertemp_warning,
+            },
+            "comms": {
+                "data_buffer_mb": snapshot.comms.data_buffer_mb,
+                "data_buffer_pct": snapshot.comms.data_buffer_pct,
+                "data_collected_mb": snapshot.comms.data_collected_mb,
+                "data_downlinked_mb": snapshot.comms.data_downlinked_mb,
+                "in_contact": snapshot.comms.in_contact,
+                "active_station": snapshot.comms.active_station,
+                "signal_strength_dbm": snapshot.comms.signal_strength_dbm,
+                "buffer_full_warning": snapshot.comms.buffer_full_warning,
+            },
+            "storage": {
+                "used_pct": snapshot.storage.used_pct,
+                "used_mb": snapshot.storage.used_mb,
+                "free_mb": snapshot.storage.free_mb,
+                "storage_full_warning": snapshot.storage.storage_full_warning,
+            },
+            "workload": {
+                "cpu_usage_pct": snapshot.workload.cpu_usage_pct,
+                "processing_queue_items": snapshot.workload.processing_queue_items,
+                "cpu_overload_warning": snapshot.workload.cpu_overload_warning,
+            },
+        }
 
     def perform_action(
         self,

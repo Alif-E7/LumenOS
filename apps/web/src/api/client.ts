@@ -10,6 +10,16 @@ import type {
   SpacecraftCreate,
   SpacecraftResponse,
   SpacecraftValidation,
+  GameStartResponse,
+  StepResult,
+  ActionResponse,
+  EventResolveResponse,
+  GameStateSummary,
+  ScoreResponse,
+  Telemetry,
+  CreateRoomResponse,
+  JoinRoomResponse,
+  RoomInfoResponse,
 } from "../types";
 
 const BASE = "/api";
@@ -66,4 +76,87 @@ export const listMissions = () => fetchJSON<MissionBrief[]>("/missions");
 
 export const getMission = (id: string) =>
   fetchJSON<MissionDetail>(`/missions/${id}`);
+
+// ── Game sessions ───────────────────────────────────────────────────────────
+
+export const startGame = (body: {
+  mission_id: string;
+  spacecraft_id?: string;
+  seed?: number;
+  player_ids?: string[];
+}) =>
+  fetchJSON<GameStartResponse>("/game/start", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const stepGame = (sessionId: string, steps = 1) =>
+  fetchJSON<{ session_id: string; results: StepResult[] }>(
+    `/game/${sessionId}/step`,
+    { method: "POST", body: JSON.stringify({ steps }) }
+  );
+
+export const performAction = (
+  sessionId: string,
+  body: { player_id: string; action_type: string; params?: Record<string, unknown> }
+) =>
+  fetchJSON<ActionResponse>(`/game/${sessionId}/action`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const resolveEvent = (
+  sessionId: string,
+  body: { player_id: string; event_id: string; choice_id: string }
+) =>
+  fetchJSON<EventResolveResponse>(`/game/${sessionId}/event`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const getGameState = (sessionId: string) =>
+  fetchJSON<{ session_id: string; game_state: GameStateSummary }>(
+    `/game/${sessionId}/state`
+  );
+
+export const getGameTelemetry = (sessionId: string) =>
+  fetchJSON<{ session_id: string; telemetry: Telemetry }>(
+    `/game/${sessionId}/telemetry`
+  );
+
+export const getGameScore = (sessionId: string) =>
+  fetchJSON<ScoreResponse>(`/game/${sessionId}/score`);
+
+export const deleteGameSession = (sessionId: string) =>
+  fetchJSON<{ session_id: string; deleted: boolean }>(`/game/${sessionId}`, {
+    method: "DELETE",
+  });
+
+// ── Co-op rooms ─────────────────────────────────────────────────────────────
+
+export const createRoom = (hostName: string) =>
+  fetchJSON<CreateRoomResponse>("/rooms", {
+    method: "POST",
+    body: JSON.stringify({ host_name: hostName }),
+  });
+
+export const joinRoom = (roomCode: string, displayName: string) =>
+  fetchJSON<JoinRoomResponse>(`/rooms/${roomCode}/join`, {
+    method: "POST",
+    body: JSON.stringify({ display_name: displayName }),
+  });
+
+export const getRoomInfo = (roomCode: string) =>
+  fetchJSON<RoomInfoResponse>(`/rooms/${roomCode}`);
+
+/** Build the room WebSocket URL (same origin; Vite proxies /ws in dev). */
+export const roomSocketUrl = (
+  roomCode: string,
+  playerId: string,
+  displayName?: string
+) => {
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  const name = displayName ? `?display_name=${encodeURIComponent(displayName)}` : "";
+  return `${proto}://${window.location.host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
+};
 

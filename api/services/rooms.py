@@ -74,6 +74,7 @@ class Room:
         self.room_code = room_code
         self.created_at = time.time()
         self.host_id = host_id
+        self.host_name = host_name
 
         self._participants: dict[str, RoomParticipant] = {}
         self._game_session: Optional[GameSession] = None
@@ -153,7 +154,7 @@ class Room:
         if self._game_session:
             await p.send({
                 "type": "reconnect_state",
-                "game_state": self._game_session.state.to_summary(),
+                "state": self._game_session.get_full_state(),
                 "phase": self._phase,
                 "roles": self._get_role_info(),
             })
@@ -177,7 +178,7 @@ class Room:
             "mission_id": game_session.mission.id,
             "mission_name": game_session.mission.name,
             "roles": self._get_role_info(),
-            "game_state": game_session.state.to_summary(),
+            "state": game_session.get_full_state(),
         })
 
     async def handle_command(self, player_id: str, command: dict[str, Any]) -> None:
@@ -202,7 +203,9 @@ class Room:
 
             cmd_type = command.get("command", "")
 
-            if cmd_type == "step":
+            if cmd_type == "start":
+                await self._handle_start(player_id, command)
+            elif cmd_type == "step":
                 await self._handle_step(player_id, command)
             elif cmd_type == "action":
                 await self._handle_action(player_id, command)
@@ -222,6 +225,53 @@ class Room:
 
     # ── Command handlers ─────────────────────────────────────────────────
 
+    async def _handle_start(self, player_id: str, command: dict) -> None:
+        """Host-only: create a game session for the chosen mission and start it."""
+        if player_id != self.host_id:
+            await self._send_to(player_id, {
+                "type": "error",
+                "error": "Only the host can start the mission",
+            })
+            return
+
+        if self._phase == "playing":
+            await self._send_to(player_id, {"type": "error", "error": "Mission already started"})
+            return
+
+        mission_id = command.get("mission_id", "")
+
+        # Imported lazily to keep the service free of router dependencies at
+        # module load time.
+        from api.routers.missions import _load_missions
+
+        mission = _load_missions().get(mission_id)
+        if mission is None:
+            await self._send_to(player_id, {
+                "type": "error",
+                "error": f"Mission '{mission_id}' not found",
+            })
+            return
+
+        from simulation.core import SpacecraftConfig
+        from simulation.physics.orbital import OrbitalElements
+
+        spacecraft = SpacecraftConfig(
+            name=f"Default Orbiter — {mission.name}",
+            orbital=OrbitalElements(
+                semi_major_axis_km=6371.0 + mission.orbit_altitude_km,
+                inclination_deg=mission.orbit_inclination_deg,
+            ),
+        )
+
+        player_ids = list(self._participants.keys())
+        game_session = session_manager.create_session(
+            mission=mission,
+            spacecraft_config=spacecraft,
+            player_ids=player_ids,
+        )
+
+        await self.start_game(game_session)
+
     async def _handle_step(self, player_id: str, command: dict) -> None:
         """Advance simulation by N steps."""
         if self._phase != "playing" or self._game_session is None:
@@ -235,7 +285,7 @@ class Room:
         await self._broadcast({
             "type": "step_result",
             "results": results,
-            "game_state": self._game_session.state.to_summary(),
+            "state": self._game_session.get_full_state(),
         })
 
         # Check if game finished
@@ -282,7 +332,7 @@ class Room:
                 "player_id": player_id,
                 "display_name": display_name,
                 "action_type": action_type,
-                "game_state": self._game_session.state.to_summary(),
+                "state": self._game_session.get_full_state(),
             })
 
     async def _handle_resolve_event(self, player_id: str, command: dict) -> None:
@@ -301,7 +351,7 @@ class Room:
                 "type": "event_resolved",
                 "player_id": player_id,
                 **result,
-                "game_state": self._game_session.state.to_summary(),
+                "state": self._game_session.get_full_state(),
             })
         else:
             await self._send_to(player_id, {"type": "error", **result})
@@ -324,7 +374,7 @@ class Room:
         if self._game_session:
             await self._send_to(player_id, {
                 "type": "state_snapshot",
-                "game_state": self._game_session.state.to_summary(),
+                "state": self._game_session.get_full_state(),
                 "roles": self._get_role_info(),
             })
 

@@ -139,13 +139,21 @@ async def get_room_info(room_code: str):
 
 
 @router.websocket("/ws/{room_code}/{player_id}")
-async def room_websocket(websocket: WebSocket, room_code: str, player_id: str):
+async def room_websocket(
+    websocket: WebSocket,
+    room_code: str,
+    player_id: str,
+    display_name: Optional[str] = None,
+):
     """
     WebSocket endpoint for live room interaction.
 
     Validates room existence and player membership, then routes all
     incoming messages to Room.handle_command(). Handles disconnects
     gracefully.
+
+    An optional ``display_name`` query parameter names the participant;
+    the host falls back to the name they registered when creating the room.
     """
     room = room_manager.get_room(room_code)
     if room is None:
@@ -157,9 +165,11 @@ async def room_websocket(websocket: WebSocket, room_code: str, player_id: str):
     # Try reconnect first, otherwise add as new participant
     reconnected = await room.reconnect(player_id, websocket)
     if not reconnected:
+        is_host = player_id == room.host_id
+        name = display_name or (room.host_name if is_host else f"Player-{player_id[-4:]}")
         added = await room.add_participant(
             player_id=player_id,
-            display_name=f"Player-{player_id[-4:]}",
+            display_name=name,
             websocket=websocket,
         )
         if not added:
