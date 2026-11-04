@@ -70,3 +70,4 @@ describe("Route & Navigation Acceptance Checks", () => {
     expect(screen.getByRole("button", { name: /join existing room/i })).toBeInTheDocument();
   });
 });
+
