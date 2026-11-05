@@ -280,8 +280,8 @@ class GameSession:
 
     @staticmethod
     def _telemetry(snapshot: SimulationSnapshot) -> dict[str, Any]:
-        """Compact telemetry dict from a simulation snapshot."""
-        return {
+        """Compact telemetry dict from a simulation snapshot with physical accounting."""
+        tel: dict[str, Any] = {
             "step": snapshot.step,
             "elapsed_seconds": snapshot.elapsed_seconds,
             "status": snapshot.status,
@@ -296,42 +296,96 @@ class GameSession:
             },
             "power": {
                 "solar_output_w": snapshot.power.solar_output_w,
+                "solar_irradiance_w_m2": snapshot.power.solar_irradiance_w_m2,
+                "sun_incidence_angle_deg": snapshot.power.sun_incidence_angle_deg,
                 "total_load_w": snapshot.power.total_load_w,
                 "net_power_w": snapshot.power.net_power_w,
+                "battery_soc_wh": snapshot.power.battery_soc_wh,
+                "battery_capacity_wh": snapshot.power.battery_capacity_wh,
+                "battery_usable_capacity_wh": snapshot.power.battery_usable_capacity_wh,
                 "battery_soc_pct": snapshot.power.battery_soc_pct,
+                "battery_dod_pct": snapshot.power.battery_dod_pct,
+                "battery_equivalent_full_cycles": snapshot.power.battery_equivalent_full_cycles,
+                "battery_soh_pct": snapshot.power.battery_soh_pct,
                 "in_eclipse": snapshot.power.in_eclipse,
                 "low_power_warning": snapshot.power.low_power_warning,
                 "power_critical": snapshot.power.power_critical,
+                "load_breakdown_w": snapshot.power.load_breakdown_w,
             },
             "thermal": {
                 "temperature_c": snapshot.thermal.temperature_c,
+                "temperature_k": snapshot.thermal.temperature_k,
                 "heat_input_w": snapshot.thermal.heat_input_w,
                 "heat_rejected_w": snapshot.thermal.heat_rejected_w,
+                "internal_dissipation_w": snapshot.thermal.internal_dissipation_w,
+                "solar_absorbed_w": snapshot.thermal.solar_absorbed_w,
+                "albedo_absorbed_w": snapshot.thermal.albedo_absorbed_w,
+                "earth_ir_absorbed_w": snapshot.thermal.earth_ir_absorbed_w,
+                "heater_heat_w": snapshot.thermal.heater_heat_w,
+                "net_heat_w": snapshot.thermal.net_heat_w,
+                "heater_active": snapshot.thermal.heater_active,
                 "overtemp_warning": snapshot.thermal.overtemp_warning,
                 "undertemp_warning": snapshot.thermal.undertemp_warning,
+                "thermal_critical": snapshot.thermal.thermal_critical,
+                "model_type": snapshot.thermal.model_type,
             },
             "comms": {
                 "data_buffer_mb": snapshot.comms.data_buffer_mb,
                 "data_buffer_pct": snapshot.comms.data_buffer_pct,
                 "data_collected_mb": snapshot.comms.data_collected_mb,
                 "data_downlinked_mb": snapshot.comms.data_downlinked_mb,
+                "alerts_downlinked_mb": snapshot.comms.alerts_downlinked_mb,
+                "processed_downlinked_mb": snapshot.comms.processed_downlinked_mb,
+                "raw_downlinked_mb": snapshot.comms.raw_downlinked_mb,
                 "in_contact": snapshot.comms.in_contact,
                 "active_station": snapshot.comms.active_station,
+                "elevation_deg": snapshot.comms.elevation_deg,
+                "slant_range_km": snapshot.comms.slant_range_km,
+                "current_data_rate_mbps": snapshot.comms.current_data_rate_mbps,
                 "signal_strength_dbm": snapshot.comms.signal_strength_dbm,
                 "buffer_full_warning": snapshot.comms.buffer_full_warning,
+                "transmission_interrupted": snapshot.comms.transmission_interrupted,
+                "downlink_priority_mode": snapshot.comms.downlink_priority_mode,
             },
             "storage": {
                 "used_pct": snapshot.storage.used_pct,
                 "used_mb": snapshot.storage.used_mb,
                 "free_mb": snapshot.storage.free_mb,
+                "raw_data_mb": snapshot.storage.raw_data_mb,
+                "processed_data_mb": snapshot.storage.processed_data_mb,
+                "priority_alerts_mb": snapshot.storage.priority_alerts_mb,
+                "dropped_overflow_mb": snapshot.storage.dropped_overflow_mb,
+                "overflow_risk_pct": snapshot.storage.overflow_risk_pct,
+                "compression_ratio": snapshot.storage.compression_ratio,
                 "storage_full_warning": snapshot.storage.storage_full_warning,
             },
             "workload": {
+                "operational_profile": snapshot.workload.operational_profile.value,
                 "cpu_usage_pct": snapshot.workload.cpu_usage_pct,
+                "cpu_power_w": snapshot.workload.cpu_power_w,
+                "active_tasks": snapshot.workload.active_tasks,
+                "output_quality": snapshot.workload.output_quality,
                 "processing_queue_items": snapshot.workload.processing_queue_items,
                 "cpu_overload_warning": snapshot.workload.cpu_overload_warning,
+                "profile_educational_note": snapshot.workload.profile_educational_note,
             },
         }
+
+        if snapshot.radiation_debris:
+            tel["radiation_debris"] = {
+                "in_saa_zone": snapshot.radiation_debris.in_saa_zone,
+                "in_auroral_horn": snapshot.radiation_debris.in_auroral_horn,
+                "instantaneous_dose_rate_rad_per_hour": snapshot.radiation_debris.instantaneous_dose_rate_rad_per_hour,
+                "total_ionizing_dose_rad": snapshot.radiation_debris.total_ionizing_dose_rad,
+                "tid_pct_of_limit": snapshot.radiation_debris.tid_pct_of_limit,
+                "seu_rate_per_day": snapshot.radiation_debris.seu_rate_per_day,
+                "radiation_warning": snapshot.radiation_debris.radiation_warning,
+                "debris_spatial_density_per_km3": snapshot.radiation_debris.debris_spatial_density_per_km3,
+                "debris_collision_risk_index": snapshot.radiation_debris.debris_collision_risk_index,
+                "educational_disclaimer": snapshot.radiation_debris.educational_disclaimer,
+            }
+
+        return tel
 
     def perform_action(
         self,
@@ -564,28 +618,43 @@ class GameSession:
 
     def _apply_to_simulation(self, action_type: ActionType, params: dict) -> dict:
         """Translate game actions to simulation engine actions."""
-        sim_action_map = {
-            ActionType.TOGGLE_SUBSYSTEM: {
+        if action_type == ActionType.TOGGLE_SUBSYSTEM:
+            return self._sim.apply_action({
                 "type": "set_payload_active",
                 "active": params.get("active", True),
-            },
-            ActionType.SET_POWER_MODE: {
-                "type": "shed_load" if params.get("mode") == "low_power" else "restore_load",
-                "load_name": "payload",
-            },
-            ActionType.ADJUST_THERMAL: {
+            })
+        elif action_type == ActionType.SET_POWER_MODE:
+            return self._sim.apply_action({
+                "type": "set_power_mode",
+                "mode": params.get("mode", "normal"),
+            })
+        elif action_type == ActionType.ADJUST_THERMAL:
+            if "heater_setpoint_c" in params:
+                return self._sim.apply_action({
+                    "type": "adjust_heater_setpoint",
+                    "heater_setpoint_c": params["heater_setpoint_c"],
+                })
+            return self._sim.apply_action({
                 "type": "adjust_radiator",
                 "delta_m2": params.get("delta_m2", 0.0),
-            },
-            ActionType.DOWNLINK_DATA: {
+            })
+        elif action_type == ActionType.DOWNLINK_DATA:
+            return self._sim.apply_action({
                 "type": "purge_storage",
                 "amount_mb": params.get("data_mb", 0.0),
-            },
-        }
+            })
+        elif action_type == ActionType.SET_ATTITUDE:
+            return self._sim.apply_action({
+                "type": "set_attitude",
+                "mode": params.get("mode", "Nadir (Earth)"),
+            })
+        elif action_type == ActionType.SET_CONTROL_MODE:
+            if "profile" in params:
+                return self._sim.apply_action({
+                    "type": "set_operational_profile",
+                    "profile": params["profile"],
+                })
 
-        sim_action = sim_action_map.get(action_type)
-        if sim_action:
-            return self._sim.apply_action(sim_action)
         return {"applied": False, "changes": ["no_sim_mapping"]}
 
     # ── Simulation Clock & Environment Controls (Prompt 6) ───────────────────

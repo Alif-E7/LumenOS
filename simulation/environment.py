@@ -141,3 +141,4 @@ class SpaceEnvironmentModel:
             in_saa=in_saa,
             in_auroral_zone=in_auroral,
         )
+

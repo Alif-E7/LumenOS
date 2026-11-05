@@ -190,3 +190,4 @@ describe("Prompt 6 Simulation Clock, Timeline & Observation Geometry Client Cont
     expect(restoreRes.clock.step_count).toBe(20);
   });
 });
+

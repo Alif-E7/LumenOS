@@ -185,11 +185,13 @@ export function OperatePage() {
     const w: Warning[] = [];
     if (activeTelemetry.power.power_critical) w.push({ id: "power-critical", message: "Battery critical — imminent shutdown", level: "critical" });
     else if (activeTelemetry.power.low_power_warning) w.push({ id: "power-low", message: "Low power state — battery below reserve", level: "warning" });
-    if (activeTelemetry.thermal.overtemp_warning) w.push({ id: "overtemp", message: `Bus overheating (${activeTelemetry.thermal.temperature_c.toFixed(1)} °C)`, level: "critical" });
+    if (activeTelemetry.thermal.thermal_critical) w.push({ id: "thermal-critical", message: "Thermal boundary exceeded — component damage risk", level: "critical" });
+    else if (activeTelemetry.thermal.overtemp_warning) w.push({ id: "overtemp", message: `Bus overheating (${activeTelemetry.thermal.temperature_c.toFixed(1)} °C)`, level: "critical" });
     if (activeTelemetry.thermal.undertemp_warning) w.push({ id: "undertemp", message: "Bus temperature below lower limit", level: "warning" });
     if (activeTelemetry.comms.buffer_full_warning) w.push({ id: "buffer-full", message: "Data buffer nearly full — downlink required", level: "warning" });
     if (activeTelemetry.workload.cpu_overload_warning) w.push({ id: "cpu", message: "CPU overload — processing queue backing up", level: "warning" });
-    if (activeTelemetry.storage.storage_full_warning) w.push({ id: "storage", message: "Onboard storage nearly full", level: "warning" });
+    if (activeTelemetry.storage.storage_full_warning) w.push({ id: "storage", message: "Onboard storage nearly full — overflow risk", level: "warning" });
+    if (activeTelemetry.radiation_debris?.radiation_warning) w.push({ id: "radiation", message: "Elevated radiation flux (SAA / Auroral zone)", level: "warning" });
     return w;
   }, [activeTelemetry]);
 

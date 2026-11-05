@@ -1,13 +1,16 @@
 /**
  * Station panels — the four role-specific control stations.
  *
- * Each panel is intentionally different: it exposes only the actions that
- * role's permission matrix allows (mirroring game/roles.py), with the
- * telemetry that role actually needs. In co-op, players see only their
- * assigned stations; solo players see all four via All Stations.
+ * Each panel is tailored to its role's permission matrix and telemetry needs:
+ * - Systems Engineer: Power/Solar, Battery SoC & DoD & EFC cycles, Lumped Thermal balance,
+ *   Survival heaters, and Flight Computer Workload Profiles (FULL / ECO / SAFE).
+ * - Science Officer: Multi-queue Solid-State Storage (Raw, Processed, Priority Alerts),
+ *   Ground Station RF Link, Elevation geometry, and Priority Downlink.
+ * - Flight Controller: Orbital ephemeris, Thruster burns, Attitude modes,
+ *   Radiation dose (TID / SAA / Auroras), and Multi-factor Debris encounter risk.
+ * - Mission Director: Budget allocation, Objective priorities, and Mission health.
  *
- * The backend remains authoritative — every button here posts an action
- * and surfaces the server's accept/reject response.
+ * The backend remains authoritative — every button posts an action with server validation.
  */
 
 import { useState } from "react";
@@ -19,7 +22,6 @@ import { Slider } from "./Slider";
 import { Selector } from "./Selector";
 import { StatusBadge } from "./StatusBadge";
 import { Tooltip } from "./Tooltip";
-import { MockDataBadge } from "./MockDataBadge";
 import { ROLES, type RoleId } from "../lib/constants";
 
 export interface StationProps {
@@ -52,10 +54,10 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
 
       <BudgetMeter remaining={budgetRemaining} total={budgetTotal} />
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-2">Objective Priority</h4>
-        <p className="text-xs text-slate-500 mb-3">
-          Rank what the crew optimises for. Re-ranking is logged with the mission director.
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
+        <h4 className="text-sm font-semibold text-slate-200 mb-2">Objective Priority</h4>
+        <p className="text-xs text-slate-400 mb-3">
+          Rank what the crew optimizes for. Re-ranking is logged with the mission director.
         </p>
         <Selector
           label="Lead objective"
@@ -63,7 +65,7 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
           disabled={!enabled}
           options={[
             { value: "primary", label: "Primary objectives first (default)" },
-            { value: "data", label: "Maximise science data" },
+            { value: "data", label: "Maximize science data" },
             { value: "health", label: "Preserve spacecraft health" },
             { value: "budget", label: "Conserve budget" },
           ]}
@@ -71,32 +73,33 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
         />
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-medium text-slate-200">AI Consultation</h4>
-          <Tooltip content="The AI module is not wired into the live session yet — the button is disabled rather than pretending to consult a model.">
+          <h4 className="text-sm font-semibold text-slate-200">AI Consultation</h4>
+          <Tooltip content="The AI consultation advisory module is scheduled for future deployment.">
             <span className="text-slate-500 cursor-help" aria-label="AI consultation unavailable">ⓘ</span>
           </Tooltip>
         </div>
-        <p className="text-xs text-slate-500 mb-3">
-          Would request a health/power forecast from the LumenOS AI module (costs 100 cr).
+        <p className="text-xs text-slate-400 mb-3">
+          Request predictive flight risk forecast from LumenOS AI module (costs 100 cr).
         </p>
         <Button
           size="sm"
           variant="secondary"
           disabled
-          title="AI predictions are not implemented yet — disabled instead of mocked"
+          title="AI module is disabled instead of mocked"
         >
           Request AI Prediction (100 cr) — coming soon
         </Button>
       </div>
 
       {telemetry && (
-        <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-          <h4 className="text-sm font-medium text-slate-200 mb-3">Director's Overview</h4>
-          <div className="space-y-2">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
+          <h4 className="text-sm font-semibold text-slate-200 mb-3">Director's Overview</h4>
+          <div className="space-y-3">
             <ResourceMeter label="Spacecraft health" value={telemetry.spacecraft_health_pct} max={100} unit="%" />
             <ResourceMeter label="Data collected" value={telemetry.comms.data_collected_mb} max={Math.max(500, telemetry.comms.data_collected_mb)} unit="MB" decimals={1} />
+            <ResourceMeter label="Data downlinked" value={telemetry.comms.data_downlinked_mb} max={Math.max(500, telemetry.comms.data_downlinked_mb)} unit="MB" decimals={1} />
           </div>
         </div>
       )}
@@ -109,106 +112,220 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
 export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, className }: StationProps) {
   const [radiatorDelta, setRadiatorDelta] = useState(0);
 
+  const power = telemetry?.power;
+  const thermal = telemetry?.thermal;
+  const workload = telemetry?.workload;
+
+  const currentProfile = workload?.operational_profile ?? "FULL";
+
   return (
-    <div className={`space-y-4 ${className ?? ""}`}>
+    <div className={`space-y-5 ${className ?? ""}`}>
       <p className="text-sm text-slate-400">{ROLES.systems_engineer.description}</p>
 
+      {/* ── Subsystem Quick Telemetry Bar ── */}
       {telemetry ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ResourceMeter label="Battery" value={telemetry.power.battery_soc_pct} max={100} unit="%" />
-          <ResourceMeter label="Bus temperature" value={telemetry.thermal.temperature_c} max={100} unit="°C" invert />
-          <ResourceMeter label="Solar output" value={telemetry.power.solar_output_w} max={Math.max(500, telemetry.power.solar_output_w)} unit="W" />
-          <ResourceMeter label="CPU load" value={telemetry.workload.cpu_usage_pct} max={100} unit="%" invert />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-emerald-950/60 bg-emerald-950/20 p-3">
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-400">Battery SoC</span>
+              <span className="text-xs font-mono font-semibold text-emerald-300">{power?.battery_soc_pct.toFixed(1)}%</span>
+            </div>
+            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  (power?.battery_soc_pct ?? 100) < 20 ? "bg-rose-500" : (power?.battery_soc_pct ?? 100) < 35 ? "bg-amber-400" : "bg-emerald-400"
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, power?.battery_soc_pct ?? 0))}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">DoD: {power?.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
+          </div>
+
+          <div className="rounded-xl border border-rose-950/60 bg-rose-950/20 p-3">
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-rose-400">Bus Temp</span>
+              <span className="text-xs font-mono font-semibold text-rose-300">{thermal?.temperature_c.toFixed(1)} °C</span>
+            </div>
+            <p className="text-[10px] text-slate-400">Net Heat: {(thermal?.net_heat_w ?? 0) > 0 ? "+" : ""}{thermal?.net_heat_w?.toFixed(1) ?? "0.0"} W</p>
+          </div>
+
+          <div className="rounded-xl border border-amber-950/60 bg-amber-950/20 p-3">
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-amber-400">Solar Gen</span>
+              <span className="text-xs font-mono font-semibold text-amber-300">{power?.solar_output_w.toFixed(0)} W</span>
+            </div>
+            <p className="text-[10px] text-slate-400">{power?.in_eclipse ? "In Earth Shadow" : "Sunlit Arrays"}</p>
+          </div>
+
+          <div className="rounded-xl border border-blue-950/60 bg-blue-950/20 p-3">
+            <div className="flex justify-between items-baseline mb-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-blue-400">CPU Workload</span>
+              <span className="text-xs font-mono font-semibold text-blue-300">{workload?.cpu_usage_pct.toFixed(0)}%</span>
+            </div>
+            <p className="text-[10px] text-slate-400">Profile: <span className="font-semibold text-blue-300">{currentProfile}</span></p>
+          </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Telemetry available after the first step.</p>
+        <p className="text-sm text-slate-500">Telemetry available after the first simulation step.</p>
       )}
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-        <h4 className="text-sm font-medium text-slate-200">Power Mode</h4>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!enabled}
-            onClick={() => onAction("set_power_mode", { mode: "normal" }, "Power mode: normal")}
-          >
-            Normal
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!enabled}
-            onClick={() => onAction("set_power_mode", { mode: "low_power" }, "Power mode: low-power shed")}
-          >
-            Low-Power Shed
-          </Button>
+      {/* ── Power & Physical Battery Accounting ── */}
+      <div className="rounded-xl border border-amber-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+            <h4 className="text-sm font-semibold text-amber-200">Electrical Power & Battery Accounting</h4>
+          </div>
+          <span className="text-[11px] font-mono text-slate-400">
+            Net: {(power?.net_power_w ?? 0) >= 0 ? "+" : ""}{power?.net_power_w?.toFixed(1) ?? "0.0"} W
+          </span>
         </div>
-        <p className="text-xs text-slate-500">Low-power sheds the payload load to protect the battery in eclipse.</p>
 
-        <h4 className="text-sm font-medium text-slate-200 pt-2">Payload</h4>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!enabled}
-            onClick={() => onAction("toggle_subsystem", { active: true }, "Payload ON")}
-          >
-            Activate
-          </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!enabled}
-            onClick={() => onAction("toggle_subsystem", { active: false }, "Payload OFF")}
-          >
-            Deactivate
-          </Button>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">SoC Energy</span>
+            <span className="text-slate-200 font-semibold">{power?.battery_soc_wh?.toFixed(0) ?? "2000"} Wh</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Usable Reserve</span>
+            <span className="text-slate-200 font-semibold">{power?.battery_usable_capacity_wh?.toFixed(0) ?? "1800"} Wh</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-slate-500 block uppercase">Equiv Full Cycles</span>
+              <Tooltip content="Equivalent Full Cycles (EFC) tracks cumulative discharge throughput / capacity. Does not count each orbit as 1 full cycle.">
+                <span className="text-[10px] text-slate-400 cursor-help">ⓘ</span>
+              </Tooltip>
+            </div>
+            <span className="text-emerald-400 font-semibold">{power?.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Battery SOH</span>
+            <span className="text-emerald-400 font-semibold">{power?.battery_soh_pct?.toFixed(2) ?? "100.00"}%</span>
+          </div>
+        </div>
+
+        {/* Power Mode & Operational Profile Controls */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <h5 className="text-xs font-medium text-slate-300">Power Mode</h5>
+            <span className="text-[10px] text-slate-500 italic">User-facing profile, not an ML precision alias</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: "FULL", label: "Normal", desc: "Max science (35 W)", mode: "normal" },
+              { id: "ECO", label: "Low-Power Shed", desc: "Eco saving (15 W)", mode: "low_power" },
+              { id: "SAFE", label: "Safe Survival", desc: "Minimal bus (5 W)", mode: "safe" },
+            ].map((p) => {
+              const active = currentProfile === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  disabled={!enabled}
+                  onClick={() => onAction("set_power_mode", { mode: p.mode }, `Power mode: ${p.label}`)}
+                  className={`p-2.5 rounded-lg border text-left transition-all ${
+                    active
+                      ? "border-blue-500 bg-blue-950/40 text-blue-200 ring-1 ring-blue-500/50"
+                      : "border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                  }`}
+                >
+                  <p className="font-semibold text-xs">{p.label}</p>
+                  <p className="text-[10px] text-slate-500">{p.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Payload Power Toggle */}
+        <div className="pt-1 flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+          <div>
+            <span className="text-xs font-medium text-slate-200">Payload Instrument Power</span>
+            <p className="text-[10px] text-slate-500">Toggle primary sensor draw (80 W) to conserve battery during eclipse</p>
+          </div>
+          <div className="flex gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!enabled}
+              onClick={() => onAction("toggle_subsystem", { active: true }, "Payload ON")}
+            >
+              ON
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!enabled}
+              onClick={() => onAction("toggle_subsystem", { active: false }, "Payload OFF")}
+            >
+              OFF
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-1">Thermal — Radiator Trim</h4>
-        <p className="text-xs text-slate-500 mb-3">
-          Resize the radiator array. Costs 50 cr per adjustment; bigger radiators
-          reject more heat but add mass.
-        </p>
-        <Slider
-          label="Radiator adjustment"
-          value={radiatorDelta}
-          min={-5}
-          max={5}
-          step={0.5}
-          unit="m²"
-          onChange={setRadiatorDelta}
-          disabled={!enabled}
-        />
-        <Button
-          size="sm"
-          className="mt-3"
-          disabled={!enabled || radiatorDelta === 0 || budgetRemaining < 50}
-          onClick={() => {
-            onAction("adjust_thermal", { delta_m2: radiatorDelta }, `Radiator ${radiatorDelta > 0 ? "+" : ""}${radiatorDelta} m²`);
-            setRadiatorDelta(0);
-          }}
-        >
-          Apply Adjustment (50 cr)
-        </Button>
-      </div>
-
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-medium text-slate-200">Subsystem Repair</h4>
-          <MockDataBadge reason="health-per-subsystem telemetry not simulated yet" />
+      {/* ── Lumped Thermal Subsystem ── */}
+      <div className="rounded-xl border border-rose-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse" />
+            <h4 className="text-sm font-semibold text-rose-200">Thermal Subsystem (Lumped Approximation)</h4>
+          </div>
+          <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950/60 text-rose-300 font-mono border border-rose-900/40">
+            C · dT/dt = Qin − Qout
+          </span>
         </div>
-        <p className="text-xs text-slate-500 mb-3">
-          Repairs cost 1000 cr and restore a degraded subsystem. Disabled until
-          per-subsystem degradation is modelled — the aggregate health value
-          alone can't tell you what to repair.
-        </p>
-        <Button size="sm" variant="secondary" disabled title="Per-subsystem health telemetry is not simulated yet">
-          Repair Subsystem (1000 cr) — coming soon
-        </Button>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Internal Heat</span>
+            <span className="text-rose-300 font-semibold">{thermal?.internal_dissipation_w?.toFixed(1) ?? "0.0"} W</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Solar + Albedo</span>
+            <span className="text-amber-300 font-semibold">{((thermal?.solar_absorbed_w ?? 0) + (thermal?.albedo_absorbed_w ?? 0)).toFixed(1)} W</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Radiated Out</span>
+            <span className="text-cyan-300 font-semibold">{thermal?.heat_rejected_w?.toFixed(1) ?? "0.0"} W</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+            <span className="text-[10px] text-slate-500 block uppercase">Heater State</span>
+            <span className={`font-semibold ${thermal?.heater_active ? "text-amber-400" : "text-slate-400"}`}>
+              {thermal?.heater_active ? "Active (Firing)" : "Standby (Off)"}
+            </span>
+          </div>
+        </div>
+
+        {/* Radiator Adjustment Slider */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between mb-1">
+            <h5 className="text-xs font-medium text-slate-300">Radiator Trim (Rejection Capacity)</h5>
+            <span className="text-[10px] text-slate-400">Costs 50 cr per trim</span>
+          </div>
+          <Slider
+            label="Radiator delta"
+            value={radiatorDelta}
+            min={-4}
+            max={4}
+            step={0.5}
+            unit="m²"
+            onChange={setRadiatorDelta}
+            disabled={!enabled}
+          />
+          <Button
+            size="sm"
+            className="mt-2.5"
+            disabled={!enabled || radiatorDelta === 0 || budgetRemaining < 50}
+            onClick={() => {
+              onAction("adjust_thermal", { delta_m2: radiatorDelta }, `Radiator ${radiatorDelta > 0 ? "+" : ""}${radiatorDelta} m²`);
+              setRadiatorDelta(0);
+            }}
+          >
+            Apply Radiator Trim (50 cr)
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -217,60 +334,131 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
 // ── Science Officer ─────────────────────────────────────────────────────────
 
 export function ScienceStation({ telemetry, onAction, enabled, className }: StationProps) {
+  const comms = telemetry?.comms;
+  const storage = telemetry?.storage;
+
+  const rawMb = storage?.raw_data_mb ?? 0;
+  const procMb = storage?.processed_data_mb ?? 0;
+  const alertMb = storage?.priority_alerts_mb ?? 0;
+  const freeMb = storage?.free_mb ?? 8000;
+  const totalMb = (storage?.used_mb ?? 0) + freeMb;
+
+  const rawPct = (rawMb / totalMb) * 100;
+  const procPct = (procMb / totalMb) * 100;
+  const alertPct = (alertMb / totalMb) * 100;
+
   return (
-    <div className={`space-y-4 ${className ?? ""}`}>
+    <div className={`space-y-5 ${className ?? ""}`}>
       <p className="text-sm text-slate-400">{ROLES.science_officer.description}</p>
 
-      {telemetry && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ResourceMeter label="Data buffer" value={telemetry.comms.data_buffer_pct} max={100} unit="%" invert />
-          <ResourceMeter label="Collected" value={telemetry.comms.data_collected_mb} max={Math.max(500, telemetry.comms.data_collected_mb)} unit="MB" decimals={1} />
-          <ResourceMeter label="Downlinked" value={telemetry.comms.data_downlinked_mb} max={Math.max(500, telemetry.comms.data_downlinked_mb)} unit="MB" decimals={1} />
-          <ResourceMeter label="Signal strength" value={telemetry.comms.signal_strength_dbm + 120} max={120} unit="dBm·" decimals={1} />
+      {/* ── Multi-Queue Storage Breakdown Card ── */}
+      <div className="rounded-xl border border-violet-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse" />
+            <h4 className="text-sm font-semibold text-violet-200">Onboard Solid-State Storage (SSDR)</h4>
+          </div>
+          <span className="text-xs font-mono text-slate-400">
+            {storage?.used_mb.toFixed(1) ?? "0.0"} / {totalMb.toFixed(0)} MB ({storage?.used_pct.toFixed(1) ?? "0.0"}%)
+          </span>
         </div>
-      )}
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <h4 className="text-sm font-medium text-slate-200">Ground Contact</h4>
-          {telemetry && (
-            <StatusBadge
-              label={telemetry.comms.in_contact ? `In contact — ${telemetry.comms.active_station}` : "No contact"}
-              variant={telemetry.comms.in_contact ? "success" : "neutral"}
-            />
-          )}
+        {/* Visual Segmented Storage Bar */}
+        <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden flex shadow-inner">
+          <div
+            title={`Priority Alerts: ${alertMb.toFixed(1)} MB`}
+            style={{ width: `${alertPct}%` }}
+            className="h-full bg-rose-500 transition-all duration-300"
+          />
+          <div
+            title={`Processed Science: ${procMb.toFixed(1)} MB`}
+            style={{ width: `${procPct}%` }}
+            className="h-full bg-violet-500 transition-all duration-300"
+          />
+          <div
+            title={`Raw Observations: ${rawMb.toFixed(1)} MB`}
+            style={{ width: `${rawPct}%` }}
+            className="h-full bg-amber-400 transition-all duration-300"
+          />
         </div>
-        <p className="text-xs text-slate-500 mb-3">
-          Downlink only works during ground-station contact. Transmitting costs 50 cr.
-        </p>
-        <Button
-          size="sm"
-          disabled={!enabled || (telemetry != null && !telemetry.comms.in_contact)}
-          title={telemetry && !telemetry.comms.in_contact ? "No ground station in view — wait for contact" : undefined}
-          onClick={() => onAction("downlink_data", { data_mb: telemetry?.comms.data_buffer_mb ?? 0 }, "Downlink buffer to ground")}
-        >
-          Downlink Buffer (50 cr)
-        </Button>
+
+        {/* Legend & Queue Meters */}
+        <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-rose-950/40">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+              <span className="text-[10px] uppercase text-rose-300">Priority Alerts</span>
+            </div>
+            <span className="font-semibold text-slate-200">{alertMb.toFixed(1)} MB</span>
+          </div>
+
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-violet-950/40">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />
+              <span className="text-[10px] uppercase text-violet-300">Processed Science</span>
+            </div>
+            <span className="font-semibold text-slate-200">{procMb.toFixed(1)} MB</span>
+          </div>
+
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-amber-950/40">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+              <span className="text-[10px] uppercase text-amber-300">Raw Sensor Data</span>
+            </div>
+            <span className="font-semibold text-slate-200">{rawMb.toFixed(1)} MB</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+          <span>Compression Ratio: <strong className="text-violet-300 font-mono">{storage?.compression_ratio?.toFixed(1) ?? "2.5"}:1</strong></span>
+          <span>Overflow Risk: <strong className={`font-mono ${(storage?.overflow_risk_pct ?? 0) > 25 ? "text-rose-400" : "text-emerald-400"}`}>{storage?.overflow_risk_pct?.toFixed(1) ?? "0.0"}%</strong></span>
+        </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-2">Observation Targeting</h4>
-        <p className="text-xs text-slate-500 mb-3">
-          Data collection runs through the payload — toggle it on the Systems
-          station; the payload gathers data automatically while active.
-        </p>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!enabled}
-          onClick={() => onAction("collect_data", { target_zone: "current", duration_steps: 1 }, "Manual data-collection tasking")}
-        >
-          Task Manual Collection
-        </Button>
-        <p className="text-[11px] text-slate-600 mt-2">
-          Tasking is logged with the director; the physics effect flows through
-          the payload state.
-        </p>
+      {/* ── Ground Station RF Link & Priority Downlink Card ── */}
+      <div className="rounded-xl border border-cyan-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${comms?.in_contact ? "bg-cyan-400 animate-ping" : "bg-slate-600"}`} />
+            <h4 className="text-sm font-semibold text-cyan-200">Ground Contact & RF Downlink</h4>
+          </div>
+          <StatusBadge
+            label={comms?.in_contact ? `Active Contact — ${comms.active_station}` : "No Ground Contact"}
+            variant={comms?.in_contact ? "success" : "neutral"}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Elevation</span>
+            <span className="text-cyan-300 font-semibold">{comms?.elevation_deg?.toFixed(1) ?? "--"}°</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Slant Range</span>
+            <span className="text-cyan-300 font-semibold">{comms?.slant_range_km?.toFixed(0) ?? "--"} km</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Data Rate</span>
+            <span className="text-cyan-300 font-semibold">{comms?.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Downlinked</span>
+            <span className="text-emerald-300 font-semibold">{comms?.data_downlinked_mb?.toFixed(1) ?? "0.0"} MB</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-xs text-slate-400">
+            Priority Queue: <span className="text-cyan-300 font-semibold">Alerts ➔ Processed Products ➔ Raw</span>
+          </div>
+          <Button
+            size="sm"
+            disabled={!enabled || (comms != null && !comms.in_contact)}
+            onClick={() => onAction("downlink_data", { data_mb: comms?.data_buffer_mb ?? 0 }, "Downlink buffer to ground")}
+          >
+            Downlink Buffer (50 cr)
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -280,61 +468,111 @@ export function ScienceStation({ telemetry, onAction, enabled, className }: Stat
 
 export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, className }: StationProps) {
   const [deltaV, setDeltaV] = useState(1);
+  const orbital = telemetry?.orbital;
+  const radDebris = telemetry?.radiation_debris;
 
   return (
-    <div className={`space-y-4 ${className ?? ""}`}>
+    <div className={`space-y-5 ${className ?? ""}`}>
       <p className="text-sm text-slate-400">{ROLES.flight_controller.description}</p>
 
-      {telemetry && (
+      {/* Orbital Ephemeris HUD */}
+      {orbital && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-sm">
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-            <p className="text-[10px] uppercase text-slate-500">Altitude</p>
-            <p className="text-slate-200">{telemetry.orbital.altitude_km.toFixed(1)} km</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Altitude</p>
+            <p className="text-slate-100 font-semibold">{orbital.altitude_km.toFixed(1)} km</p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-            <p className="text-[10px] uppercase text-slate-500">Velocity</p>
-            <p className="text-slate-200">{telemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Velocity</p>
+            <p className="text-slate-100 font-semibold">{orbital.velocity_km_s.toFixed(2)} km/s</p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-            <p className="text-[10px] uppercase text-slate-500">Position</p>
-            <p className="text-slate-200">{telemetry.orbital.latitude_deg.toFixed(1)}°, {telemetry.orbital.longitude_deg.toFixed(1)}°</p>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Sub-Sat Lat/Lon</p>
+            <p className="text-slate-100 font-semibold">{orbital.latitude_deg.toFixed(1)}°, {orbital.longitude_deg.toFixed(1)}°</p>
           </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-3">
-            <p className="text-[10px] uppercase text-slate-500">Sunlight</p>
-            <p className={telemetry.orbital.in_eclipse ? "text-cyan-400" : "text-amber-300"}>
-              {telemetry.orbital.in_eclipse ? "Eclipse" : "Sunlit"}
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Illumination</p>
+            <p className={`font-semibold ${orbital.in_eclipse ? "text-cyan-400" : "text-amber-300"}`}>
+              {orbital.in_eclipse ? "Eclipse (Umbra)" : "Sunlit"}
             </p>
           </div>
         </div>
       )}
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-1">Thruster Burn</h4>
-        <p className="text-xs text-slate-500 mb-3">
-          Prograde burn raises the orbit; retrograde lowers it. Costs 200 cr per burn.
+      {/* ── Radiation & Orbital Debris Environmental Accounting ── */}
+      <div className="rounded-xl border border-yellow-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-400" />
+            <h4 className="text-sm font-semibold text-yellow-200">Space Radiation & Debris Risk Accounting</h4>
+          </div>
+          <div className="flex items-center gap-2">
+            {radDebris?.in_saa_zone && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-950/80 text-rose-300 border border-rose-800">
+                SAA Zone
+              </span>
+            )}
+            {radDebris?.in_auroral_horn && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950/80 text-purple-300 border border-purple-800">
+                Auroral Horn
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Total Ionizing Dose</span>
+            <span className="text-slate-200 font-semibold">{radDebris?.total_ionizing_dose_rad.toFixed(2) ?? "0.00"} rad</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">TID Tolerance Used</span>
+            <span className="text-slate-200 font-semibold">{radDebris?.tid_pct_of_limit.toFixed(2) ?? "0.00"}%</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">SEU Rate</span>
+            <span className="text-slate-200 font-semibold">{radDebris?.seu_rate_per_day.toFixed(3) ?? "0.015"}/day</span>
+          </div>
+          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-500 block uppercase">Debris Risk Index</span>
+            <span className="text-amber-400 font-semibold">{radDebris?.debris_collision_risk_index.toFixed(1) ?? "12.5"} / 100</span>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-slate-500 italic">
+          Educational abstraction incorporating altitude shell flux, inclination crossing angles, and Whipple bumper shielding.
+        </p>
+      </div>
+
+      {/* Thruster Burn Controls */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <h4 className="text-sm font-semibold text-slate-200">Thruster Burn</h4>
+        <p className="text-xs text-slate-400">
+          Prograde burn raises orbit altitude; retrograde lowers it. Costs 200 cr per burn.
         </p>
         <Slider label="Delta-v" value={deltaV} min={0.5} max={10} step={0.5} unit="m/s" onChange={setDeltaV} disabled={!enabled} />
-        <div className="grid grid-cols-2 gap-2 mt-3">
+        <div className="grid grid-cols-2 gap-2 pt-1">
           <Button
             size="sm"
             disabled={!enabled || budgetRemaining < 200}
             onClick={() => onAction("fire_thruster", { delta_v_ms: deltaV, direction: "prograde" }, `Prograde burn ${deltaV} m/s`)}
           >
-            ▲ Prograde (200 cr)
+            ▲ Prograde Burn (200 cr)
           </Button>
           <Button
             size="sm"
             disabled={!enabled || budgetRemaining < 200}
-            onClick={() => onAction("fire_thruster", { delta_v_ms: deltaV, direction: "retrograde" }, `Retrograde burn ${deltaV} m/s`)}
+            onClick={() => onAction("fire_thruster", { delta_v_ms: deltaV, direction: "retrograde" }, `Retrograde Burn ${deltaV} m/s`)}
           >
-            ▼ Retrograde (200 cr)
+            ▼ Retrograde Burn (200 cr)
           </Button>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-2">Attitude</h4>
-        <p className="text-xs text-slate-500 mb-3">Re-point the spacecraft body. Free — uses reaction wheels.</p>
+      {/* Attitude Modes */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+        <h4 className="text-sm font-semibold text-slate-200">Attitude Pointing Mode</h4>
+        <p className="text-xs text-slate-400">Re-orient spacecraft body via reaction wheels.</p>
         <div className="grid grid-cols-3 gap-2">
           {["Sun-facing", "Nadir (Earth)", "Radiator-safe"].map((mode) => (
             <Button
@@ -348,22 +586,6 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
             </Button>
           ))}
         </div>
-      </div>
-
-      <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
-        <h4 className="text-sm font-medium text-slate-200 mb-2">Orbital Manoeuvre</h4>
-        <p className="text-xs text-slate-500 mb-3">
-          Full plane/altitude change (500 cr). Reserved for contract changes —
-          use thruster burns for routine station-keeping.
-        </p>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!enabled || budgetRemaining < 500}
-          onClick={() => onAction("adjust_orbit", { delta_altitude_km: 10 }, "Orbit +10 km manoeuvre")}
-        >
-          Request Orbit Raise +10 km (500 cr)
-        </Button>
       </div>
     </div>
   );

@@ -266,6 +266,15 @@ export interface Telemetry {
     in_eclipse: boolean;
     low_power_warning: boolean;
     power_critical: boolean;
+    solar_irradiance_w_m2?: number;
+    sun_incidence_angle_deg?: number;
+    battery_soc_wh?: number;
+    battery_capacity_wh?: number;
+    battery_usable_capacity_wh?: number;
+    battery_dod_pct?: number;
+    battery_equivalent_full_cycles?: number;
+    battery_soh_pct?: number;
+    load_breakdown_w?: Record<string, number>;
   };
   thermal: {
     temperature_c: number;
@@ -273,6 +282,16 @@ export interface Telemetry {
     heat_rejected_w: number;
     overtemp_warning: boolean;
     undertemp_warning: boolean;
+    temperature_k?: number;
+    internal_dissipation_w?: number;
+    solar_absorbed_w?: number;
+    albedo_absorbed_w?: number;
+    earth_ir_absorbed_w?: number;
+    heater_heat_w?: number;
+    net_heat_w?: number;
+    heater_active?: boolean;
+    thermal_critical?: boolean;
+    model_type?: string;
   };
   comms: {
     data_buffer_mb: number;
@@ -283,17 +302,48 @@ export interface Telemetry {
     active_station: string;
     signal_strength_dbm: number;
     buffer_full_warning: boolean;
+    alerts_downlinked_mb?: number;
+    processed_downlinked_mb?: number;
+    raw_downlinked_mb?: number;
+    elevation_deg?: number;
+    slant_range_km?: number;
+    current_data_rate_mbps?: number;
+    transmission_interrupted?: boolean;
+    downlink_priority_mode?: string;
   };
   storage: {
     used_pct: number;
     used_mb: number;
     free_mb: number;
     storage_full_warning: boolean;
+    raw_data_mb?: number;
+    processed_data_mb?: number;
+    priority_alerts_mb?: number;
+    dropped_overflow_mb?: number;
+    overflow_risk_pct?: number;
+    compression_ratio?: number;
   };
   workload: {
     cpu_usage_pct: number;
     processing_queue_items: number;
     cpu_overload_warning: boolean;
+    operational_profile?: string;
+    cpu_power_w?: number;
+    active_tasks?: string[];
+    output_quality?: string;
+    profile_educational_note?: string;
+  };
+  radiation_debris?: {
+    in_saa_zone: boolean;
+    in_auroral_horn: boolean;
+    instantaneous_dose_rate_rad_per_hour: number;
+    total_ionizing_dose_rad: number;
+    tid_pct_of_limit: number;
+    seu_rate_per_day: number;
+    radiation_warning: boolean;
+    debris_spatial_density_per_km3: number;
+    debris_collision_risk_index: number;
+    educational_disclaimer: string;
   };
 }
 
