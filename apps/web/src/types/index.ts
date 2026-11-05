@@ -3,6 +3,8 @@
  * These are the API contracts between frontend and backend.
  */
 
+export * from "./canonical";
+
 // ── Spacecraft ──────────────────────────────────────────────────────────────
 
 export interface PowerSubsystem {
