@@ -8,12 +8,15 @@ and credits for completing missions; credits unlock new capabilities.
 
 from __future__ import annotations
 
+import json
 from enum import Enum
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
 from game.scoring import Grade
+from game.campaign import CampaignProgress
 
 
 # ── Achievement categories ───────────────────────────────────────────────────
@@ -144,37 +147,154 @@ ACHIEVEMENT_CATALOG: dict[str, AchievementDefinition] = {
         xp_reward=250,
         credit_reward=250,
     ),
+    "three_stars": AchievementDefinition(
+        id="three_stars",
+        name="Master Operator",
+        description="Earn a perfect 3-star rating on any mission.",
+        category=AchievementCategory.MASTERY,
+        icon="⭐⭐⭐",
+        xp_reward=350,
+        credit_reward=400,
+    ),
+    "clean_telemetry": AchievementDefinition(
+        id="clean_telemetry",
+        name="Pristine Hull",
+        description="Complete a mission maintaining at least 95% spacecraft health.",
+        category=AchievementCategory.EFFICIENCY,
+        icon="🛡️",
+        xp_reward=250,
+        credit_reward=300,
+    ),
+    "explorer_graduate": AchievementDefinition(
+        id="explorer_graduate",
+        name="Flight Academy Graduate",
+        description="Complete the Sunrise Orbit onboarding tutorial.",
+        category=AchievementCategory.MISSION,
+        icon="🎓",
+        xp_reward=150,
+        credit_reward=200,
+    ),
+    "flood_responder": AchievementDefinition(
+        id="flood_responder",
+        name="Radar Pathfinder",
+        description="Successfully complete the Flood Scout mission.",
+        category=AchievementCategory.MISSION,
+        icon="🌊",
+        xp_reward=300,
+        credit_reward=350,
+    ),
+    "solar_survivor": AchievementDefinition(
+        id="solar_survivor",
+        name="Sun Watcher",
+        description="Survive radiation and solar storms in Solar Storm Sentinel.",
+        category=AchievementCategory.MISSION,
+        icon="☀️",
+        xp_reward=400,
+        credit_reward=500,
+    ),
+    "volcano_veteran": AchievementDefinition(
+        id="volcano_veteran",
+        name="Volcanic Sentinel",
+        description="Successfully track eruption plumes in Volcano Watch.",
+        category=AchievementCategory.MISSION,
+        icon="🌋",
+        xp_reward=450,
+        credit_reward=550,
+    ),
+    "campaign_champion": AchievementDefinition(
+        id="campaign_champion",
+        name="Grand Architect of Orbit",
+        description="Complete all four campaign missions.",
+        category=AchievementCategory.MISSION,
+        icon="👑",
+        xp_reward=1000,
+        credit_reward=1500,
+    ),
+    "what_if_analyst": AchievementDefinition(
+        id="what_if_analyst",
+        name="What-If Analyst",
+        description="Replay a completed mission and beat your previous best score.",
+        category=AchievementCategory.EXPLORATION,
+        icon="🔄",
+        xp_reward=200,
+        credit_reward=250,
+    ),
 }
 
 # ── Unlock catalog ───────────────────────────────────────────────────────────
 
 UNLOCK_CATALOG: dict[str, UnlockDefinition] = {
+    "high_density_battery": UnlockDefinition(
+        id="high_density_battery",
+        name="High-Density Li-Sulfur Battery",
+        description="Advanced energy storage yielding +40% capacity for eclipse operations.",
+        unlock_type=UnlockType.SPACECRAFT_MODULE,
+        credit_cost=350,
+        required_level=2,
+        icon="🔋",
+    ),
     "advanced_thermal": UnlockDefinition(
         id="advanced_thermal",
-        name="Advanced Thermal Control",
-        description="Unlock advanced thermal management modules.",
+        name="Deployable Louvered Radiator",
+        description="Trimmable heat rejection louvers that protect against overcooling in shadow.",
         unlock_type=UnlockType.SPACECRAFT_MODULE,
         credit_cost=500,
         required_level=3,
         icon="🌡️",
     ),
+    "optical_sar_sensor": UnlockDefinition(
+        id="optical_sar_sensor",
+        name="Dual-Polarized SAR Array",
+        description="High-resolution imaging radar with cloud penetration capabilities.",
+        unlock_type=UnlockType.SPACECRAFT_MODULE,
+        credit_cost=650,
+        required_level=3,
+        icon="📡",
+    ),
+    "cryo_radiator": UnlockDefinition(
+        id="cryo_radiator",
+        name="Cryogenic Thermal Cooler",
+        description="Cools infrared and UV focal planes to 77K for sharp noise-free imagery.",
+        unlock_type=UnlockType.SPACECRAFT_MODULE,
+        credit_cost=800,
+        required_level=4,
+        icon="❄️",
+    ),
     "ai_anomaly_detector": UnlockDefinition(
         id="ai_anomaly_detector",
-        name="AI Anomaly Detector",
-        description="Enable LumenOS AI to predict subsystem anomalies (may be wrong!).",
+        name="AI Anomaly Predictor",
+        description="Enable LumenOS AI to predict subsystem anomalies 3 steps in advance.",
         unlock_type=UnlockType.AI_CAPABILITY,
         credit_cost=750,
         required_level=5,
         icon="🤖",
     ),
+    "flood_scout_contract": UnlockDefinition(
+        id="flood_scout_contract",
+        name="Flood Scout Mission Contract",
+        description="Unlock priority contract access to the Flood Scout scenario.",
+        unlock_type=UnlockType.MISSION,
+        credit_cost=200,
+        required_level=2,
+        icon="🌊",
+    ),
     "solar_storm_mission": UnlockDefinition(
         id="solar_storm_mission",
-        name="Solar Storm Mission",
-        description="Unlock the Solar Storm advanced mission.",
+        name="Solar Storm Sentinel Contract",
+        description="Unlock the Solar Storm advanced polar observation mission.",
         unlock_type=UnlockType.MISSION,
         credit_cost=300,
         required_level=2,
         icon="☀️",
+    ),
+    "volcano_watch_mission": UnlockDefinition(
+        id="volcano_watch_mission",
+        name="Volcano Watch Mission Contract",
+        description="Unlock hazardous multispectral monitoring over active volcanic belts.",
+        unlock_type=UnlockType.MISSION,
+        credit_cost=450,
+        required_level=4,
+        icon="🌋",
     ),
 }
 
@@ -244,6 +364,7 @@ class PlayerProfile(BaseModel):
     missions_completed: int = Field(default=0, ge=0)
     achievements: dict[str, AchievementProgress] = Field(default_factory=dict)
     unlocks: list[str] = Field(default_factory=list)
+    campaign: CampaignProgress = Field(default_factory=CampaignProgress)
 
     @property
     def level(self) -> int:
@@ -257,7 +378,11 @@ class PlayerProfile(BaseModel):
         """Award XP and return the new level."""
         old_level = self.level
         self.total_xp += amount
-        return self.level
+        new_level = self.level
+        # Check if new level unlocks campaign missions
+        if new_level > old_level:
+            self.campaign.update_unlocks(new_level)
+        return new_level
 
     def award_credits(self, amount: int) -> None:
         """Award Engineering Credits (separate from mission budget!)."""
@@ -321,25 +446,123 @@ class PlayerProfile(BaseModel):
         self,
         grade: Grade,
         difficulty_multiplier: float = 1.0,
-    ) -> dict[str, int]:
+        mission_id: str = "wildfire",
+        stars: int = 1,
+        is_win: bool = True,
+        spacecraft_health_pct: float = 100.0,
+        budget_spent_pct: float = 50.0,
+        score: float = 85.0,
+    ) -> dict[str, Any]:
         """
         Process rewards for completing a mission.
 
-        Returns a dict with xp_earned and credits_earned.
+        Evaluates campaign progression, replay rewards, achievements,
+        and level-based unlocks.
         """
-        xp = xp_from_grade(grade)
-        credits = credits_from_grade(grade, difficulty_multiplier)
+        # Record into campaign progress
+        campaign_result = self.campaign.record_mission_result(
+            mission_id=mission_id,
+            score=score,
+            grade=grade,
+            stars=stars,
+            is_win=is_win,
+            difficulty_multiplier=difficulty_multiplier,
+        )
 
-        self.award_xp(xp)
-        self.award_credits(credits)
-        self.missions_completed += 1
+        xp_earned = campaign_result["xp_awarded"]
+        credits_earned = campaign_result["credits_awarded"]
 
-        # Check for first_launch achievement
-        if self.missions_completed == 1:
-            self.grant_achievement("first_launch")
+        self.award_xp(xp_earned)
+        self.award_credits(credits_earned)
 
-        # Check for perfect_score achievement
+        if is_win:
+            self.missions_completed += 1
+
+        # Evaluate achievement triggers
+        new_achievements: list[str] = []
+
+        if self.missions_completed == 1 and is_win:
+            if self.grant_achievement("first_launch"):
+                new_achievements.append("first_launch")
+
         if grade == Grade.A_PLUS:
-            self.grant_achievement("perfect_score")
+            if self.grant_achievement("perfect_score"):
+                new_achievements.append("perfect_score")
 
-        return {"xp_earned": xp, "credits_earned": credits}
+        if stars == 3:
+            if self.grant_achievement("three_stars"):
+                new_achievements.append("three_stars")
+
+        if is_win and budget_spent_pct <= 50.0:
+            if self.grant_achievement("budget_master"):
+                new_achievements.append("budget_master")
+
+        if is_win and spacecraft_health_pct >= 95.0:
+            if self.grant_achievement("clean_telemetry"):
+                new_achievements.append("clean_telemetry")
+
+        if is_win and mission_id == "flood":
+            if self.grant_achievement("flood_responder"):
+                new_achievements.append("flood_responder")
+
+        if is_win and mission_id == "solar_storm":
+            if self.grant_achievement("solar_survivor"):
+                new_achievements.append("solar_survivor")
+
+        if is_win and mission_id == "volcano":
+            if self.grant_achievement("volcano_veteran"):
+                new_achievements.append("volcano_veteran")
+
+        if self.campaign.is_campaign_complete():
+            if self.grant_achievement("campaign_champion"):
+                new_achievements.append("campaign_champion")
+
+        if campaign_result.get("is_new_best_score") and not campaign_result.get("is_first_completion"):
+            if self.grant_achievement("what_if_analyst"):
+                new_achievements.append("what_if_analyst")
+
+        # Check for newly unlocked missions based on level and campaign
+        newly_unlocked = self.campaign.update_unlocks(self.level)
+
+        return {
+            "mission_id": mission_id,
+            "xp_earned": xp_earned,
+            "credits_earned": credits_earned,
+            "stars_earned": stars,
+            "best_stars": campaign_result.get("best_stars", stars),
+            "new_stars_earned": campaign_result.get("new_stars_earned", 0),
+            "is_first_completion": campaign_result["is_first_completion"],
+            "new_achievements": new_achievements,
+            "newly_unlocked_missions": newly_unlocked,
+            "total_xp": self.total_xp,
+            "level": self.level,
+            "engineering_credits": self.engineering_credits,
+            "explanation": campaign_result["explanation"],
+        }
+
+    # ── Save / Load Persistence ──────────────────────────────────────────
+
+    def to_json(self, indent: int = 2) -> str:
+        """Serialize player profile to JSON string."""
+        return self.model_dump_json(indent=indent)
+
+    @classmethod
+    def from_json(cls, json_str: str) -> PlayerProfile:
+        """Deserialize player profile from JSON string."""
+        return cls.model_validate_json(json_str)
+
+    def save_to_file(self, filepath: str | Path) -> None:
+        """Save player profile to disk atomically."""
+        p = Path(filepath)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = p.with_suffix(".tmp")
+        temp_path.write_text(self.to_json(), encoding="utf-8")
+        temp_path.replace(p)
+
+    @classmethod
+    def load_from_file(cls, filepath: str | Path) -> PlayerProfile:
+        """Load player profile from disk."""
+        p = Path(filepath)
+        if not p.exists():
+            raise FileNotFoundError(f"Player profile not found at {p}")
+        return cls.from_json(p.read_text(encoding="utf-8"))

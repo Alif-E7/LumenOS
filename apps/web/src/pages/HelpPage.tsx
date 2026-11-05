@@ -100,14 +100,53 @@ export function HelpPage() {
 
       {/* Beginner Mode vs Engineer Mode */}
       <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">Progressive Disclosure: Engineer Mode</h2>
+        <h2 className="text-xl font-bold text-white mb-4">Progressive Disclosure: Explorer vs Engineer Mode</h2>
         <Card title="Ages 10–15 Friendly + Advanced Telemetry" icon="⚙️">
-          <p className="text-sm text-slate-300 leading-relaxed mb-3">
-            By default, LumenOS presents clear visual progress bars, health percentages, and friendly status indicators.
-            Toggling <span className="text-cyan-400 font-semibold">Engineer Mode</span> reveals deep engineering telemetry:
-            instantaneous solar flux vectors, radiative heat balance equations, true anomaly in degrees,
-            exact RF slant range, and link margin calculations.
-          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
+            <div className="p-3 rounded-lg bg-slate-950/40 border border-slate-800">
+              <span className="font-semibold text-amber-400 block mb-1">Explorer Mode (Cadet)</span>
+              <p>
+                Guided choices, plain-language cues, safety guardrails, and contextual tooltips.
+                Ideal for ages 10–15 and classroom mission architecture.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-950/40 border border-slate-800">
+              <span className="font-semibold text-cyan-400 block mb-1">Engineer Mode (Advanced)</span>
+              <p>
+                Raw telemetry matrices: instantaneous solar flux vectors, radiative heat balance equations,
+                true anomaly in degrees, exact RF slant range, and watt-hour discharge curves.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* Sunrise Orbit Tutorial Section */}
+      <section className="mb-10">
+        <h2 className="text-xl font-bold text-white mb-4">Sunrise Orbit Onboarding Academy</h2>
+        <Card title="The 5 Orbital Stages of Flight" icon="🌅">
+          <div className="space-y-3 text-sm text-slate-300">
+            <div className="flex gap-3">
+              <span className="font-bold text-cyan-400 shrink-0">1. Orbit Basics:</span>
+              <span>Forward velocity (~7.67 km/s) continuously balances Earth's gravitational pull at 400 km.</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-cyan-400 shrink-0">2. Sunlight Power:</span>
+              <span>Solar arrays convert 1361 W/m² solar insolation into electrical power, charging the battery.</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-cyan-400 shrink-0">3. Earth Shadow:</span>
+              <span>Roughly 35 minutes of each 92-minute orbit is total darkness. Solar power generation drops to 0 W.</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-cyan-400 shrink-0">4. Battery Management:</span>
+              <span>Shed non-essential instrument loads to prevent battery Depth of Discharge (DoD) from triggering brownouts.</span>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-cyan-400 shrink-0">5. Sunrise Recharge:</span>
+              <span>Emerging from Earth's umbra restores solar power generation and recharges batteries to 100%.</span>
+            </div>
+          </div>
         </Card>
       </section>
     </div>

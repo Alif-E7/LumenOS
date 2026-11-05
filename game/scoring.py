@@ -86,13 +86,24 @@ class ScoreBreakdown(BaseModel):
     max_score: float
     score_fraction: float = Field(ge=0.0, le=1.0)
     grade: Grade
+    stars: int = Field(default=0, ge=0, le=3)
+    star_criteria: list[str] = Field(default_factory=list)
     categories: list[CategoryScore] = Field(default_factory=list)
     objective_results: list[ObjectiveResult] = Field(default_factory=list)
 
     @property
     def explanation(self) -> str:
-        lines = [f"Grade: {self.grade.value} — {self.total_score:.1f}/{self.max_score:.1f} ({self.score_fraction:.0%})"]
+        star_str = "★" * self.stars + "☆" * (3 - self.stars)
+        lines = [
+            f"Rating: {star_str} ({self.stars}/3 Stars)",
+            f"Grade: {self.grade.value} — {self.total_score:.1f}/{self.max_score:.1f} ({self.score_fraction:.0%})",
+        ]
+        if self.star_criteria:
+            lines.append("Star Breakdown:")
+            for sc in self.star_criteria:
+                lines.append(f"  • {sc}")
         lines.append("")
+        lines.append("Category Breakdown:")
         for cat in self.categories:
             lines.append(f"  {cat.category.value:12s}: {cat.weighted_score:6.1f} / {cat.max_possible * cat.weight:6.1f}  ({cat.explanation})")
         return "\n".join(lines)
@@ -230,12 +241,41 @@ class MissionScorer:
         total_max = sum(c.max_possible * c.weight for c in categories)
         fraction = total / total_max if total_max > 0 else 0.0
         fraction = min(max(fraction, 0.0), 1.0)
+        grade = score_to_grade(fraction)
+
+        # Star Rating Calculation (0 to 3 stars)
+        stars = 0
+        star_criteria: list[str] = []
+
+        # Criteria 1: Passing grade / primary objective completion
+        if grade != Grade.F and obj_fraction >= 0.5:
+            stars += 1
+            star_criteria.append("1st Star ★: Minimum mission objective threshold met.")
+        else:
+            star_criteria.append("No 1st Star: Mission failed to meet minimum objective threshold.")
+
+        # Criteria 2: High score / solid execution
+        if stars >= 1 and (fraction >= 0.80 or obj_fraction >= 0.90):
+            stars += 1
+            star_criteria.append("2nd Star ★: High efficiency execution (Score ≥ 80% or Objectives ≥ 90%).")
+
+        # Criteria 3: Mastery performance
+        if (stars >= 2
+                and fraction >= 0.90
+                and spacecraft_health_pct >= 75.0
+                and budget_remaining >= (total_budget * 0.10)):
+            stars += 1
+            star_criteria.append(
+                f"3rd Star ★: Operational Mastery (Score ≥ 90%, Health {spacecraft_health_pct:.0f}% ≥ 75%, Budget preserved)."
+            )
 
         return ScoreBreakdown(
             total_score=round(total, 2),
             max_score=round(total_max, 2),
             score_fraction=round(fraction, 4),
-            grade=score_to_grade(fraction),
+            grade=grade,
+            stars=stars,
+            star_criteria=star_criteria,
             categories=categories,
             objective_results=objective_results,
         )

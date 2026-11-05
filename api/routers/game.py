@@ -32,6 +32,7 @@ class GameStartRequest(BaseModel):
     spacecraft_id: Optional[str] = None
     seed: Optional[int] = None
     player_ids: Optional[list[str]] = None
+    difficulty: Optional[str] = None
 
 
 class GameStartResponse(BaseModel):
@@ -109,6 +110,9 @@ class ScoreResponse(BaseModel):
     max_score: float
     score_fraction: float
     grade: str
+    stars: int = Field(default=0, ge=0, le=3)
+    star_criteria: list[str] = Field(default_factory=list)
+    explanation: str = ""
     categories: list[dict[str, Any]]
 
 
@@ -168,6 +172,7 @@ async def start_game(body: GameStartRequest):
         seed=body.seed,
         player_ids=body.player_ids,
         time_step_seconds=settings.sim_time_step_seconds,
+        difficulty=body.difficulty,
     )
 
     return GameStartResponse(
@@ -243,6 +248,9 @@ async def get_score(session_id: str):
         max_score=breakdown.max_score,
         score_fraction=breakdown.score_fraction,
         grade=breakdown.grade.value,
+        stars=breakdown.stars,
+        star_criteria=breakdown.star_criteria,
+        explanation=breakdown.explanation,
         categories=[
             {
                 "category": cat.category.value,

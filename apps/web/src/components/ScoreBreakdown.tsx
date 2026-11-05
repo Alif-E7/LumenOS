@@ -37,11 +37,28 @@ export function ScoreBreakdown({ score, className }: ScoreBreakdownProps) {
             <span className="text-sm text-slate-500 font-normal"> / {Math.round(score.max_score).toLocaleString()} pts</span>
           </h2>
           <p className="text-sm text-slate-400">{pct}% mission success</p>
+          {score.stars !== undefined && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-amber-400 text-lg tracking-widest" aria-label={`${score.stars} of 3 stars`}>
+                {"★".repeat(score.stars)}{"☆".repeat(3 - score.stars)}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">({score.stars}/3 Stars)</span>
+            </div>
+          )}
         </div>
         <div className={cn("text-6xl font-black", gradeClass)} aria-label={`Grade ${score.grade}`}>
           {score.grade}
         </div>
       </div>
+
+      {score.star_criteria && score.star_criteria.length > 0 && (
+        <div className="mb-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs space-y-1">
+          <p className="font-semibold text-slate-300">Rating Breakdown:</p>
+          {score.star_criteria.map((crit, idx) => (
+            <p key={idx} className="text-slate-400">{crit}</p>
+          ))}
+        </div>
+      )}
 
       <ul className="space-y-4">
         {score.categories.map((cat: ScoreCategory) => {

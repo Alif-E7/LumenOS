@@ -17,6 +17,8 @@ import type {
   GameStateSummary,
   ScoreResponse,
   Telemetry,
+  CampaignMissionNode,
+  DifficultySetting,
   CreateRoomResponse,
   JoinRoomResponse,
   RoomInfoResponse,
@@ -77,6 +79,31 @@ export const listMissions = () => fetchJSON<MissionBrief[]>("/missions");
 export const getMission = (id: string) =>
   fetchJSON<MissionDetail>(`/missions/${id}`);
 
+export const getCampaignNodes = () =>
+  fetchJSON<CampaignMissionNode[]>("/missions/campaign/nodes");
+
+export const getSunriseTutorial = () =>
+  fetchJSON<{
+    is_tutorial: boolean;
+    title: string;
+    description: string;
+    stages: string[];
+    steps: Array<{
+      id: string;
+      stage: string;
+      title: string;
+      concept: string;
+      explorer_guidance: string;
+      engineer_telemetry_focus: string;
+      required_action: string;
+      hint: string;
+    }>;
+    contract: Record<string, unknown>;
+  }>("/missions/tutorial/sunrise");
+
+export const getDifficulties = () =>
+  fetchJSON<DifficultySetting[]>("/missions/difficulties");
+
 // ── Game sessions ───────────────────────────────────────────────────────────
 
 export const startGame = (body: {
@@ -84,6 +111,7 @@ export const startGame = (body: {
   spacecraft_id?: string;
   seed?: number;
   player_ids?: string[];
+  difficulty?: string;
 }) =>
   fetchJSON<GameStartResponse>("/game/start", {
     method: "POST",

@@ -59,6 +59,20 @@ class ObjectiveDefinition(BaseModel):
 # ── Conditions ───────────────────────────────────────────────────────────────
 
 
+class ContractOutcome(BaseModel):
+    """Detailed outcome evaluation with plain-language explanation."""
+    outcome: OutcomeType
+    explanation: str
+    primary_met_count: int
+    primary_total_count: int
+    optional_met_count: int
+    optional_total_count: int
+    primary_completion_pct: float
+    overall_score_pct: float
+    budget_remaining: float
+    spacecraft_health_pct: float
+
+
 class WinCondition(BaseModel):
     """Rules that determine a win."""
     min_primary_completion_pct: float = Field(
@@ -131,6 +145,158 @@ class MissionContract(BaseModel):
 
     # ── Outcome evaluation ───────────────────────────────────────────────
 
+    def evaluate_outcome_detailed(
+        self,
+        objective_scores: dict[str, float],
+        budget_remaining: float,
+        spacecraft_health_pct: float,
+        steps_elapsed: int,
+    ) -> ContractOutcome:
+        """
+        Evaluate mission outcome with full metrics and plain-language explanation.
+        """
+        primaries = self.primary_objectives
+        optionals = self.optional_objectives
+
+        primary_met = sum(1 for o in primaries if objective_scores.get(o.id, 0.0) >= 1.0)
+        primary_pct = (primary_met / len(primaries)) if primaries else 1.0
+
+        optional_met = sum(1 for o in optionals if objective_scores.get(o.id, 0.0) >= 1.0)
+
+        if self.total_weight > 0:
+            overall_score = sum(
+                objective_scores.get(o.id, 0.0) * o.weight
+                for o in self.objectives
+            ) / self.total_weight
+        else:
+            overall_score = 0.0
+
+        # Hard failures
+        if self.fail_condition.spacecraft_destroyed and spacecraft_health_pct <= 0:
+            return ContractOutcome(
+                outcome=OutcomeType.FAILURE,
+                explanation="Mission Failed: Spacecraft sustained catastrophic loss (health reached 0%).",
+                primary_met_count=primary_met,
+                primary_total_count=len(primaries),
+                optional_met_count=optional_met,
+                optional_total_count=len(optionals),
+                primary_completion_pct=primary_pct,
+                overall_score_pct=overall_score,
+                budget_remaining=budget_remaining,
+                spacecraft_health_pct=spacecraft_health_pct,
+            )
+
+        if self.fail_condition.min_health_pct > 0 and spacecraft_health_pct < self.fail_condition.min_health_pct:
+            return ContractOutcome(
+                outcome=OutcomeType.FAILURE,
+                explanation=f"Mission Failed: Spacecraft health dropped to {spacecraft_health_pct:.1f}%, below the required minimum threshold of {self.fail_condition.min_health_pct:.1f}%.",
+                primary_met_count=primary_met,
+                primary_total_count=len(primaries),
+                optional_met_count=optional_met,
+                optional_total_count=len(optionals),
+                primary_completion_pct=primary_pct,
+                overall_score_pct=overall_score,
+                budget_remaining=budget_remaining,
+                spacecraft_health_pct=spacecraft_health_pct,
+            )
+
+        if self.fail_condition.budget_exceeded and budget_remaining < 0:
+            return ContractOutcome(
+                outcome=OutcomeType.FAILURE,
+                explanation=f"Mission Failed: Budget depleted by {-budget_remaining:.1f} credits beyond contract limit.",
+                primary_met_count=primary_met,
+                primary_total_count=len(primaries),
+                optional_met_count=optional_met,
+                optional_total_count=len(optionals),
+                primary_completion_pct=primary_pct,
+                overall_score_pct=overall_score,
+                budget_remaining=budget_remaining,
+                spacecraft_health_pct=spacecraft_health_pct,
+            )
+
+        # Win check
+        if (primary_pct >= self.win_condition.min_primary_completion_pct
+                and overall_score >= self.win_condition.min_overall_score_pct):
+            opt_msg = f" with {optional_met}/{len(optionals)} optional objectives completed" if optionals else ""
+            explanation = (
+                f"Mission Accomplished: All primary objectives fulfilled ({primary_met}/{len(primaries)}){opt_msg}. "
+                f"Overall score {overall_score * 100:.1f}%. Spacecraft healthy at {spacecraft_health_pct:.1f}%. "
+                f"Budget remaining: {budget_remaining:.0f} credits."
+            )
+            return ContractOutcome(
+                outcome=OutcomeType.WIN,
+                explanation=explanation,
+                primary_met_count=primary_met,
+                primary_total_count=len(primaries),
+                optional_met_count=optional_met,
+                optional_total_count=len(optionals),
+                primary_completion_pct=primary_pct,
+                overall_score_pct=overall_score,
+                budget_remaining=budget_remaining,
+                spacecraft_health_pct=spacecraft_health_pct,
+            )
+
+        # Deadline check
+        if self.fail_condition.deadline_exceeded and steps_elapsed >= self.deadline_steps:
+            if overall_score > 0:
+                explanation = (
+                    f"Partial Success: Mission reached step deadline ({steps_elapsed}/{self.deadline_steps}). "
+                    f"Completed {primary_met}/{len(primaries)} primary objectives with overall score of {overall_score * 100:.1f}%."
+                )
+                return ContractOutcome(
+                    outcome=OutcomeType.PARTIAL_SUCCESS,
+                    explanation=explanation,
+                    primary_met_count=primary_met,
+                    primary_total_count=len(primaries),
+                    optional_met_count=optional_met,
+                    optional_total_count=len(optionals),
+                    primary_completion_pct=primary_pct,
+                    overall_score_pct=overall_score,
+                    budget_remaining=budget_remaining,
+                    spacecraft_health_pct=spacecraft_health_pct,
+                )
+            else:
+                return ContractOutcome(
+                    outcome=OutcomeType.FAILURE,
+                    explanation=f"Mission Failed: Deadline reached ({steps_elapsed} steps) without completing any objectives.",
+                    primary_met_count=primary_met,
+                    primary_total_count=len(primaries),
+                    optional_met_count=optional_met,
+                    optional_total_count=len(optionals),
+                    primary_completion_pct=primary_pct,
+                    overall_score_pct=overall_score,
+                    budget_remaining=budget_remaining,
+                    spacecraft_health_pct=spacecraft_health_pct,
+                )
+
+        # In-progress partial success evaluation
+        if overall_score >= self.win_condition.min_overall_score_pct * 0.5:
+            return ContractOutcome(
+                outcome=OutcomeType.PARTIAL_SUCCESS,
+                explanation=f"Mission in Progress: Partial completion ({overall_score * 100:.1f}% overall). {primary_met}/{len(primaries)} primaries met.",
+                primary_met_count=primary_met,
+                primary_total_count=len(primaries),
+                optional_met_count=optional_met,
+                optional_total_count=len(optionals),
+                primary_completion_pct=primary_pct,
+                overall_score_pct=overall_score,
+                budget_remaining=budget_remaining,
+                spacecraft_health_pct=spacecraft_health_pct,
+            )
+
+        return ContractOutcome(
+            outcome=OutcomeType.FAILURE,
+            explanation=f"Mission Incomplete: Progress ({overall_score * 100:.1f}%) below minimum qualification criteria.",
+            primary_met_count=primary_met,
+            primary_total_count=len(primaries),
+            optional_met_count=optional_met,
+            optional_total_count=len(optionals),
+            primary_completion_pct=primary_pct,
+            overall_score_pct=overall_score,
+            budget_remaining=budget_remaining,
+            spacecraft_health_pct=spacecraft_health_pct,
+        )
+
     def evaluate_outcome(
         self,
         objective_scores: dict[str, float],
@@ -140,58 +306,12 @@ class MissionContract(BaseModel):
     ) -> OutcomeType:
         """
         Determine the mission outcome given current progress.
-
-        Args:
-            objective_scores: mapping of objective_id → achieved fraction (0-1)
-            budget_remaining: remaining budget
-            spacecraft_health_pct: current health percentage
-            steps_elapsed: number of simulation steps elapsed
-
-        Returns:
-            OutcomeType — WIN, PARTIAL_SUCCESS, or FAILURE
+        Delegates to evaluate_outcome_detailed for single source of truth.
         """
-        # Check hard failure conditions
-        if self.fail_condition.spacecraft_destroyed and spacecraft_health_pct <= 0:
-            return OutcomeType.FAILURE
-        if self.fail_condition.min_health_pct > 0 and spacecraft_health_pct < self.fail_condition.min_health_pct:
-            return OutcomeType.FAILURE
-        if self.fail_condition.budget_exceeded and budget_remaining < 0:
-            return OutcomeType.FAILURE
-
-        # Calculate primary objective completion
-        primaries = self.primary_objectives
-        if primaries:
-            completed_primaries = sum(
-                1 for o in primaries
-                if objective_scores.get(o.id, 0.0) >= 1.0
-            )
-            primary_pct = completed_primaries / len(primaries)
-        else:
-            primary_pct = 1.0
-
-        # Calculate overall score
-        if self.total_weight > 0:
-            overall_score = sum(
-                objective_scores.get(o.id, 0.0) * o.weight
-                for o in self.objectives
-            ) / self.total_weight
-        else:
-            overall_score = 0.0
-
-        # Win check
-        if (primary_pct >= self.win_condition.min_primary_completion_pct
-                and overall_score >= self.win_condition.min_overall_score_pct):
-            return OutcomeType.WIN
-
-        # Deadline failure check
-        if self.fail_condition.deadline_exceeded and steps_elapsed >= self.deadline_steps:
-            # Still give partial credit if some objectives met
-            if overall_score > 0:
-                return OutcomeType.PARTIAL_SUCCESS
-            return OutcomeType.FAILURE
-
-        # In-progress: partial if some objectives are making progress
-        if overall_score >= self.win_condition.min_overall_score_pct * 0.5:
-            return OutcomeType.PARTIAL_SUCCESS
-
-        return OutcomeType.FAILURE
+        detailed = self.evaluate_outcome_detailed(
+            objective_scores=objective_scores,
+            budget_remaining=budget_remaining,
+            spacecraft_health_pct=spacecraft_health_pct,
+            steps_elapsed=steps_elapsed,
+        )
+        return detailed.outcome

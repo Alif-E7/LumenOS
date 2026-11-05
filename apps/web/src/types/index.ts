@@ -328,7 +328,53 @@ export interface ScoreResponse {
   max_score: number;
   score_fraction: number;
   grade: string;
+  stars?: number;
+  star_criteria?: string[];
+  explanation?: string;
   categories: ScoreCategory[];
+}
+
+// ── Campaign, Tutorial & Difficulty ─────────────────────────────────────────
+
+export interface CampaignMissionNode {
+  mission_id: string;
+  name: string;
+  codename: string;
+  order: number;
+  difficulty_level: number;
+  icon: string;
+  summary: string;
+  prerequisite_mission_id?: string | null;
+  prerequisite_min_stars: number;
+  prerequisite_player_level: number;
+  xp_first_completion: number;
+  credits_first_completion: number;
+  xp_replay_mastery: number;
+  credits_replay_mastery: number;
+}
+
+export interface DifficultySetting {
+  difficulty: string;
+  level: number;
+  name: string;
+  description: string;
+  budget_multiplier: number;
+  deadline_multiplier: number;
+  event_rate_multiplier: number;
+  objective_target_multiplier: number;
+  min_health_fail_pct: number;
+  reward_multiplier: number;
+}
+
+export interface TutorialStepInfo {
+  id: string;
+  stage: string;
+  title: string;
+  concept: string;
+  explorer_guidance: string;
+  engineer_telemetry_focus: string;
+  required_action: string;
+  hint: string;
 }
 
 // ── Co-op rooms ─────────────────────────────────────────────────────────────

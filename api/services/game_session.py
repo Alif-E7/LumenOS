@@ -25,6 +25,7 @@ from pathlib import Path
 from api.config import settings
 from api.models.mission import MissionDetail
 from game.contracts import MissionContract, ObjectiveDefinition, Difficulty, OutcomeType
+from game.difficulty import apply_difficulty_to_contract
 from game.events import EventDirector, EventConsequence
 from game.objectives import ObjectiveEvaluator
 from game.roles import RoleName, RoleAssignment, assign_roles, has_permission
@@ -53,6 +54,7 @@ class GameSession:
         seed: int = 42,
         player_ids: list[str] | None = None,
         time_step_seconds: float = 60.0,
+        difficulty: Difficulty | str | None = None,
     ):
         self.session_id = session_id
         self.mission = mission
@@ -84,7 +86,7 @@ class GameSession:
             )
             for obj in mission.objectives
         ]
-        self._contract = MissionContract(
+        contract = MissionContract(
             mission_id=mission.id,
             mission_name=mission.name,
             description=mission.description,
@@ -94,6 +96,9 @@ class GameSession:
             objectives=objectives,
             seed=seed,
         )
+        if difficulty is not None:
+            contract = apply_difficulty_to_contract(contract, difficulty)
+        self._contract = contract
 
         # Event director (seeded)
         self._events = EventDirector(
@@ -582,6 +587,7 @@ class SessionManager:
         seed: int | None = None,
         player_ids: list[str] | None = None,
         time_step_seconds: float = 60.0,
+        difficulty: Difficulty | str | None = None,
     ) -> GameSession:
         """Create and register a new game session."""
         session_id = f"ses_{uuid4().hex[:12]}"
@@ -594,6 +600,7 @@ class SessionManager:
             seed=actual_seed,
             player_ids=player_ids,
             time_step_seconds=time_step_seconds,
+            difficulty=difficulty,
         )
         self._sessions[session_id] = session
         return session

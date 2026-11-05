@@ -14,6 +14,9 @@ from fastapi import APIRouter, HTTPException
 
 from api.config import settings
 from api.models.mission import MissionBrief, MissionDetail
+from game.campaign import CAMPAIGN_ORDER, CAMPAIGN_NODE_MAP
+from game.tutorial import TUTORIAL_STEPS, TutorialContractFactory
+from game.difficulty import DIFFICULTY_PROFILES
 
 router = APIRouter(prefix="/missions", tags=["missions"])
 
@@ -61,6 +64,48 @@ async def list_missions():
     """List all available missions (summary only)."""
     missions = _load_missions()
     return [MissionBrief(**m.model_dump()) for m in missions.values()]
+
+
+@router.get("/campaign/nodes")
+async def get_campaign_nodes():
+    """Get the 4-mission campaign progression tree and unlock prerequisites."""
+    return [node.model_dump() for node in CAMPAIGN_ORDER]
+
+
+@router.get("/tutorial/sunrise")
+async def get_sunrise_tutorial():
+    """Get the Sunrise Orbit onboarding tutorial details, steps, and educational contract."""
+    contract = TutorialContractFactory.create_contract()
+    return {
+        "is_tutorial": True,
+        "title": "Sunrise Orbit Tutorial",
+        "description": contract.description,
+        "stages": [s.value for s in [
+            step.stage for step in TUTORIAL_STEPS
+        ]],
+        "steps": [s.model_dump() for s in TUTORIAL_STEPS],
+        "contract": contract.model_dump(),
+    }
+
+
+@router.get("/difficulties")
+async def get_difficulties():
+    """Get available difficulty levels and their resource modifiers."""
+    return [
+        {
+            "difficulty": p.difficulty.value,
+            "level": p.level_int,
+            "name": p.name,
+            "description": p.description,
+            "budget_multiplier": p.budget_multiplier,
+            "deadline_multiplier": p.deadline_multiplier,
+            "event_rate_multiplier": p.event_rate_multiplier,
+            "objective_target_multiplier": p.objective_target_multiplier,
+            "min_health_fail_pct": p.min_health_fail_pct,
+            "reward_multiplier": p.reward_multiplier,
+        }
+        for p in DIFFICULTY_PROFILES.values()
+    ]
 
 
 @router.get("/{mission_id}", response_model=MissionDetail)
