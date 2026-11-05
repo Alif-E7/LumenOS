@@ -525,3 +525,63 @@ export interface RoomServerMessage {
   [key: string]: unknown;
 }
 
+// ── Simulation Clock, Environment & Timeline (Prompt 6) ─────────────────────
+
+export type ClockStatus = "PAUSED" | "RUNNING" | "FAST_FORWARDING";
+
+export interface ClockState {
+  status: ClockStatus;
+  speed_multiplier: number;
+  time_step_seconds: number;
+  elapsed_seconds: number;
+  step_count: number;
+  max_steps: number;
+}
+
+export type TimelineEventType =
+  | "SUNRISE"
+  | "SUNSET"
+  | "GROUND_STATION_AOS"
+  | "GROUND_STATION_TCA"
+  | "GROUND_STATION_LOS"
+  | "OBSERVATION_OPPORTUNITY_AOS"
+  | "OBSERVATION_OPPORTUNITY_TCA"
+  | "OBSERVATION_OPPORTUNITY_LOS"
+  | "RADIATION_SAA_ENTER"
+  | "RADIATION_SAA_EXIT"
+  | "RADIATION_AURORAL_ENTER"
+  | "RADIATION_AURORAL_EXIT"
+  | "STOCHASTIC_ANOMALY";
+
+export interface TimelineEvent {
+  event_id: string;
+  event_type: TimelineEventType;
+  timestamp_seconds: number;
+  step: number;
+  label: string;
+  description: string;
+  is_forecast: boolean;
+  forecast_confidence: number;
+  target_or_station_id?: string | null;
+  payload?: Record<string, any>;
+}
+
+export interface GroundTrackPoint {
+  timestamp_seconds: number;
+  latitude_deg: number;
+  longitude_deg: number;
+  altitude_km: number;
+  velocity_km_s: number;
+  in_eclipse: boolean;
+  sunlight_fraction: number;
+  in_saa: boolean;
+}
+
+export interface CheckpointData {
+  session_id: string;
+  mission_id: string;
+  sim_checkpoint: Record<string, any>;
+  game_state: Record<string, any>;
+  created_at: number;
+}
+

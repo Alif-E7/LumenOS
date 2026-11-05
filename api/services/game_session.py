@@ -35,7 +35,28 @@ from game.state import GameState
 from simulation.core import (
     SimulationRunner, SimulationConfig, SpacecraftConfig, SimulationSnapshot,
 )
-from simulation.physics.orbital import OrbitalElements
+from simulation.physics.orbital import OrbitalElements, GroundTarget
+from simulation.timeline import TimelineEvent, TimelineEventType
+
+
+DEFAULT_MISSION_TARGETS: dict[str, list[GroundTarget]] = {
+    "wildfire": [
+        GroundTarget(target_id="fire_zone_alpha", name="Fire Zone Alpha (Blue Mountains)", latitude_deg=-33.7, longitude_deg=150.3, target_type="wildfire", priority=1),
+        GroundTarget(target_id="fire_zone_bravo", name="Fire Zone Bravo (Gippsland)", latitude_deg=-37.5, longitude_deg=147.2, target_type="wildfire", priority=2),
+        GroundTarget(target_id="fire_zone_charlie", name="Fire Zone Charlie (Hunter Valley)", latitude_deg=-32.8, longitude_deg=151.2, target_type="wildfire", priority=3),
+    ],
+    "flood": [
+        GroundTarget(target_id="flood_basin_alpha", name="Brahmaputra Flood Plain", latitude_deg=26.1, longitude_deg=91.7, target_type="flood_zone", priority=1),
+        GroundTarget(target_id="flood_basin_bravo", name="Ganges Delta Confluence", latitude_deg=23.4, longitude_deg=90.2, target_type="flood_zone", priority=2),
+    ],
+    "solar_storm": [
+        GroundTarget(target_id="solar_polar_station", name="Svalbard Auroral Observatory", latitude_deg=78.2, longitude_deg=15.4, target_type="aurora_station", priority=1),
+    ],
+    "volcano": [
+        GroundTarget(target_id="volcano_merapi", name="Mount Merapi Caldera", latitude_deg=-7.54, longitude_deg=110.44, target_type="active_volcano", priority=1),
+        GroundTarget(target_id="volcano_krakatoa", name="Anak Krakatau", latitude_deg=-6.10, longitude_deg=105.42, target_type="active_volcano", priority=2),
+    ],
+}
 
 
 class GameSession:
@@ -65,6 +86,7 @@ class GameSession:
         max_steps = int((mission.duration_hours * 3600) / time_step_seconds)
 
         # Simulation engine
+        mission_targets = DEFAULT_MISSION_TARGETS.get(mission.id.lower(), [])
         self._sim = SimulationRunner(
             config=SimulationConfig(
                 seed=seed,
@@ -72,6 +94,7 @@ class GameSession:
                 max_steps=max_steps,
             ),
             spacecraft=spacecraft_config,
+            targets=mission_targets,
         )
 
         # Contract (game rules for this session)
@@ -564,6 +587,107 @@ class GameSession:
         if sim_action:
             return self._sim.apply_action(sim_action)
         return {"applied": False, "changes": ["no_sim_mapping"]}
+
+    # ── Simulation Clock & Environment Controls (Prompt 6) ───────────────────
+
+    def pause(self) -> None:
+        """Pause the simulation clock."""
+        self._sim.pause()
+        self._state.status = "paused"
+
+    def resume(self) -> None:
+        """Resume running the simulation clock."""
+        self._sim.resume()
+        self._state.status = "running"
+
+    def set_speed(self, multiplier: float) -> None:
+        """Set simulation speed multiplier (1x, 10x, 100x)."""
+        self._sim.set_speed(multiplier)
+
+    def get_clock_state(self) -> dict[str, Any]:
+        """Return the current simulation clock state."""
+        return self._sim.clock.to_state().model_dump()
+
+    def fast_forward_to_time(self, target_seconds: float) -> dict[str, Any]:
+        """Fast-forward simulation time sequentially up to target_seconds."""
+        snap = self._sim.fast_forward_to_time(target_seconds)
+        new_events = self._events.tick(snap.step)
+        self._update_objectives(snap)
+        self._sync_state(snap, new_events)
+        self._check_outcome(snap)
+        return {
+            "elapsed_seconds": self._sim.elapsed_seconds,
+            "step": self._sim.current_step,
+            "spacecraft_health_pct": snap.spacecraft_health_pct,
+            "game_state": self._state.model_dump(),
+        }
+
+    def fast_forward_to_event(self, event_type: str) -> dict[str, Any]:
+        """Fast-forward simulation time to the next occurrence of an event type."""
+        snap, event = self._sim.fast_forward_to_event(event_type)
+        new_events = self._events.tick(snap.step)
+        self._update_objectives(snap)
+        self._sync_state(snap, new_events)
+        self._check_outcome(snap)
+        return {
+            "target_event": event.model_dump() if event else None,
+            "elapsed_seconds": self._sim.elapsed_seconds,
+            "step": self._sim.current_step,
+            "game_state": self._state.model_dump(),
+        }
+
+    def get_forecast_timeline(self, horizon_seconds: float = 86400.0) -> list[dict[str, Any]]:
+        """
+        Generate deterministic forward timeline events.
+        Epistemic barrier: includes only predictable ephemeris and orbital geometry.
+        """
+        events = self._sim.get_forecast_timeline(horizon_seconds=horizon_seconds)
+        return [e.model_dump() for e in events]
+
+    def save_checkpoint(self, metadata: Optional[dict[str, Any]] = None) -> dict[str, Any]:
+        """Capture complete session checkpoint."""
+        sim_ckpt = self._sim.save_checkpoint(metadata=metadata)
+        return {
+            "session_id": self.session_id,
+            "mission_id": self.mission.id,
+            "sim_checkpoint": sim_ckpt,
+            "game_state": self._state.model_dump(),
+            "created_at": time.time(),
+        }
+
+    def load_checkpoint(self, checkpoint_data: dict[str, Any]) -> None:
+        """Restore complete session checkpoint."""
+        self._sim.load_checkpoint(checkpoint_data["sim_checkpoint"])
+        if "game_state" in checkpoint_data:
+            gs = checkpoint_data["game_state"]
+            self._state.current_step = gs.get("current_step", gs.get("step", self._sim.current_step))
+            self._state.elapsed_seconds = gs.get("elapsed_seconds", self._sim.elapsed_seconds)
+            self._state.budget_remaining = gs.get("budget_remaining", self._state.budget_remaining)
+
+    def get_ground_track(
+        self,
+        num_points: int = 100,
+        duration_seconds: Optional[float] = None,
+    ) -> list[dict[str, Any]]:
+        """Compute ground track points along the orbit for 2D/3D map display."""
+        period_s = self._sim._orbital.orbital_period()
+        dur = duration_seconds if duration_seconds is not None else period_s
+        dt = dur / max(num_points, 1)
+        points = []
+        for i in range(num_points + 1):
+            t = self._sim.elapsed_seconds + i * dt
+            st = self._sim._orbital.propagate(t)
+            points.append({
+                "timestamp_seconds": round(t, 1),
+                "latitude_deg": round(st.latitude_deg, 3),
+                "longitude_deg": round(st.longitude_deg, 3),
+                "altitude_km": round(st.altitude_km, 2),
+                "velocity_km_s": round(st.velocity_km_s, 3),
+                "in_eclipse": st.in_eclipse,
+                "sunlight_fraction": st.sunlight_fraction,
+                "in_saa": st.in_saa,
+            })
+        return points
 
 
 # ── Session manager (in-memory for now) ──────────────────────────────────

@@ -118,6 +118,28 @@ class ScoreResponse(BaseModel):
     categories: list[dict[str, Any]]
 
 
+class FastForwardRequest(BaseModel):
+    """Request body for controlled fast-forwarding."""
+    target_seconds: Optional[float] = None
+    event_type: Optional[str] = None
+
+
+class ClockSpeedRequest(BaseModel):
+    """Request body for setting clock speed."""
+    speed: float = Field(..., gt=0.0)
+
+
+class CheckpointSaveResponse(BaseModel):
+    """Response containing serialized checkpoint."""
+    session_id: str
+    checkpoint: dict[str, Any]
+
+
+class CheckpointRestoreRequest(BaseModel):
+    """Request body for restoring a checkpoint."""
+    checkpoint: dict[str, Any]
+
+
 class SessionDeletedResponse(BaseModel):
     """Confirmation that a session was deleted."""
     session_id: str
@@ -266,6 +288,121 @@ async def get_score(session_id: str):
             for cat in breakdown.categories
         ],
     )
+
+
+@router.get("/{session_id}/clock")
+async def get_clock(session_id: str):
+    """Get the current simulation clock status and speed multiplier."""
+    session = _get_session_or_404(session_id)
+    return {
+        "session_id": session_id,
+        "clock": session.get_clock_state(),
+    }
+
+
+@router.post("/{session_id}/clock/pause")
+async def pause_clock(session_id: str):
+    """Pause the simulation clock."""
+    session = _get_session_or_404(session_id)
+    session.pause()
+    return {
+        "session_id": session_id,
+        "status": "PAUSED",
+        "clock": session.get_clock_state(),
+    }
+
+
+@router.post("/{session_id}/clock/resume")
+async def resume_clock(session_id: str):
+    """Resume the simulation clock."""
+    session = _get_session_or_404(session_id)
+    session.resume()
+    return {
+        "session_id": session_id,
+        "status": "RUNNING",
+        "clock": session.get_clock_state(),
+    }
+
+
+@router.post("/{session_id}/clock/speed")
+async def set_clock_speed(session_id: str, body: ClockSpeedRequest):
+    """Set the simulation speed multiplier (e.g. 1.0, 10.0, 100.0)."""
+    session = _get_session_or_404(session_id)
+    session.set_speed(body.speed)
+    return {
+        "session_id": session_id,
+        "clock": session.get_clock_state(),
+    }
+
+
+@router.post("/{session_id}/clock/fast_forward")
+async def fast_forward_clock(session_id: str, body: FastForwardRequest):
+    """
+    Controlled fast-forward to a target time or next occurrence of an event type.
+    """
+    session = _get_session_or_404(session_id)
+    if body.target_seconds is not None:
+        result = session.fast_forward_to_time(body.target_seconds)
+    elif body.event_type is not None:
+        result = session.fast_forward_to_event(body.event_type)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'target_seconds' or 'event_type' must be provided for fast-forward",
+        )
+    return {
+        "session_id": session_id,
+        "result": result,
+    }
+
+
+@router.get("/{session_id}/timeline")
+async def get_forecast_timeline(session_id: str, horizon_seconds: float = 86400.0):
+    """
+    Get deterministic future timeline forecast (sunlight, eclipse, passes, targets, SAA).
+    Protects epistemic barrier: includes only predictable ephemeris and geometry.
+    """
+    session = _get_session_or_404(session_id)
+    timeline = session.get_forecast_timeline(horizon_seconds=horizon_seconds)
+    return {
+        "session_id": session_id,
+        "horizon_seconds": horizon_seconds,
+        "timeline_events": timeline,
+    }
+
+
+@router.get("/{session_id}/orbit/groundtrack")
+async def get_ground_track(session_id: str, num_points: int = 100, duration_seconds: Optional[float] = None):
+    """Get orbit ground track coordinates for map visualization."""
+    session = _get_session_or_404(session_id)
+    points = session.get_ground_track(num_points=num_points, duration_seconds=duration_seconds)
+    return {
+        "session_id": session_id,
+        "points": points,
+    }
+
+
+@router.post("/{session_id}/checkpoint/save", response_model=CheckpointSaveResponse)
+async def save_checkpoint(session_id: str):
+    """Save an exact, deterministic simulation checkpoint."""
+    session = _get_session_or_404(session_id)
+    checkpoint = session.save_checkpoint()
+    return CheckpointSaveResponse(
+        session_id=session_id,
+        checkpoint=checkpoint,
+    )
+
+
+@router.post("/{session_id}/checkpoint/restore")
+async def restore_checkpoint(session_id: str, body: CheckpointRestoreRequest):
+    """Restore an exact simulation state from a checkpoint."""
+    session = _get_session_or_404(session_id)
+    session.load_checkpoint(body.checkpoint)
+    return {
+        "session_id": session_id,
+        "restored": True,
+        "clock": session.get_clock_state(),
+    }
 
 
 @router.delete("/{session_id}", response_model=SessionDeletedResponse)

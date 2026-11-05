@@ -600,3 +600,4 @@ def get_items_by_subsystem(subsystem: SubsystemType | str) -> list[CatalogItem]:
     """Filter catalog by subsystem category."""
     sub_str = subsystem.value if isinstance(subsystem, SubsystemType) else str(subsystem)
     return [i for i in ALL_CATALOG_ITEMS if i.subsystem.value == sub_str]
+

@@ -14,6 +14,10 @@ import type {
   SpacecraftDesign,
   LiveEngineeringMetrics,
   PreLaunchReviewReport,
+  ClockState,
+  TimelineEvent,
+  GroundTrackPoint,
+  CheckpointData,
   GameStartResponse,
   StepResult,
   ActionResponse,
@@ -217,4 +221,81 @@ export const roomSocketUrl = (
   const name = displayName ? `?display_name=${encodeURIComponent(displayName)}` : "";
   return `${proto}://${window.location.host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
 };
+
+// ── Simulation Clock, Environment & Timeline API (Prompt 6) ─────────────────
+
+export const getSimulationClock = (sessionId: string) =>
+  fetchJSON<{ session_id: string; clock: ClockState }>(`/game/${sessionId}/clock`);
+
+export const pauseSimulationClock = (sessionId: string) =>
+  fetchJSON<{ session_id: string; status: string; clock: ClockState }>(
+    `/game/${sessionId}/clock/pause`,
+    { method: "POST" }
+  );
+
+export const resumeSimulationClock = (sessionId: string) =>
+  fetchJSON<{ session_id: string; status: string; clock: ClockState }>(
+    `/game/${sessionId}/clock/resume`,
+    { method: "POST" }
+  );
+
+export const setSimulationClockSpeed = (sessionId: string, speed: number) =>
+  fetchJSON<{ session_id: string; clock: ClockState }>(
+    `/game/${sessionId}/clock/speed`,
+    {
+      method: "POST",
+      body: JSON.stringify({ speed }),
+    }
+  );
+
+export const fastForwardSimulation = (
+  sessionId: string,
+  params: { target_seconds?: number; event_type?: string }
+) =>
+  fetchJSON<{ session_id: string; result: any }>(
+    `/game/${sessionId}/clock/fast_forward`,
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+
+export const getForecastTimeline = (sessionId: string, horizonSeconds = 86400) =>
+  fetchJSON<{
+    session_id: string;
+    horizon_seconds: number;
+    timeline_events: TimelineEvent[];
+  }>(`/game/${sessionId}/timeline?horizon_seconds=${horizonSeconds}`);
+
+export const getGroundTrack = (
+  sessionId: string,
+  numPoints = 100,
+  durationSeconds?: number
+) => {
+  const query = durationSeconds
+    ? `?num_points=${numPoints}&duration_seconds=${durationSeconds}`
+    : `?num_points=${numPoints}`;
+  return fetchJSON<{ session_id: string; points: GroundTrackPoint[] }>(
+    `/game/${sessionId}/orbit/groundtrack${query}`
+  );
+};
+
+export const saveSimulationCheckpoint = (sessionId: string) =>
+  fetchJSON<{ session_id: string; checkpoint: CheckpointData }>(
+    `/game/${sessionId}/checkpoint/save`,
+    { method: "POST" }
+  );
+
+export const restoreSimulationCheckpoint = (
+  sessionId: string,
+  checkpoint: Record<string, any>
+) =>
+  fetchJSON<{ session_id: string; restored: boolean; clock: ClockState }>(
+    `/game/${sessionId}/checkpoint/restore`,
+    {
+      method: "POST",
+      body: JSON.stringify({ checkpoint }),
+    }
+  );
+
 
