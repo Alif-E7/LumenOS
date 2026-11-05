@@ -377,6 +377,108 @@ export interface TutorialStepInfo {
   hint: string;
 }
 
+// ── Spacecraft Catalog & Pre-Launch Review (Prompt 5) ────────────────────────
+
+export interface CatalogItem {
+  id: string;
+  name: string;
+  subsystem: string;
+  category_label: string;
+  description: string;
+  mass_kg: number;
+  cost_credits: number;
+  power_draw_w: number;
+  power_generation_w: number;
+  heat_contribution_w: number;
+  data_rate_kbps: number;
+  storage_capacity_mb: number;
+  battery_capacity_wh: number;
+  processing_mips: number;
+  heat_rejection_w: number;
+  performance_score: number;
+  reliability: number;
+  science_multiplier: number;
+  compatible_missions: string[];
+  incompatible_components: string[];
+  required_components: string[];
+  educational_notes: string;
+  assumptions_and_units: string;
+}
+
+export interface SpacecraftDesign {
+  design_id?: string;
+  name: string;
+  mission_id: string;
+  launcher_id: string;
+  orbit_id: string;
+  instrument_ids: string[];
+  computer_id: string;
+  battery_id: string;
+  solar_id: string;
+  thermal_id: string;
+  comms_id: string;
+  storage_id: string;
+  shielding_id: string;
+  chassis_dry_mass_kg?: number;
+  fuel_mass_kg?: number;
+}
+
+export interface LiveEngineeringMetrics {
+  total_mass_kg: number;
+  launcher_capacity_kg: number;
+  mass_margin_kg: number;
+  mass_margin_pct: number;
+  total_cost_credits: number;
+  contract_budget_credits: number;
+  budget_remaining_credits: number;
+  budget_margin_pct: number;
+  power_generation_sunlight_w: number;
+  power_nominal_load_w: number;
+  power_peak_load_w: number;
+  net_power_sunlight_w: number;
+  battery_capacity_wh: number;
+  eclipse_duration_minutes: number;
+  eclipse_energy_demand_wh: number;
+  eclipse_dod_pct: number;
+  eclipse_battery_reserve_pct: number;
+  heat_generated_w: number;
+  heat_rejected_w: number;
+  thermal_margin_pct: number;
+  data_generation_rate_kbps: number;
+  storage_capacity_mb: number;
+  storage_hours_to_fill: number;
+  downlink_rate_kbps: number;
+  downlink_per_pass_mb: number;
+  science_value_rating: number;
+  mission_suitability_pct: number;
+  reliability_rating: number;
+}
+
+export interface EngineeringCheckResult {
+  check_id: string;
+  category: string;
+  title: string;
+  status: "PASS" | "WARNING" | "ERROR";
+  value_measured: string;
+  threshold_required: string;
+  explanation: string;
+  revision_recommendation?: string | null;
+}
+
+export interface PreLaunchReviewReport {
+  design_name: string;
+  mission_id: string;
+  readiness: "FLIGHT_READY" | "EXPERIMENTAL_LAUNCH" | "GROUNDED";
+  can_launch: boolean;
+  is_experimental: boolean;
+  error_count: number;
+  warning_count: number;
+  pass_count: number;
+  checks: EngineeringCheckResult[];
+  active_risks: string[];
+  metrics: LiveEngineeringMetrics;
+}
+
 // ── Co-op rooms ─────────────────────────────────────────────────────────────
 
 export interface ParticipantInfo {

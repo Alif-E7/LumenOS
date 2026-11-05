@@ -18,6 +18,20 @@ from api.models.spacecraft import (
     SpacecraftUpdate,
     SpacecraftValidation,
 )
+from game.catalog import ALL_CATALOG_ITEMS, CatalogItem
+from game.designer import SpacecraftDesign, LiveEngineeringMetrics, DesignerEngine
+from game.engineering_review import PreLaunchReviewReport, PreLaunchReviewer, PRESET_BUILDS
+from pydantic import BaseModel, Field
+
+
+class DesignerEvaluateRequest(BaseModel):
+    design: SpacecraftDesign
+    contract_budget: float = Field(default=10000.0, ge=0.0)
+
+
+class DesignerReviewRequest(BaseModel):
+    design: SpacecraftDesign
+    contract_budget: float = Field(default=10000.0, ge=0.0)
 
 router = APIRouter(prefix="/spacecraft", tags=["spacecraft"])
 
@@ -102,6 +116,36 @@ async def create_spacecraft(body: SpacecraftCreate,
     await session.commit()
     await session.refresh(row)
     return _row_to_response(row)
+
+
+@router.get("/catalog", response_model=list[CatalogItem])
+async def get_spacecraft_catalog():
+    """Retrieve the full data-driven spacecraft component and subsystem catalog."""
+    return ALL_CATALOG_ITEMS
+
+
+@router.get("/designer/presets")
+async def get_designer_presets():
+    """Retrieve reference viable spacecraft designs for each campaign scenario."""
+    return {
+        mission: {
+            variant: design.model_dump()
+            for variant, design in variants.items()
+        }
+        for mission, variants in PRESET_BUILDS.items()
+    }
+
+
+@router.post("/designer/evaluate", response_model=LiveEngineeringMetrics)
+async def evaluate_spacecraft_design(body: DesignerEvaluateRequest):
+    """Compute live physics-derived telemetry and margins for a spacecraft design."""
+    return DesignerEngine.calculate_metrics(body.design, contract_budget=body.contract_budget)
+
+
+@router.post("/designer/review", response_model=PreLaunchReviewReport)
+async def review_spacecraft_design(body: DesignerReviewRequest):
+    """Run the comprehensive 10-check Pre-Launch Engineering Review on a design."""
+    return PreLaunchReviewer.evaluate(body.design, contract_budget=body.contract_budget)
 
 
 @router.get("/{spacecraft_id}", response_model=SpacecraftResponse)

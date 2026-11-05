@@ -16,6 +16,7 @@ from api.config import settings
 from api.models.mission import MissionDetail
 from api.routers.missions import _load_missions
 from api.services.game_session import session_manager
+from game.designer import SpacecraftDesign
 from simulation.core import SpacecraftConfig
 from simulation.physics.orbital import OrbitalElements
 
@@ -33,6 +34,7 @@ class GameStartRequest(BaseModel):
     seed: Optional[int] = None
     player_ids: Optional[list[str]] = None
     difficulty: Optional[str] = None
+    design: Optional[SpacecraftDesign] = None
 
 
 class GameStartResponse(BaseModel):
@@ -162,8 +164,11 @@ async def start_game(body: GameStartRequest):
             detail=f"Mission '{body.mission_id}' not found",
         )
 
-    # Build spacecraft config
-    spacecraft = _build_default_spacecraft(mission)
+    # Build spacecraft config from custom design or default
+    if body.design is not None:
+        spacecraft = body.design.to_spacecraft_config()
+    else:
+        spacecraft = _build_default_spacecraft(mission)
 
     # Create session
     session = session_manager.create_session(

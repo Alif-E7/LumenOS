@@ -10,6 +10,10 @@ import type {
   SpacecraftCreate,
   SpacecraftResponse,
   SpacecraftValidation,
+  CatalogItem,
+  SpacecraftDesign,
+  LiveEngineeringMetrics,
+  PreLaunchReviewReport,
   GameStartResponse,
   StepResult,
   ActionResponse,
@@ -70,6 +74,32 @@ export const deleteSpacecraft = (id: string) =>
 export const validateSpacecraft = (id: string) =>
   fetchJSON<SpacecraftValidation>(`/spacecraft/${id}/validate`, {
     method: "POST",
+  });
+
+export const getSpacecraftCatalog = () =>
+  fetchJSON<CatalogItem[]>("/spacecraft/catalog");
+
+export const getDesignerPresets = () =>
+  fetchJSON<Record<string, Record<string, SpacecraftDesign>>>(
+    "/spacecraft/designer/presets"
+  );
+
+export const evaluateDesign = (
+  design: SpacecraftDesign,
+  contractBudget = 10000.0
+) =>
+  fetchJSON<LiveEngineeringMetrics>("/spacecraft/designer/evaluate", {
+    method: "POST",
+    body: JSON.stringify({ design, contract_budget: contractBudget }),
+  });
+
+export const reviewDesign = (
+  design: SpacecraftDesign,
+  contractBudget = 10000.0
+) =>
+  fetchJSON<PreLaunchReviewReport>("/spacecraft/designer/review", {
+    method: "POST",
+    body: JSON.stringify({ design, contract_budget: contractBudget }),
   });
 
 // ── Missions ────────────────────────────────────────────────────────────────
