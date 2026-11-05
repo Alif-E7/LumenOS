@@ -434,3 +434,4 @@ class TestVersioningAndAPIContracts:
         assert reconstructed.player_id == "user_789"
         assert reconstructed.engineering_credits == 3400
         assert reconstructed.achievements[0].is_unlocked
+
