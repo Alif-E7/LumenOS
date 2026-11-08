@@ -309,8 +309,27 @@ class CommandResolver:
             sim_action = {"type": "adjust_heater_setpoint", "heater_setpoint_c": sp}
 
         elif act_type == ActionType.SET_ATTITUDE:
-            mode = params.get("mode", "Nadir (Earth)")
+            mode = params.get("mode", params.get("target_mode", "Nadir (Earth)"))
             sim_action = {"type": "set_attitude", "mode": mode}
+
+        elif act_type == ActionType.ADJUST_ORBIT:
+            sim_action = {
+                "type": "adjust_orbit",
+                "delta_altitude_km": params.get("delta_altitude_km", 0.0),
+                "delta_inclination_deg": params.get("delta_inclination_deg", 0.0),
+            }
+
+        elif act_type == ActionType.COLLECT_DATA:
+            sim_action = {
+                "type": "collect_data",
+                "volume_mb": params.get("volume_mb", params.get("duration_steps", 1) * 20.0),
+            }
+
+        elif act_type == ActionType.DOWNLINK_DATA:
+            sim_action = {
+                "type": "downlink_data",
+                "data_mb": params.get("data_mb", 50.0),
+            }
 
         elif act_type == ActionType.USE_LATER_PASS:
             # Safely interrupts comms until next window
@@ -379,3 +398,4 @@ class CommandResolver:
             CommandAuditRecord.model_validate(r)
             for r in data.get("audit_log", [])
         ]
+

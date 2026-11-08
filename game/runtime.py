@@ -25,7 +25,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from api.models.mission import EventSeverity, MissionEventTemplate
+from api.models.mission import EventSeverity, MissionEventTemplate, MissionDetail
 from game.actions import ActionType
 from game.command_resolver import (
     CommandResolver,
@@ -34,6 +34,7 @@ from game.command_resolver import (
     CommandStatus,
 )
 from game.contracts import MissionContract, ObjectiveDefinition, OutcomeType, Difficulty
+from game.difficulty import apply_difficulty_to_contract
 from game.events import EventDirector, ActiveEvent, EventConsequence, EventType
 from game.faults import SystemFault, FaultType, create_fault
 from game.objectives import ObjectiveEvaluator
@@ -46,6 +47,7 @@ from simulation.core import (
     SpacecraftConfig,
     SimulationSnapshot,
 )
+from simulation.physics.orbital import GroundTarget
 from simulation.physics.orbital import GroundTarget
 
 
@@ -197,6 +199,83 @@ class SimulationRuntime:
         # Command queue for pending step execution
         self._pending_commands: list[CommandRequest] = []
 
+    @classmethod
+    def from_mission(
+        cls,
+        mission: MissionDetail,
+        spacecraft_config: Optional[SpacecraftConfig] = None,
+        seed: int = 42,
+        player_ids: Optional[list[str]] = None,
+        time_step_seconds: float = 60.0,
+        max_steps: Optional[int] = None,
+        difficulty: Difficulty | str | None = None,
+    ) -> SimulationRuntime:
+        """Create a fully configured SimulationRuntime from a data-driven MissionDetail."""
+        targets: list[GroundTarget] = []
+        if getattr(mission, "targets", None):
+            for i, t in enumerate(mission.targets):
+                targets.append(
+                    GroundTarget(
+                        target_id=t.get("id", f"target_{i}"),
+                        name=t.get("name", f"Target {i}"),
+                        latitude_deg=float(t.get("latitude_deg", 0.0)),
+                        longitude_deg=float(t.get("longitude_deg", 0.0)),
+                        target_type=t.get("target_type", "surface"),
+                        priority=int(t.get("priority", 1)),
+                    )
+                )
+
+        objectives = [
+            ObjectiveDefinition(
+                id=obj.id,
+                description=obj.description,
+                target_value=obj.target_value,
+                unit=obj.unit,
+                weight=obj.weight,
+                is_primary=getattr(obj, "is_primary", obj.weight >= 0.8),
+            )
+            for obj in mission.objectives
+        ]
+
+        total_steps = max_steps or int((mission.duration_hours * 3600) / time_step_seconds)
+        diff = (
+            Difficulty.from_int(mission.difficulty)
+            if isinstance(mission.difficulty, int)
+            else (Difficulty(mission.difficulty) if mission.difficulty else Difficulty.ENGINEER)
+        )
+
+        contract = MissionContract(
+            mission_id=mission.id,
+            mission_name=mission.name,
+            description=mission.description,
+            story=getattr(mission, "story", mission.description),
+            difficulty=diff,
+            deadline_steps=total_steps,
+            budget=getattr(mission, "budget", 10000.0),
+            permitted_components=getattr(mission, "permitted_components", {}),
+            observation_tasks=getattr(mission, "observation_tasks", []),
+            targets=getattr(mission, "targets", []),
+            role_responsibilities=getattr(mission, "role_responsibilities", {}),
+            rewards=getattr(mission, "rewards", {}),
+            objectives=objectives,
+            seed=seed,
+        )
+
+        if difficulty is not None:
+            contract = apply_difficulty_to_contract(contract, difficulty)
+
+        return cls(
+            mission_id=mission.id,
+            contract=contract,
+            spacecraft_config=spacecraft_config,
+            targets=targets,
+            seed=seed,
+            player_ids=player_ids,
+            event_pool=mission.event_pool,
+            time_step_seconds=time_step_seconds,
+            max_steps=total_steps,
+        )
+
     # ── Properties ───────────────────────────────────────────────────────────
 
     @property
@@ -214,6 +293,10 @@ class SimulationRuntime:
     @property
     def sim(self) -> SimulationRunner:
         return self._sim
+
+    @property
+    def events_resolved_well(self) -> int:
+        return len([e for e in self.event_director.resolved_events if e.phase.value == "resolved"])
 
     # ── Budget Management ────────────────────────────────────────────────────
 
@@ -590,9 +673,19 @@ class SimulationRuntime:
                 self.objective_evaluator.update(obj.id, zones)
             elif "health" in obj_id or "survival" in obj_id:
                 self.objective_evaluator.update(obj.id, snapshot.spacecraft_health_pct)
-            elif "duration" in obj_id or "uptime" in obj_id or "hours" in obj_id:
+            elif "duration" in obj_id or "uptime" in obj_id or "hours" in obj_id or "continuous" in obj_id:
                 hours = snapshot.elapsed_seconds / 3600.0
                 self.objective_evaluator.update(obj.id, hours)
+            elif "detection" in obj_id or "so2" in obj_id or "flare" in obj_id:
+                val = max(1.0 if self.events_resolved_well > 0 else 0.0, snapshot.comms.data_collected_mb / 150.0)
+                self.objective_evaluator.update(obj.id, min(obj.target_value, val))
+            elif "latency" in obj_id or "warning" in obj_id or "rapid" in obj_id or "alert" in obj_id or "advisory" in obj_id:
+                compliance = 95.0 if snapshot.comms.data_downlinked_mb > 0 else 0.0
+                self.objective_evaluator.update(obj.id, compliance)
+            elif "volume" in obj_id or "sar" in obj_id:
+                self.objective_evaluator.update(obj.id, snapshot.comms.data_collected_mb)
+            elif "thermal_margin" in obj_id or "overflow" in obj_id or "dose" in obj_id or "mitigation" in obj_id:
+                self.objective_evaluator.update(obj.id, snapshot.spacecraft_health_pct)
 
         # Snapshot objective updates
         self.objective_history.append({

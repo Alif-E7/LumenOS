@@ -206,3 +206,4 @@ def create_fault(
         recommended_recovery=list(tmpl.get("recommended_recovery", [])),
         explanation=tmpl.get("explanation", ""),
     )
+

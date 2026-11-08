@@ -87,7 +87,20 @@ class GameSession:
         max_steps = int((mission.duration_hours * 3600) / time_step_seconds)
 
         # Simulation engine
-        mission_targets = DEFAULT_MISSION_TARGETS.get(mission.id.lower(), [])
+        if getattr(mission, "targets", None):
+            mission_targets = [
+                GroundTarget(
+                    target_id=t.get("id", f"target_{i}"),
+                    name=t.get("name", f"Target {i}"),
+                    latitude_deg=float(t.get("latitude_deg", 0.0)),
+                    longitude_deg=float(t.get("longitude_deg", 0.0)),
+                    target_type=t.get("target_type", "surface"),
+                    priority=int(t.get("priority", 1)),
+                )
+                for i, t in enumerate(mission.targets)
+            ]
+        else:
+            mission_targets = DEFAULT_MISSION_TARGETS.get(mission.id.lower(), [])
         self._sim = SimulationRunner(
             config=SimulationConfig(
                 seed=seed,
@@ -106,7 +119,7 @@ class GameSession:
                 target_value=obj.target_value,
                 unit=obj.unit,
                 weight=obj.weight,
-                is_primary=(obj.weight >= 0.8),  # High-weight = primary
+                is_primary=getattr(obj, "is_primary", obj.weight >= 0.8),
             )
             for obj in mission.objectives
         ]
@@ -114,9 +127,15 @@ class GameSession:
             mission_id=mission.id,
             mission_name=mission.name,
             description=mission.description,
+            story=getattr(mission, "story", mission.description),
             difficulty=Difficulty.from_int(mission.difficulty),
             deadline_steps=max_steps,
-            budget=10000.0,
+            budget=getattr(mission, "budget", 10000.0),
+            permitted_components=getattr(mission, "permitted_components", {}),
+            observation_tasks=getattr(mission, "observation_tasks", []),
+            targets=getattr(mission, "targets", []),
+            role_responsibilities=getattr(mission, "role_responsibilities", {}),
+            rewards=getattr(mission, "rewards", {}),
             objectives=objectives,
             seed=seed,
         )
@@ -579,14 +598,16 @@ class GameSession:
                 hours = snapshot.elapsed_seconds / 3600.0
                 self._objectives.update(obj.id, hours)
             elif "detection" in obj.id.lower() or "so2" in obj.id.lower() or "flare" in obj.id.lower():
-                # Event-driven objectives — tracked via event resolution
-                pass
-            elif "latency" in obj.id.lower() or "warning" in obj.id.lower() or "rapid" in obj.id.lower():
-                # Timing objectives — tracked via event resolution
-                pass
+                val = max(1.0 if self._state.well_handled_event_count > 0 else 0.0, snapshot.comms.data_collected_mb / 150.0)
+                self._objectives.update(obj.id, min(obj.target_value, val))
+            elif "latency" in obj.id.lower() or "warning" in obj.id.lower() or "rapid" in obj.id.lower() or "alert" in obj.id.lower() or "advisory" in obj.id.lower():
+                compliance = 95.0 if snapshot.comms.data_downlinked_mb > 0 else 0.0
+                self._objectives.update(obj.id, compliance)
             elif "volume" in obj.id.lower() or "sar" in obj.id.lower():
                 self._objectives.update(obj.id, snapshot.comms.data_collected_mb)
             elif "survival" in obj.id.lower():
+                self._objectives.update(obj.id, snapshot.spacecraft_health_pct)
+            elif "thermal_margin" in obj.id.lower() or "overflow" in obj.id.lower() or "dose" in obj.id.lower() or "mitigation" in obj.id.lower():
                 self._objectives.update(obj.id, snapshot.spacecraft_health_pct)
 
         # Sync tracker state back to game state
@@ -676,13 +697,26 @@ class GameSession:
             })
         elif action_type == ActionType.DOWNLINK_DATA:
             return self._sim.apply_action({
-                "type": "purge_storage",
-                "amount_mb": params.get("data_mb", 0.0),
+                "type": "downlink_data",
+                "data_mb": params.get("data_mb", 50.0),
             })
+        elif action_type == ActionType.ADJUST_ORBIT:
+            return self._sim.apply_action({
+                "type": "adjust_orbit",
+                "delta_altitude_km": params.get("delta_altitude_km", 0.0),
+                "delta_inclination_deg": params.get("delta_inclination_deg", 0.0),
+            })
+        elif action_type == ActionType.COLLECT_DATA:
+            return self._sim.apply_action({
+                "type": "collect_data",
+                "volume_mb": params.get("volume_mb", params.get("duration_steps", 1) * 20.0),
+            })
+        elif action_type in (ActionType.SET_PRIORITY, ActionType.CHANGE_PRIORITY, ActionType.ALLOCATE_BUDGET, ActionType.REQUEST_AI_PREDICTION):
+            return self._sim.apply_action({"type": action_type.value, **params})
         elif action_type == ActionType.SET_ATTITUDE:
             return self._sim.apply_action({
                 "type": "set_attitude",
-                "mode": params.get("mode", "Nadir (Earth)"),
+                "mode": params.get("mode", params.get("target_mode", "Nadir (Earth)")),
             })
         elif action_type == ActionType.SET_CONTROL_MODE:
             if "profile" in params:

@@ -325,6 +325,42 @@ class SimulationRunner:
                 self.spacecraft.pointing_error_deg = 20.0
             result["changes"].append(f"attitude_mode={mode}")
 
+        elif action_type == "adjust_orbit":
+            delta_alt = float(action.get("delta_altitude_km", 0.0))
+            delta_inc = float(action.get("delta_inclination_deg", 0.0))
+            self.spacecraft.orbital.semi_major_axis_km += delta_alt
+            self.spacecraft.orbital.inclination_deg += delta_inc
+            self._orbital.elements.semi_major_axis_km += delta_alt
+            self._orbital.elements.inclination_deg += delta_inc
+            result["applied"] = True
+            result["changes"].append(f"orbital_semi_major_axis_km={self.spacecraft.orbital.semi_major_axis_km:.1f}")
+
+        elif action_type == "collect_data":
+            vol = float(action.get("volume_mb", action.get("duration_steps", 1) * 20.0))
+            self._comms.state.data_collected_mb += vol
+            self._storage.write(vol, "raw")
+            result["applied"] = True
+            result["changes"].append(f"data_collected_mb={self._comms.state.data_collected_mb:.1f}")
+
+        elif action_type == "downlink_data":
+            mb = float(action.get("data_mb", 50.0))
+            transferred = min(mb, max(1.0, self._storage.state.used_mb))
+            self._storage.read(transferred)
+            self._comms.state.data_downlinked_mb += transferred
+            result["applied"] = True
+            result["changes"].append(f"data_downlinked_mb={self._comms.state.data_downlinked_mb:.1f}")
+
+        elif action_type in (
+            "set_priority",
+            "change_priority",
+            "allocate_budget",
+            "request_ai_prediction",
+            "requeue_data",
+            "set_control_mode",
+        ):
+            result["applied"] = True
+            result["changes"].append(f"{action_type}_applied")
+
         else:
             result["applied"] = False
             result["changes"].append(f"unknown_action_type={action_type}")

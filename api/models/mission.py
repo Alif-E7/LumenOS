@@ -76,6 +76,7 @@ class MissionObjective(BaseModel):
     weight: float = Field(default=1.0, ge=0.0)
     target_value: float = Field(default=1.0)
     unit: str = ""
+    is_primary: bool = True
 
 
 class MissionEventTemplate(BaseModel):
@@ -110,8 +111,18 @@ class ScoringConfig(BaseModel):
 
 
 class MissionDetail(MissionBrief):
-    """Full mission definition including objectives and event pool."""
+    """Full mission definition including objectives, tasks, targets, and event pool."""
+    story: str = ""
+    budget: float = 10000.0
     objectives: list[MissionObjective] = []
+    permitted_components: dict[str, list[str]] = Field(default_factory=dict)
+    observation_tasks: list[dict[str, Any]] = Field(default_factory=list)
+    targets: list[dict[str, Any]] = Field(default_factory=list)
+    role_responsibilities: dict[str, str] = Field(default_factory=dict)
+    difficulty_settings: dict[str, Any] = Field(default_factory=dict)
+    rewards: dict[str, Any] = Field(default_factory=dict)
+    win_condition: dict[str, Any] = Field(default_factory=dict)
+    fail_condition: dict[str, Any] = Field(default_factory=dict)
     event_pool: list[MissionEventTemplate] = []
     environment: MissionEnvironment = Field(default_factory=lambda: MissionEnvironment())
     scoring: ScoringConfig = Field(default_factory=lambda: ScoringConfig())

@@ -9,7 +9,7 @@ and may be modified by difficulty settings.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -124,6 +124,12 @@ class MissionContract(BaseModel):
         default=10000.0, ge=0.0,
         description="Mission budget in Engineering Credits",
     )
+    story: str = Field(default="", description="Narrative background and briefing")
+    permitted_components: dict[str, list[str]] = Field(default_factory=dict)
+    observation_tasks: list[dict[str, Any]] = Field(default_factory=list)
+    targets: list[dict[str, Any]] = Field(default_factory=list)
+    role_responsibilities: dict[str, str] = Field(default_factory=dict)
+    rewards: dict[str, Any] = Field(default_factory=dict)
     objectives: list[ObjectiveDefinition] = Field(default_factory=list, min_length=1)
     win_condition: WinCondition = Field(default_factory=WinCondition)
     fail_condition: FailCondition = Field(default_factory=FailCondition)

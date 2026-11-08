@@ -1,48 +1,40 @@
 # Volcano Watch — "Fire Beneath the Earth"
-# Data-driven mission configuration for the Volcano monitoring scenario.
+# Data-driven mission scenario configuration.
+# All environmental values are REFERENCE (NASA/standard) or GROUND_TRUTH (scenario-defined).
 
 id: volcano
 name: "Volcano Watch"
 codename: "Fire Beneath the Earth"
 description: >
-  Deploy a multispectral imaging satellite to monitor volcanic activity.
-  Track thermal hotspots, SO₂ plumes, and ground deformation near active
-  volcanoes. Ash clouds can damage your optics — respond carefully to
-  eruption events.
+  Deploy a multispectral and thermal observation satellite into a 680 km sun-synchronous
+  orbit to track active volcanic eruptions, sulfur dioxide (SO₂) degassing plumes,
+  and ground deformation across the Pacific Ring of Fire and North Atlantic.
+  Respond dynamically to explosive eruption alerts and deliver urgent aviation warnings.
+story: >
+  Major stratovolcanoes across Indonesia and Iceland have entered acute eruptive phases.
+  High-altitude ash columns reach cruising aviation altitudes, threatening jet engine turbines,
+  while toxic sulfur dioxide clouds disperse across international flight paths.
+  Volcano Watch monitors surface caldera thermal signatures, measures atmospheric SO₂ absorption,
+  and tracks topographic dome inflation. However, abrasive ash plumes present severe orbital hazards:
+  particulate impact can erode optical lens coatings, and unpredictable eruptions demand rapid
+  observation re-tasking. Your crew must detect precursors, track explosive plumes, and deliver
+  urgent Aviation Color Code advisories to global air traffic authorities.
+
 difficulty: 3
 icon: "🌋"
-recommended_payload: multispectral_imager
+recommended_payload: inst_multispectral_imager
 orbit_altitude_km: 680.0
 orbit_inclination_deg: 98.0     # Sun-synchronous for ~680 km
 duration_hours: 30.0
+budget: 11000.0
+
 tags:
   - earth_observation
   - volcano
   - multispectral
-  - leo
+  - thermal_anomaly
+  - aviation_safety
   - natural_hazard
-
-objectives:
-  - id: volcano_monitoring
-    description: "Image at least 5 active volcano sites"
-    weight: 1.0
-    target_value: 5.0
-    unit: "sites"
-  - id: so2_detection
-    description: "Detect SO₂ plume from at least 1 eruption"
-    weight: 0.9
-    target_value: 1.0
-    unit: "detections"
-  - id: data_volume
-    description: "Collect at least 600 MB of multispectral data"
-    weight: 0.7
-    target_value: 600.0
-    unit: "MB"
-  - id: spacecraft_health
-    description: "Maintain spacecraft health above 65%"
-    weight: 0.6
-    target_value: 65.0
-    unit: "%"
 
 environment:
   solar_flux_w_m2: 1361.0
@@ -51,63 +43,257 @@ environment:
   magnetic_field_active: false
   atmosphere_drag: true
 
-event_pool:
-  - id: vc_ash_cloud
-    name: "Volcanic Ash Cloud Encounter"
-    description: "An eruption has sent ash to orbital altitude along your ground track."
-    severity: critical
-    probability: 0.008
-    earliest_step: 120
-    choices:
-      - id: close_optics
-        label: "Close optics cover"
-        description: "Protect the sensor but lose imaging capability for 20 minutes."
-        effects:
-          payload_power_w: -80.0
-      - id: maneuver_away
-        label: "Orbital maneuver to avoid"
-        description: "Use propulsion to adjust orbit. Consumes fuel."
-        effects:
-          fuel_mass_kg: -3.0
+targets:
+  - target_id: volcano_merapi
+    name: "Mount Merapi Caldera (Central Java)"
+    latitude_deg: -7.54
+    longitude_deg: 110.44
+    target_type: "active_stratovolcano"
+    priority: 1
+    thermal_hotspot_mw: 420.0
+    so2_emission_tons_per_day: 1200.0
+    ash_column_altitude_km: 14.0
+  - target_id: volcano_krakatoa
+    name: "Anak Krakatau (Sunda Strait)"
+    latitude_deg: -6.10
+    longitude_deg: 105.42
+    target_type: "island_caldera"
+    priority: 1
+    thermal_hotspot_mw: 680.0
+    so2_emission_tons_per_day: 2800.0
+    ash_column_altitude_km: 18.0
+  - target_id: volcano_iceland
+    name: "Fagradalsfjall Rift Caldera (Reykjanes)"
+    latitude_deg: 63.89
+    longitude_deg: -22.27
+    target_type: "fissure_eruption"
+    priority: 2
+    thermal_hotspot_mw: 510.0
+    so2_emission_tons_per_day: 950.0
+    ash_column_altitude_km: 7.0
 
-  - id: vc_eruption_alert
-    name: "Major Eruption Detected"
-    description: "Thermal sensors detect a massive eruption at Volcano Site 3!"
+permitted_components:
+  launchers:
+    - launcher_smallsat_rideshare
+    - launcher_dedicated_light
+    - launcher_medium_lift
+  orbits:
+    - orbit_leo_400
+    - orbit_sso_650
+    - orbit_polar_800
+  instruments:
+    - inst_multispectral_imager
+    - inst_thermal_infrared
+    - inst_uv_spectrometer
+  computers:
+    - proc_dual_core_space
+    - proc_edge_ai_quad
+    - proc_rad_hard_micro
+  batteries:
+    - bat_li_ion_compact_1k
+    - bat_li_ion_standard_2k
+    - bat_li_sulfur_heavy_4k
+  solar_arrays:
+    - solar_deployable_flat_5m
+    - solar_articulated_dual_wing_8m
+  thermal_systems:
+    - therm_heatpipe_radiator_2m
+    - therm_louvered_array_4m
+  comms_systems:
+    - comm_sband_patch
+    - comm_xband_horn
+    - comm_kaband_steerable_dish
+  storage_systems:
+    - stor_solid_state_64gb
+    - stor_flash_array_256gb
+    - stor_nvme_high_speed_1tb
+  shielding_systems:
+    - shield_mylar_blanket
+    - shield_standard_aluminum
+
+observation_tasks:
+  - task_id: task_vc_multispectral_so2
+    name: "SO₂ Plume Column Density Measurement"
+    sensor: "inst_multispectral_imager"
+    mode: "narrowband_uv_swir"
+    power_draw_w: 85.0
+    data_rate_mb_per_min: 7.0
+    description: "Multi-band spectroscopic retrieval measuring 0.31 μm and 8.6 μm SO₂ absorption signatures."
+  - task_id: task_vc_thermal_caldera_hotspot
+    name: "Caldera Lava Dome Radiative Flux"
+    sensor: "inst_thermal_infrared"
+    mode: "sub_pixel_temperature_retrieval"
+    power_draw_w: 50.0
+    data_rate_mb_per_min: 3.5
+    description: "Detect sub-pixel volcanic hotspots indicating active dome extrusion or fissure opening."
+  - task_id: task_vc_aviation_sigmet_generator
+    name: "Aviation Ash Cloud Dispersion Vectoring"
+    sensor: "proc_edge_ai_quad"
+    mode: "edge_ash_classifier"
+    power_draw_w: 30.0
+    data_rate_mb_per_min: 1.0
+    description: "Generate high-priority SIGMET vector warning packages for ICAO air traffic control."
+
+objectives:
+  - id: volcano_monitoring
+    description: "Image and monitor at least 5 active volcano site passes"
+    weight: 1.0
+    target_value: 5.0
+    unit: "sites"
+    is_primary: true
+  - id: so2_detection
+    description: "Detect and quantify sulfur dioxide (SO₂) plume from at least 1 major eruption"
+    weight: 0.9
+    target_value: 1.0
+    unit: "detections"
+    is_primary: true
+  - id: data_volume
+    description: "Collect and process at least 600 MB of multispectral volcanic data"
+    weight: 0.8
+    target_value: 600.0
+    unit: "MB"
+    is_primary: true
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 65%"
+    weight: 0.6
+    target_value: 65.0
+    unit: "%"
+    is_primary: false
+  - id: ash_hazard_advisory
+    description: "Deliver aviation ash advisory warnings within 30 minutes of eruption detection"
+    weight: 0.7
+    target_value: 30.0
+    unit: "minutes"
+    is_primary: false
+
+role_responsibilities:
+  mission_director: >
+    Prioritizes urgent eruption and thermal reports versus routine baseline monitoring; authorizes emergency
+    Aviation Color Code status upgrades and allocates budget for high-resolution target tasking.
+  systems_engineer: >
+    Manages thermal margin and onboard processing demand during multi-band spectral processing; monitors sensor
+    temperatures and coordinates optics protection during ash plume flybys.
+  science_officer: >
+    Selects anomaly targets and observation timing under ash/cloud constraints; differentiates sulfur dioxide
+    plumes from meteorological clouds and calculates total erupted mass estimates.
+  flight_controller: >
+    Schedules priority product downlinks around ground-station contact windows; executes attitude adjustments
+    to point sensors at off-nadir eruption columns and aligns antennas for maximum downlink throughput.
+
+event_pool:
+  - id: vc_explosive_eruption_alert
+    name: "Major Explosive Eruption Detected"
+    description: "Thermal sensors detect an explosive eruption column surging 18 km above Anak Krakatau!"
     severity: critical
-    probability: 0.012
-    earliest_step: 180
+    probability: 0.015
+    earliest_step: 45
     choices:
-      - id: priority_imaging
-        label: "Priority imaging pass"
-        description: "Re-task satellite to image eruption site immediately."
+      - id: priority_eruption_tasking
+        label: "Priority Eruption Imaging (+20W)"
+        description: "Re-task multispectral sensors to track fast-expanding ash umbrella."
         effects:
           payload_power_w: 20.0
-      - id: standard_schedule
-        label: "Maintain imaging schedule"
-        description: "Continue planned observations, capture eruption on scheduled pass."
+      - id: maintain_nominal_schedule
+        label: "Maintain Scheduled Survey"
+        description: "Continue nominal baseline pass without re-tasking power surge."
         effects: {}
 
-  - id: vc_calibration_drift
-    name: "Sensor Calibration Drift"
-    description: "Multispectral sensor readings are drifting from calibration baseline."
-    severity: warning
-    probability: 0.02
-    earliest_step: 60
+  - id: vc_orbital_ash_cloud_hazard
+    name: "High-Altitude Ash Cloud Encounter"
+    description: "Plume updraft has carried abrasive silicate micro-particles to orbital altitude."
+    severity: critical
+    probability: 0.01
+    earliest_step: 120
     choices:
-      - id: recalibrate
-        label: "Run calibration sequence"
-        description: "Takes 15 minutes of downtime but restores accuracy."
+      - id: close_protective_aperture
+        label: "Close optics protective aperture door"
+        description: "Safely shield optical lens coatings from particle pitting (-80W sensor shutdown)."
         effects:
-          payload_power_w: 10.0
-      - id: software_correction
-        label: "Apply software correction"
-        description: "Less accurate but no downtime."
+          payload_power_w: -80.0
+      - id: maintain_imaging_risk_pitting
+        label: "Accept optic erosion risk"
+        description: "Keep aperture open to capture critical vent dynamics despite degradation risk."
         effects: {}
+
+  - id: vc_sensor_calibration_drift
+    name: "Spectrometer Thermal Gradient Drift"
+    description: "High thermal radiation from caldera hotspot has introduced calibration offset."
+    severity: warning
+    probability: 0.025
+    earliest_step: 75
+    choices:
+      - id: run_blackbody_calibration
+        label: "Run internal blackbody recalibration"
+        description: "Execute 10-minute recalibration cycle to restore band radiometric accuracy."
+        effects:
+          reduce_workload_eco: 1.0
+      - id: apply_software_bias
+        label: "Apply software bias compensation"
+        description: "Continue imaging with empirical software offset correction."
+        effects: {}
+
+  - id: vc_favorable_ground_pass
+    name: "High-Elevation Ground Station Contact"
+    description: "Upcoming pass over Troll / Svalbard ground station provides 12-minute clear window."
+    severity: info
+    probability: 0.035
+    earliest_step: 30
+    choices:
+      - id: dump_priority_ash_products
+        label: "Downlink priority ash vector maps (+5W)"
+        description: "Transmit aviation safety packages at maximum telemetry rate."
+        effects:
+          adjust_transmit_power: 5.0
+      - id: standard_downlink
+        label: "Standard downlink cadence"
+        description: "Downlink standard telemetry buffer without power surge."
+        effects: {}
+
+win_condition:
+  min_primary_completion_pct: 1.0
+  min_overall_score_pct: 0.60
+  min_health_pct: 50.0
+
+fail_condition:
+  budget_exceeded: true
+  spacecraft_destroyed: true
+  min_health_pct: 0.0
+
+difficulty_settings:
+  cadet:
+    budget_multiplier: 1.5
+    deadline_multiplier: 1.25
+    event_frequency_multiplier: 0.6
+  engineer:
+    budget_multiplier: 1.0
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.0
+  specialist:
+    budget_multiplier: 0.85
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.25
+  commander:
+    budget_multiplier: 0.70
+    deadline_multiplier: 0.80
+    event_frequency_multiplier: 1.50
+  legendary:
+    budget_multiplier: 0.50
+    deadline_multiplier: 0.65
+    event_frequency_multiplier: 2.0
 
 scoring:
   max_score: 100.0
-  time_bonus_weight: 0.1
-  data_collected_weight: 0.3
-  health_maintained_weight: 0.3
-  objectives_completed_weight: 0.3
+  time_bonus_weight: 0.10
+  data_collected_weight: 0.25
+  health_maintained_weight: 0.25
+  objectives_completed_weight: 0.40
 
+rewards:
+  xp_first_completion: 800
+  credits_first_completion: 1250
+  xp_replay_mastery: 200
+  credits_replay_mastery: 310
+  stars:
+    one_star_score: 60.0
+    two_star_score: 80.0
+    three_star_score: 90.0

@@ -1,111 +1,285 @@
 # Solar Storm Sentinel — "Watch the Sun"
-# Data-driven mission configuration for the Solar observation scenario.
+# Data-driven mission scenario configuration.
+# All environmental values are REFERENCE (NASA/standard) or GROUND_TRUTH (scenario-defined).
 
 id: solar_storm
 name: "Solar Storm Sentinel"
 codename: "Watch the Sun"
 description: >
-  Deploy a UV spectrometer satellite to monitor solar activity from a
-  high-inclination orbit. Detect coronal mass ejections and solar flares,
-  then relay early warnings to ground stations. This mission faces elevated
-  radiation and thermal challenges.
+  Deploy a radiation-hardened solar observatory satellite into an 800 km high-inclination
+  polar orbit to monitor volatile space weather. Detect intense X-class solar flares,
+  characterize Coronal Mass Ejections (CME), manage severe single-event upset risks,
+  and time protective safe-mode transitions before geomagnetic shockwaves strike.
+story: >
+  Solar Cycle 25 has entered an explosive active phase. Giant active sunspot region AR3664 has rotated
+  into an Earth-facing position, producing repeated powerful coronal eruptions. Terrestrial power grids,
+  aviation navigation, and satellite constellations face catastrophic damage without early warning.
+  Solar Storm Sentinel operates in the harsh high-radiation polar cusp, measuring extreme ultraviolet
+  flux and solar wind proton densities. However, the satellite itself is vulnerable: solar energetic
+  particle events can corrupt flight memory, induce solar panel voltage fluctuations, and disrupt RF comms.
+  Your crew must balance scientific observation against spacecraft survival, determining when to stay online
+  and when to execute protective safing.
+
 difficulty: 4
 icon: "☀️"
-recommended_payload: uv_spectrometer
+recommended_payload: inst_uv_spectrometer
 orbit_altitude_km: 800.0
-orbit_inclination_deg: 85.0     # High inclination for polar coverage
+orbit_inclination_deg: 85.0     # High inclination for polar auroral coverage
 duration_hours: 48.0
+budget: 15000.0
+
 tags:
   - space_weather
-  - solar
-  - radiation
-  - high_altitude
-
-objectives:
-  - id: flare_detection
-    description: "Detect and characterize at least 2 solar flare events"
-    weight: 1.0
-    target_value: 2.0
-    unit: "events"
-  - id: warning_latency
-    description: "Issue solar storm warning within 15 minutes of detection"
-    weight: 1.0
-    target_value: 15.0
-    unit: "minutes"
-  - id: continuous_monitoring
-    description: "Maintain at least 80% uptime for UV spectrometer"
-    weight: 0.7
-    target_value: 80.0
-    unit: "%"
-  - id: spacecraft_survival
-    description: "Keep all subsystems functional through radiation events"
-    weight: 0.8
-    target_value: 50.0
-    unit: "%"
+  - solar_astrophysics
+  - cme_detection
+  - radiation_environment
+  - polar_orbit
 
 environment:
   solar_flux_w_m2: 1361.0
   albedo: 0.3
   earth_ir_w_m2: 237.0
-  magnetic_field_active: true    # Relevant for radiation belt crossing
+  magnetic_field_active: true    # Trapped radiation belts & auroral horns active
   atmosphere_drag: true
 
-event_pool:
-  - id: ss_radiation_spike
-    name: "Radiation Belt Crossing"
-    description: "Spacecraft is passing through the South Atlantic Anomaly. Elevated radiation detected."
-    severity: warning
-    probability: 0.04
-    earliest_step: 30
-    choices:
-      - id: safe_mode_electronics
-        label: "Enter safe mode"
-        description: "Shut down sensitive electronics until clear."
-        effects:
-          payload_power_w: -80.0
-      - id: continue_operations
-        label: "Continue operations"
-        description: "Risk SEU (single event upset) but maintain data collection."
-        effects: {}
+targets:
+  - target_id: solar_polar_station
+    name: "Svalbard Auroral Observatory (Longyearbyen)"
+    latitude_deg: 78.2
+    longitude_deg: 15.4
+    target_type: "polar_cusp_ground_station"
+    priority: 1
+    geomagnetic_latitude_deg: 75.4
+    proton_cutoff_mev: 5.0
+  - target_id: solar_antarctic_station
+    name: "McMurdo Polar Earth Station (Ross Island)"
+    latitude_deg: -77.8
+    longitude_deg: 166.7
+    target_type: "antarctic_geomagnetic_station"
+    priority: 2
+    geomagnetic_latitude_deg: -79.9
+    proton_cutoff_mev: 2.0
 
-  - id: ss_cme_detected
-    name: "Coronal Mass Ejection Detected"
-    description: "UV spectrometer has detected signatures of a CME heading toward Earth!"
+permitted_components:
+  launchers:
+    - launcher_dedicated_light
+    - launcher_medium_lift
+    - launcher_heavy_lift
+  orbits:
+    - orbit_sso_650
+    - orbit_polar_800
+  instruments:
+    - inst_uv_spectrometer
+    - inst_multispectral_imager
+    - inst_optical_survey_camera
+  computers:
+    - proc_dual_core_space
+    - proc_edge_ai_quad
+    - proc_rad_hard_micro
+  batteries:
+    - bat_li_ion_standard_2k
+    - bat_li_sulfur_heavy_4k
+  solar_arrays:
+    - solar_deployable_flat_5m
+    - solar_articulated_dual_wing_8m
+  thermal_systems:
+    - therm_heatpipe_radiator_2m
+    - therm_louvered_array_4m
+  comms_systems:
+    - comm_sband_patch
+    - comm_xband_horn
+    - comm_kaband_steerable_dish
+  storage_systems:
+    - stor_flash_array_256gb
+    - stor_nvme_high_speed_1tb
+  shielding_systems:
+    - shield_standard_aluminum
+    - shield_graded_z_heavy
+
+observation_tasks:
+  - task_id: task_ss_uv_flare_spectrometry
+    name: "Extreme UV Solar Flare Spectroscopy"
+    sensor: "inst_uv_spectrometer"
+    mode: "continuous_high_cadence"
+    power_draw_w: 75.0
+    data_rate_mb_per_min: 6.0
+    description: "Multi-channel EUV irradiance monitoring (0.1–10 nm) capturing rapid ionization flux spikes."
+  - task_id: task_ss_cme_coronagraph_tracking
+    name: "CME Shockwave Kinematics & Timing"
+    sensor: "proc_edge_ai_quad"
+    mode: "coronagraph_edge_tracker"
+    power_draw_w: 30.0
+    data_rate_mb_per_min: 1.2
+    description: "Calculate coronal mass ejection propagation velocity and Earth shock arrival timeline."
+  - task_id: task_ss_auroral_particle_census
+    name: "Polar Horn Energetic Particle Counting"
+    sensor: "inst_uv_spectrometer"
+    mode: "particle_flux_detector"
+    power_draw_w: 25.0
+    data_rate_mb_per_min: 0.5
+    description: "Count trapped protons and relativistic electrons during polar cusp passages."
+
+objectives:
+  - id: flare_detection
+    description: "Detect and characterize at least 2 major solar flare events"
+    weight: 1.0
+    target_value: 2.0
+    unit: "events"
+    is_primary: true
+  - id: warning_latency
+    description: "Issue solar storm early warning within 15 minutes of detection"
+    weight: 1.0
+    target_value: 15.0
+    unit: "minutes"
+    is_primary: true
+  - id: continuous_monitoring
+    description: "Maintain at least 80% uptime for solar UV spectrometer"
+    weight: 0.7
+    target_value: 80.0
+    unit: "%"
+    is_primary: false
+  - id: spacecraft_survival
+    description: "Keep all primary subsystems functional through severe radiation transits"
+    weight: 0.8
+    target_value: 65.0
+    unit: "%"
+    is_primary: true
+  - id: radiation_dose_mitigation
+    description: "Keep cumulative radiation dose below 60% of COTS component limit"
+    weight: 0.6
+    target_value: 60.0
+    unit: "%"
+    is_primary: false
+
+role_responsibilities:
+  mission_director: >
+    Balances scientific monitoring priorities against spacecraft physical preservation; coordinates international
+    space weather alerts and authorizes protective instrument safing commands.
+  systems_engineer: >
+    Manages radiation-aware workload limits, voltage disturbances, and solar array degradation; oversees rapid
+    safe-mode execution and thermal balance when solar heating fluctuates.
+  science_officer: >
+    Selects solar and space-weather observation profiles; tunes spectrometer wavelength integration times,
+    analyzes solar flare X-ray classifications, and tracks CME shock front velocities.
+  flight_controller: >
+    Manages command timing and communication windows when space weather degrades RF transmission; monitors ground station
+    AOS windows across polar regions and adjusts antenna tracking during ionospheric scintillation.
+
+event_pool:
+  - id: ss_xclass_flare_eruption
+    name: "X-Class Solar Flare Eruption"
+    description: "UV spectrometer detects an X5.8 flare erupting from sunspot AR3664. Extreme UV flux surging!"
     severity: critical
-    probability: 0.01
-    earliest_step: 200
+    probability: 0.02
+    earliest_step: 45
     choices:
-      - id: emergency_downlink
-        label: "Emergency priority downlink"
-        description: "Use all available power to transmit warning data immediately."
+      - id: emergency_priority_downlink
+        label: "Emergency warning downlink (+15W)"
+        description: "Transmit immediate alert packet to ground station before ionospheric degradation."
         effects:
           transmit_power_w: 15.0
-      - id: wait_confirmation
-        label: "Wait for second confirmation scan"
-        description: "Take another measurement to confirm before alerting."
+      - id: continue_science_scan
+        label: "Capture complete spectral curve"
+        description: "Maintain science observation, buffering alert for standard downlink pass."
         effects: {}
 
-  - id: ss_thermal_stress
-    name: "Solar Panel Thermal Stress"
-    description: "Extended sun exposure is causing thermal stress on solar panels."
+  - id: ss_proton_belt_crossing
+    name: "Intense Radiation Belt Transit (SAA / Polar Horn)"
+    description: "Spacecraft entering peak trapped proton flux. Single Event Upset (SEU) rate spiked 400%."
+    severity: warning
+    probability: 0.035
+    earliest_step: 30
+    choices:
+      - id: enter_protective_safing
+        label: "Execute protective instrument safing"
+        description: "Power down high-voltage detectors and enable memory scrubbing (-80W)."
+        effects:
+          payload_power_w: -80.0
+      - id: ride_out_radiation
+        label: "Maintain operations with parity check"
+        description: "Accept elevated SEU bit-flip risk to ensure zero gap in solar coverage."
+        effects: {}
+
+  - id: ss_solar_array_degradation
+    name: "Solar Array Proton Displacement Damage"
+    description: "Relativistic protons from solar energetic particle event degrade photovoltaic efficiency."
     severity: warning
     probability: 0.02
-    earliest_step: 150
+    earliest_step: 120
     choices:
-      - id: rotate_panels
-        label: "Rotate panels to reduce exposure"
-        description: "Reduces power generation by 30% but protects hardware."
+      - id: shed_nonessential_processing
+        label: "Shed non-essential processing"
+        description: "Lower CPU workload to ECO to preserve power balance."
         effects:
-          solar_panel_area_m2: -1.5
-      - id: accept_risk
-        label: "Accept thermal risk"
-        description: "Maintain full power but risk degradation."
+          reduce_workload_eco: 1.0
+      - id: trim_attitude_sun_optimum
+        label: "Reorient attitude for optimal sun incidence"
+        description: "Slew spacecraft to 0° normal sun incidence to maximize remaining panel flux."
+        effects:
+          reorient_attitude: 1.0
+
+  - id: ss_ionospheric_rf_degradation
+    name: "Ionospheric Scintillation / Link Fading"
+    description: "Solar storm induced ionospheric plasma turbulence is degrading S/X-band carrier lock."
+    severity: warning
+    probability: 0.025
+    earliest_step: 90
+    choices:
+      - id: boost_transmitter_power
+        label: "Boost RF transmit power (+10W)"
+        description: "Increase signal margin to maintain bit error rate through ionospheric fading."
+        effects:
+          adjust_transmit_power: 10.0
+      - id: delay_downlink_pass
+        label: "Buffer data for quiet orbital pass"
+        description: "Hold telemetry in solid-state storage until atmospheric plasma stabilizes."
         effects: {}
+
+win_condition:
+  min_primary_completion_pct: 1.0
+  min_overall_score_pct: 0.60
+  min_health_pct: 50.0
+
+fail_condition:
+  budget_exceeded: true
+  spacecraft_destroyed: true
+  min_health_pct: 0.0
+
+difficulty_settings:
+  cadet:
+    budget_multiplier: 1.5
+    deadline_multiplier: 1.25
+    event_frequency_multiplier: 0.6
+  engineer:
+    budget_multiplier: 1.0
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.0
+  specialist:
+    budget_multiplier: 0.85
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.25
+  commander:
+    budget_multiplier: 0.70
+    deadline_multiplier: 0.80
+    event_frequency_multiplier: 1.50
+  legendary:
+    budget_multiplier: 0.50
+    deadline_multiplier: 0.65
+    event_frequency_multiplier: 2.0
 
 scoring:
   max_score: 100.0
-  time_bonus_weight: 0.05
-  data_collected_weight: 0.25
-  health_maintained_weight: 0.35
-  objectives_completed_weight: 0.35
+  time_bonus_weight: 0.10
+  data_collected_weight: 0.20
+  health_maintained_weight: 0.30
+  objectives_completed_weight: 0.40
 
+rewards:
+  xp_first_completion: 900
+  credits_first_completion: 1400
+  xp_replay_mastery: 225
+  credits_replay_mastery: 350
+  stars:
+    one_star_score: 60.0
+    two_star_score: 80.0
+    three_star_score: 90.0

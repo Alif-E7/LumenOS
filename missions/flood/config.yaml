@@ -1,48 +1,39 @@
 # Flood Scout — "Rising Waters"
-# Data-driven mission configuration for the Flood monitoring scenario.
+# Data-driven mission scenario configuration.
+# All environmental values are REFERENCE (NASA/standard) or GROUND_TRUTH (scenario-defined).
 
 id: flood
 name: "Flood Scout"
 codename: "Rising Waters"
 description: >
-  Deploy a SAR-equipped satellite to monitor flood-affected regions.
-  Synthetic Aperture Radar can see through clouds, making it ideal for
-  flood mapping during monsoon or hurricane seasons. Manage power carefully —
-  SAR instruments are power-hungry.
+  Deploy a high-power Synthetic Aperture Radar (SAR) satellite into low Earth orbit
+  to monitor catastrophic monsoon flooding across South Asia. Penetrate dense cloud
+  decks, handle massive SAR data volumes, manage solid-state storage pressure,
+  and downlink priority flood inundation maps before ground evacuation deadlines expire.
+story: >
+  Relentless monsoon cloud systems have caused unprecedented flooding across the Brahmaputra
+  and Ganges river basins, submerging transportation corridors and cutting off vulnerable populations.
+  Optical imaging satellites are completely blinded by unbroken cloud cover. Flood Scout carries
+  a high-power C-Band Synthetic Aperture Radar that illuminates the ground with microwave pulses,
+  clearly differentiating smooth floodwater from rough land surfaces regardless of clouds or night.
+  However, SAR generates massive data streams (120+ MB/min) and requires peak electrical surges.
+  Your crew must manage rapid storage buffer filling, prioritize emergency vector maps over raw imagery,
+  and coordinate downlink across tight ground station contact windows.
+
 difficulty: 3
 icon: "🌊"
-recommended_payload: synthetic_aperture_radar
+recommended_payload: inst_sar_radar
 orbit_altitude_km: 620.0
 orbit_inclination_deg: 97.8     # Sun-synchronous for ~620 km
 duration_hours: 36.0
+budget: 12000.0
+
 tags:
   - earth_observation
-  - sar
-  - flood
-  - leo
-  - disaster_response
-
-objectives:
-  - id: flood_mapping
-    description: "Map at least 4 flood-affected regions"
-    weight: 1.0
-    target_value: 4.0
-    unit: "regions"
-  - id: sar_data_volume
-    description: "Collect at least 800 MB of SAR data"
-    weight: 0.8
-    target_value: 800.0
-    unit: "MB"
-  - id: rapid_downlink
-    description: "Downlink first flood map within 6 hours"
-    weight: 0.9
-    target_value: 6.0
-    unit: "hours"
-  - id: spacecraft_health
-    description: "Maintain spacecraft health above 60%"
-    weight: 0.5
-    target_value: 60.0
-    unit: "%"
+  - sar_radar
+  - flood_response
+  - all_weather
+  - disaster_management
 
 environment:
   solar_flux_w_m2: 1361.0
@@ -51,62 +42,251 @@ environment:
   magnetic_field_active: false
   atmosphere_drag: true
 
+targets:
+  - target_id: flood_basin_alpha
+    name: "Brahmaputra Flood Plain (Assam Basin)"
+    latitude_deg: 26.1
+    longitude_deg: 91.7
+    target_type: "riverine_inundation"
+    priority: 1
+    cloud_cover_pct: 95.0
+    flood_extent_sq_km: 14500.0
+  - target_id: flood_basin_bravo
+    name: "Ganges Delta Confluence (Padma Region)"
+    latitude_deg: 23.4
+    longitude_deg: 90.2
+    target_type: "estuarine_surge"
+    priority: 1
+    cloud_cover_pct: 90.0
+    flood_extent_sq_km: 21000.0
+  - target_id: flood_basin_charlie
+    name: "Mahanadi Basin Outflow"
+    latitude_deg: 20.3
+    longitude_deg: 85.8
+    target_type: "coastal_lagoon"
+    priority: 2
+    cloud_cover_pct: 80.0
+    flood_extent_sq_km: 6200.0
+
+permitted_components:
+  launchers:
+    - launcher_dedicated_light
+    - launcher_medium_lift
+    - launcher_heavy_lift
+  orbits:
+    - orbit_leo_400
+    - orbit_sso_650
+    - orbit_polar_800
+  instruments:
+    - inst_sar_radar
+    - inst_multispectral_imager
+    - inst_thermal_infrared
+  computers:
+    - proc_dual_core_space
+    - proc_edge_ai_quad
+  batteries:
+    - bat_li_ion_standard_2k
+    - bat_li_sulfur_heavy_4k
+  solar_arrays:
+    - solar_deployable_flat_5m
+    - solar_articulated_dual_wing_8m
+  thermal_systems:
+    - therm_heatpipe_radiator_2m
+    - therm_louvered_array_4m
+  comms_systems:
+    - comm_xband_horn
+    - comm_kaband_steerable_dish
+  storage_systems:
+    - stor_flash_array_256gb
+    - stor_nvme_high_speed_1tb
+  shielding_systems:
+    - shield_mylar_blanket
+    - shield_standard_aluminum
+
+observation_tasks:
+  - task_id: task_fl_sar_inundation_swath
+    name: "SAR C-Band All-Weather Inundation Swath"
+    sensor: "inst_sar_radar"
+    mode: "interferometric_wide_swath"
+    power_draw_w: 120.0
+    data_rate_mb_per_min: 12.0
+    description: "Active microwave radar pulsing penetrating cloud decks to map flood waterlines."
+  - task_id: task_fl_flood_vector_tiling
+    name: "Onboard Flood Vector Extractor & Compression"
+    sensor: "proc_edge_ai_quad"
+    mode: "edge_water_mask_extractor"
+    power_draw_w: 35.0
+    data_rate_mb_per_min: 1.5
+    description: "Generate 50:1 compressed vector flood polygons for urgent emergency broadcast."
+  - task_id: task_fl_optical_coastal_check
+    name: "Multispectral Silt & Infrastructure Survey"
+    sensor: "inst_multispectral_imager"
+    mode: "clearing_opportunity_scan"
+    power_draw_w: 40.0
+    data_rate_mb_per_min: 4.0
+    description: "Inspect breached embankments and sediment deposition during cloud gap opportunities."
+
+objectives:
+  - id: flood_mapping
+    description: "Map and delineate at least 4 flood-affected regions"
+    weight: 1.0
+    target_value: 4.0
+    unit: "regions"
+    is_primary: true
+  - id: sar_data_volume
+    description: "Collect and process at least 800 MB of SAR flood radar data"
+    weight: 0.9
+    target_value: 800.0
+    unit: "MB"
+    is_primary: true
+  - id: rapid_downlink
+    description: "Downlink the first emergency flood map product within 6 hours"
+    weight: 0.8
+    target_value: 6.0
+    unit: "hours"
+    is_primary: true
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 60%"
+    weight: 0.5
+    target_value: 60.0
+    unit: "%"
+    is_primary: false
+  - id: storage_overflow_prevention
+    description: "Prevent data storage overflow (zero dropped data packets)"
+    weight: 0.6
+    target_value: 100.0
+    unit: "%"
+    is_primary: false
+
+role_responsibilities:
+  mission_director: >
+    Prioritizes affected regions and delivery deadlines; coordinates humanitarian relief requests with UN OCHA,
+    and approves radar power burst budgets during critical flood cresting.
+  systems_engineer: >
+    Manages battery Depth of Discharge and thermal margins during massive 120W+ SAR pulsing; prevents solid-state
+    storage buffer saturation by controlling compression profiles and clearing queues.
+  science_officer: >
+    Selects mapping swaths and observation timing; tunes radar polarization (VV vs VH) to optimize water-land contrast
+    and filters out rain-cell radar backscatter artifacts.
+  flight_controller: >
+    Prioritizes map products and emergency alert packages for limited downlink windows; maneuvers spacecraft attitude
+    to maintain optimal SAR side-looking geometry (30° to 45° incidence).
+
 event_pool:
-  - id: fl_heavy_rain_zone
-    name: "Intensifying Rain Zone"
-    description: "A new flooding zone has been detected. Redirect to capture urgent data."
+  - id: fl_heavy_rain_attenuation
+    name: "Monsoon Torrential Rain Attenuation"
+    description: "Extreme localized rain rates are attenuating microwave return pulses over Assam."
     severity: warning
     probability: 0.025
-    earliest_step: 90
+    earliest_step: 60
     choices:
-      - id: redirect_immediately
-        label: "Emergency orbit adjust"
-        description: "Use propulsion to adjust ground track. Consumes fuel."
+      - id: boost_sar_power
+        label: "Boost radar transmit power (+25W)"
+        description: "Increase pulse strength to punch through torrential precipitation."
         effects:
-          fuel_mass_kg: -2.0
-      - id: wait_next_pass
-        label: "Wait for next natural pass"
-        description: "Capture on next orbit — 90 min delay."
+          payload_power_w: 25.0
+      - id: wait_next_swath
+        label: "Accept degraded backscatter"
+        description: "Maintain nominal power and apply aggressive post-processing filtering."
         effects: {}
 
-  - id: fl_sar_overheat
-    name: "SAR Antenna Overheating"
-    description: "Continuous SAR operation has raised antenna temperature above nominal."
+  - id: fl_sar_antenna_overheat
+    name: "SAR Antenna Phase Shifter Overheating"
+    description: "Continuous radar pulsing has saturated antenna heatsinks, approaching 65°C."
     severity: critical
     probability: 0.015
-    earliest_step: 180
+    earliest_step: 140
     choices:
-      - id: reduce_sar_duty
-        label: "Reduce SAR duty cycle to 50%"
-        description: "Cut data rate but protect hardware."
+      - id: reduce_sar_duty_50
+        label: "Throttle SAR duty cycle by 50%"
+        description: "Reduce radar pulse repetition frequency to shed thermal load (-40W)."
         effects:
           payload_power_w: -40.0
       - id: emergency_cooldown
-        label: "Emergency cooldown — shut down SAR for 30 min"
-        description: "Full shutdown, then restart."
+        label: "Temporary radar standby (20 min)"
+        description: "Shut down transmitter briefly to allow radiator cool-down."
         effects:
           payload_power_w: -80.0
 
-  - id: fl_international_request
-    name: "International Aid Data Request"
-    description: "UN OCHA requests priority flood data for humanitarian response."
-    severity: info
-    probability: 0.02
-    earliest_step: 60
+  - id: fl_storage_buffer_backlog
+    name: "Storage Buffer Saturation Warning"
+    description: "Solid-state storage is 88% full due to delayed ground station acquisition."
+    severity: warning
+    probability: 0.03
+    earliest_step: 90
     choices:
-      - id: prioritize_un
-        label: "Prioritize UN data request"
-        description: "Re-task satellite to cover requested area."
+      - id: purge_raw_preserve_vectors
+        label: "Purge raw radar echoes, preserve vector maps"
+        description: "Drop 200 MB of uncompressed raw radar data while protecting emergency vector maps."
+        effects:
+          purge_storage: 200.0
+      - id: hold_buffer_risk_overflow
+        label: "Hold buffer pending next contact"
+        description: "Risk overflow drop in hopes of clearing queue at next station pass."
         effects: {}
-      - id: maintain_plan
-        label: "Maintain original plan"
-        description: "Continue with pre-planned imaging schedule."
+
+  - id: fl_ground_station_outage
+    name: "Ground Station Receiver Maintenance Outage"
+    description: "Primary Svalbard station receiver is offline for emergency antenna repairs."
+    severity: warning
+    probability: 0.02
+    earliest_step: 180
+    choices:
+      - id: use_secondary_troll_station
+        label: "Reroute to Troll Antarctic Station"
+        description: "Use southern polar station pass at slightly lower elevation angle."
+        effects:
+          adjust_transmit_power: 5.0
+      - id: hold_data_next_svalbard
+        label: "Buffer data until Svalbard returns"
+        description: "Delay downlink by 1 orbit (90 min)."
         effects: {}
+
+win_condition:
+  min_primary_completion_pct: 1.0
+  min_overall_score_pct: 0.60
+  min_health_pct: 50.0
+
+fail_condition:
+  budget_exceeded: true
+  spacecraft_destroyed: true
+  min_health_pct: 0.0
+
+difficulty_settings:
+  cadet:
+    budget_multiplier: 1.5
+    deadline_multiplier: 1.25
+    event_frequency_multiplier: 0.6
+  engineer:
+    budget_multiplier: 1.0
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.0
+  specialist:
+    budget_multiplier: 0.85
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.25
+  commander:
+    budget_multiplier: 0.70
+    deadline_multiplier: 0.80
+    event_frequency_multiplier: 1.50
+  legendary:
+    budget_multiplier: 0.50
+    deadline_multiplier: 0.65
+    event_frequency_multiplier: 2.0
 
 scoring:
   max_score: 100.0
-  time_bonus_weight: 0.1
-  data_collected_weight: 0.35
-  health_maintained_weight: 0.25
-  objectives_completed_weight: 0.3
+  time_bonus_weight: 0.15
+  data_collected_weight: 0.25
+  health_maintained_weight: 0.20
+  objectives_completed_weight: 0.40
 
+rewards:
+  xp_first_completion: 700
+  credits_first_completion: 1100
+  xp_replay_mastery: 175
+  credits_replay_mastery: 275
+  stars:
+    one_star_score: 60.0
+    two_star_score: 80.0
+    three_star_score: 90.0

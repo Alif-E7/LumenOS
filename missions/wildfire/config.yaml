@@ -1,48 +1,37 @@
 # Wildfire Scout — "Eyes on Fire"
-# Data-driven mission configuration for the Wildfire monitoring scenario.
+# Data-driven mission scenario configuration.
 # All environmental values are REFERENCE (NASA/standard) or GROUND_TRUTH (scenario-defined).
 
 id: wildfire
 name: "Wildfire Scout"
 codename: "Eyes on Fire"
 description: >
-  Deploy a thermal imaging satellite to monitor active wildfire zones.
-  Your spacecraft must maintain a sun-synchronous orbit to ensure consistent
-  lighting conditions, collect thermal data over fire-prone regions, and
-  downlink imagery to ground stations before battery depletion.
+  Deploy a high-resolution thermal imaging satellite into sun-synchronous orbit
+  to monitor active wildfire corridors across southeastern Australia and the western US.
+  Detect critical thermal anomalies, penetrate thick smoke plumes, manage onboard
+  processing backlogs, and deliver urgent emergency alerts to local responders.
+story: >
+  During severe fire season conditions, uncontrolled blazes threaten communities across the
+  Great Dividing Range. Dense smoke plumes obscure visible wavelengths, requiring short-wave
+  and thermal infrared sensors to detect high-intensity fire fronts. Ground commanders urgently
+  need georeferenced hotspot locations and Fire Radiative Power (FRP) estimates within 15 minutes
+  of acquisition. Your mission is to deploy and operate Wildfire Scout, balancing high-power sensor
+  surges against strict battery reserves and thermal limits.
+
 difficulty: 2
 icon: "🔥"
-recommended_payload: thermal_imager
+recommended_payload: inst_thermal_infrared
 orbit_altitude_km: 700.0        # Typical LEO Earth observation altitude
 orbit_inclination_deg: 98.2     # Sun-synchronous inclination for ~700 km
 duration_hours: 24.0
+budget: 10000.0
+
 tags:
   - earth_observation
-  - thermal
+  - thermal_infrared
   - wildfire
+  - rapid_response
   - leo
-
-objectives:
-  - id: thermal_coverage
-    description: "Collect thermal imagery over at least 3 fire zones"
-    weight: 1.0
-    target_value: 3.0
-    unit: "zones"
-  - id: data_downlink
-    description: "Successfully downlink at least 500 MB of data"
-    weight: 0.8
-    target_value: 500.0
-    unit: "MB"
-  - id: spacecraft_health
-    description: "Maintain spacecraft health above 70%"
-    weight: 0.6
-    target_value: 70.0
-    unit: "%"
-  - id: mission_duration
-    description: "Complete at least 12 hours of operations"
-    weight: 0.5
-    target_value: 12.0
-    unit: "hours"
 
 environment:
   solar_flux_w_m2: 1361.0       # REFERENCE: NASA solar constant
@@ -51,63 +40,259 @@ environment:
   magnetic_field_active: false
   atmosphere_drag: true
 
+targets:
+  - target_id: fire_zone_alpha
+    name: "Fire Zone Alpha (Blue Mountains)"
+    latitude_deg: -33.7
+    longitude_deg: 150.3
+    target_type: "wildfire_front"
+    priority: 1
+    smoke_obscuration_pct: 45.0
+    fire_radiative_power_mw: 850.0
+  - target_id: fire_zone_bravo
+    name: "Fire Zone Bravo (Gippsland Ridge)"
+    latitude_deg: -37.5
+    longitude_deg: 147.2
+    target_type: "wildfire_front"
+    priority: 2
+    smoke_obscuration_pct: 30.0
+    fire_radiative_power_mw: 620.0
+  - target_id: fire_zone_charlie
+    name: "Fire Zone Charlie (Hunter Valley)"
+    latitude_deg: -32.8
+    longitude_deg: 151.2
+    target_type: "ember_flank"
+    priority: 3
+    smoke_obscuration_pct: 15.0
+    fire_radiative_power_mw: 340.0
+
+permitted_components:
+  launchers:
+    - launcher_smallsat_rideshare
+    - launcher_dedicated_light
+    - launcher_medium_lift
+  orbits:
+    - orbit_leo_400
+    - orbit_sso_650
+    - orbit_polar_800
+  instruments:
+    - inst_thermal_infrared
+    - inst_multispectral_imager
+    - inst_optical_survey_camera
+  computers:
+    - proc_rad_hard_micro
+    - proc_dual_core_space
+    - proc_edge_ai_quad
+  batteries:
+    - bat_li_ion_compact_1k
+    - bat_li_ion_standard_2k
+    - bat_li_sulfur_heavy_4k
+  solar_arrays:
+    - solar_body_mounted_2m
+    - solar_deployable_flat_5m
+    - solar_articulated_dual_wing_8m
+  thermal_systems:
+    - therm_passive_paint_1m
+    - therm_heatpipe_radiator_2m
+    - therm_louvered_array_4m
+  comms_systems:
+    - comm_sband_patch
+    - comm_xband_horn
+    - comm_kaband_steerable_dish
+  storage_systems:
+    - stor_solid_state_64gb
+    - stor_flash_array_256gb
+    - stor_nvme_high_speed_1tb
+  shielding_systems:
+    - shield_mylar_blanket
+    - shield_standard_aluminum
+    - shield_graded_z_heavy
+
+observation_tasks:
+  - task_id: task_wf_hotspot_detection
+    name: "Thermal Hotspot Detection & FRP Measurement"
+    sensor: "inst_thermal_infrared"
+    mode: "high_gain_swir_tir"
+    power_draw_w: 80.0
+    data_rate_mb_per_min: 5.0
+    confidence_threshold_pct: 85.0
+    description: "Multi-band thermal capture measuring 3.9 μm and 11 μm channels to calculate Fire Radiative Power (MW)."
+  - task_id: task_wf_alert_packaging
+    name: "Emergency Alert Georeferencing"
+    sensor: "proc_edge_ai_quad"
+    mode: "edge_hotspot_extractor"
+    power_draw_w: 35.0
+    data_rate_mb_per_min: 0.8
+    description: "Compress and extract high-priority vector alert bounding boxes for immediate downlink."
+  - task_id: task_wf_regional_survey
+    name: "Broad-Area Thermal Baseline Survey"
+    sensor: "inst_thermal_infrared"
+    mode: "routine_survey"
+    power_draw_w: 45.0
+    data_rate_mb_per_min: 2.0
+    description: "Wide-swath background survey tracking soil dryness and drought progression."
+
+objectives:
+  - id: thermal_coverage
+    description: "Detect and image at least 3 active fire zones"
+    weight: 1.0
+    target_value: 3.0
+    unit: "zones"
+    is_primary: true
+  - id: data_downlink
+    description: "Successfully downlink at least 500 MB of science data"
+    weight: 0.9
+    target_value: 500.0
+    unit: "MB"
+    is_primary: true
+  - id: alert_delivery
+    description: "Deliver at least 5 high-priority emergency hotspot alerts"
+    weight: 0.8
+    target_value: 5.0
+    unit: "alerts"
+    is_primary: true
+  - id: spacecraft_health
+    description: "Maintain spacecraft health above 70%"
+    weight: 0.6
+    target_value: 70.0
+    unit: "%"
+    is_primary: false
+  - id: mission_duration
+    description: "Complete at least 12 hours of continuous orbital monitoring"
+    weight: 0.5
+    target_value: 12.0
+    unit: "hours"
+    is_primary: false
+
+role_responsibilities:
+  mission_director: >
+    Balances critical-hotspot alerts against broad-area survey objectives; approves budget expenditures
+    for edge AI detection algorithms and prioritizes emergency aid transmissions.
+  systems_engineer: >
+    Protects power and thermal margin during high-load imaging and onboard processing surges; trims radiators
+    and manages battery Depth of Discharge (DoD) during eclipse transitions.
+  science_officer: >
+    Selects observation targets and detection-confidence priorities; tunes SWIR vs TIR bands to penetrate
+    dense smoke plumes while avoiding false-positive cloud reflections.
+  flight_controller: >
+    Queues and schedules priority alerts for the next valid ground-station pass; aligns spacecraft nadir
+    pointing and verifies antenna line-of-sight during high-speed passes.
+
 event_pool:
   - id: wf_smoke_obscuration
-    name: "Smoke Obscuration"
-    description: "Dense smoke plume is blocking your thermal sensor's view of Fire Zone 2."
+    name: "Dense Smoke Obscuration"
+    description: "Thick wildfire smoke plume is obscuring optical sensors over Fire Zone Alpha."
     severity: warning
-    probability: 0.02
-    earliest_step: 60
+    probability: 0.03
+    earliest_step: 40
     choices:
-      - id: wait_for_clear
-        label: "Wait for next pass"
-        description: "Skip this zone and try again on the next orbit."
-        effects: {}
       - id: switch_to_swir
-        label: "Switch to SWIR band"
-        description: "Use short-wave infrared to penetrate smoke (reduces resolution)."
+        label: "Switch to SWIR penetration mode"
+        description: "Engage short-wave infrared band to penetrate smoke (requires +15W sensor power)."
         effects:
-          payload_power_w: 10.0
+          payload_power_w: 15.0
+      - id: wait_next_orbit
+        label: "Wait for next orbital pass"
+        description: "Skip imaging this pass to conserve power."
+        effects: {}
 
   - id: wf_battery_degradation
-    name: "Battery Cell Anomaly"
-    description: "One battery cell is showing higher-than-expected temperature."
+    name: "Thermal Dissipation / Battery Warm-up"
+    description: "High continuous payload processing has raised battery internal temperature."
     severity: warning
-    probability: 0.01
-    earliest_step: 120
+    probability: 0.02
+    earliest_step: 100
     choices:
       - id: reduce_payload
-        label: "Reduce payload duty cycle"
-        description: "Lower sensor usage to reduce power draw."
+        label: "Throttle payload duty cycle"
+        description: "Reduce imaging rate to shed heat (-20W)."
         effects:
           payload_power_w: -20.0
       - id: increase_radiator
-        label: "Increase radiator exposure"
-        description: "Reorient to maximize radiator view of cold space."
+        label: "Trim radiator exposure"
+        description: "Expose additional radiator panel (+0.5 m²)."
         effects:
           radiator_area_m2: 0.5
 
+  - id: wf_rapid_flareup
+    name: "Sudden Wildfire Flare-Up"
+    description: "Infrared sensors detect an explosive fire run jumping containment lines in Gippsland."
+    severity: critical
+    probability: 0.015
+    earliest_step: 150
+    choices:
+      - id: priority_alert_blast
+        label: "Priority Alert Transmission"
+        description: "Boost transmitter power (+10W) to transmit priority alert packet immediately."
+        effects:
+          transmit_power_w: 10.0
+      - id: buffer_standard
+        label: "Buffer in standard queue"
+        description: "Queue alert behind routine survey data to avoid power surge."
+        effects: {}
+
   - id: wf_ground_station_pass
     name: "Extended Ground Station Pass"
-    description: "Favorable geometry allows a longer-than-expected downlink window."
+    description: "Favorable ground geometry over Canberra station offers a high-elevation contact window."
     severity: info
-    probability: 0.03
-    earliest_step: 30
+    probability: 0.04
+    earliest_step: 25
     choices:
       - id: max_downlink
         label: "Maximize data downlink"
-        description: "Dump all buffered data at maximum rate."
+        description: "Dump all buffered data at maximum transmitter rate (+5W)."
         effects:
           transmit_power_w: 5.0
       - id: normal_downlink
-        label: "Normal downlink rate"
-        description: "Proceed with standard downlink to conserve power."
+        label: "Standard downlink rate"
+        description: "Proceed with standard downlink to conserve battery."
         effects: {}
+
+win_condition:
+  min_primary_completion_pct: 1.0
+  min_overall_score_pct: 0.60
+  min_health_pct: 50.0
+
+fail_condition:
+  budget_exceeded: true
+  spacecraft_destroyed: true
+  min_health_pct: 0.0
+
+difficulty_settings:
+  cadet:
+    budget_multiplier: 1.5
+    deadline_multiplier: 1.25
+    event_frequency_multiplier: 0.6
+  engineer:
+    budget_multiplier: 1.0
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.0
+  specialist:
+    budget_multiplier: 0.85
+    deadline_multiplier: 1.0
+    event_frequency_multiplier: 1.25
+  commander:
+    budget_multiplier: 0.70
+    deadline_multiplier: 0.80
+    event_frequency_multiplier: 1.50
+  legendary:
+    budget_multiplier: 0.50
+    deadline_multiplier: 0.65
+    event_frequency_multiplier: 2.0
 
 scoring:
   max_score: 100.0
-  time_bonus_weight: 0.1
-  data_collected_weight: 0.3
-  health_maintained_weight: 0.3
-  objectives_completed_weight: 0.3
+  time_bonus_weight: 0.10
+  data_collected_weight: 0.25
+  health_maintained_weight: 0.25
+  objectives_completed_weight: 0.40
 
+rewards:
+  xp_first_completion: 500
+  credits_first_completion: 800
+  xp_replay_mastery: 125
+  credits_replay_mastery: 200
+  stars:
+    one_star_score: 60.0
+    two_star_score: 80.0
+    three_star_score: 90.0
