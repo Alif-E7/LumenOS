@@ -648,6 +648,21 @@ class GameSession:
             if "data" in obj.id.lower() or "downlink" in obj.id.lower():
                 data_target = obj.target_value
 
+        # Co-op team summary if multiplayer
+        team_summary = None
+        if len(self._player_ids) > 1:
+            from game.team_contribution import calculate_team_contributions
+            roles_dict = {pid: [r.value for r in self._roles.player_roles.get(pid, [])] for pid in self._player_ids}
+            team_contrib = calculate_team_contributions(
+                action_log=[a.model_dump() for a in self._state.action_log],
+                roles_map=roles_dict,
+                telemetry_summary={
+                    "data_downlinked_mb": self._state.data_downlinked_mb,
+                    "spacecraft_health_pct": self._state.spacecraft_health_pct,
+                },
+            )
+            team_summary = team_contrib.model_dump()
+
         return self._scorer.calculate(
             objective_results=obj_results,
             spacecraft_health_pct=self._state.spacecraft_health_pct,
@@ -659,6 +674,9 @@ class GameSession:
             total_events=max(1, self._state.resolved_event_count),
             budget_remaining=self._state.budget_remaining,
             total_budget=self._state.budget_total,
+            critical_safety_violation=self._state.spacecraft_health_pct <= 0.0,
+            alerts_delivered=self._state.well_handled_event_count,
+            team_summary=team_summary,
         )
 
     # ── Internal helpers ─────────────────────────────────────────────────

@@ -15,11 +15,16 @@ const gradeColor: Record<string, string> = {
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  objectives: "Mission Objectives",
+  objectives: "Mission Objectives / Science Return",
+  health: "Safety & Reliability",
+  spacecraft_health: "Safety & Reliability",
+  data: "Communication & Data Delivery",
   data_value: "Science Data Value",
-  spacecraft_health: "Spacecraft Health",
+  time: "Resource Efficiency — Timeline",
   time_efficiency: "Time Efficiency",
-  event_handling: "Event Handling",
+  events: "Engineering Reasoning & Coordination",
+  event_handling: "Engineering Reasoning & Coordination",
+  budget: "Resource Efficiency — Budget Control",
   budget_efficiency: "Budget Efficiency",
 };
 
@@ -30,6 +35,25 @@ export function ScoreBreakdown({ score, className }: ScoreBreakdownProps) {
 
   return (
     <section className={cn("rounded-xl border border-slate-800 bg-slate-900/60 p-6", className)} aria-label="Mission score">
+      {score.safety_cap_triggered && (
+        <div className="mb-6 p-4 rounded-lg bg-red-950/80 border border-red-500/60 text-red-200">
+          <div className="flex items-center gap-2 font-bold text-red-300 text-sm mb-1">
+            <span>⚠️</span>
+            <span>CRITICAL SAFETY CAP ENFORCED</span>
+          </div>
+          <p className="text-xs text-red-300 leading-relaxed">
+            {score.safety_cap_reason ?? "A critical safety violation occurred. By flight governance rules, vehicle loss or severe safety breaches cap the score at 40%, Grade F, and 0 Stars regardless of science return."}
+          </p>
+          {score.safety_flags && score.safety_flags.length > 0 && (
+            <ul className="mt-2 list-disc list-inside text-xs text-red-400 space-y-0.5">
+              {score.safety_flags.map((flag, i) => (
+                <li key={i}>{flag}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">
@@ -51,6 +75,13 @@ export function ScoreBreakdown({ score, className }: ScoreBreakdownProps) {
         </div>
       </div>
 
+      {score.primary_cause && (
+        <div className="mb-4 p-3 rounded-lg bg-blue-950/40 border border-blue-900/50 text-xs">
+          <span className="text-blue-400 font-semibold">Primary Outcome: </span>
+          <span className="text-slate-300">{score.primary_cause}</span>
+        </div>
+      )}
+
       {score.star_criteria && score.star_criteria.length > 0 && (
         <div className="mb-6 p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs space-y-1">
           <p className="font-semibold text-slate-300">Rating Breakdown:</p>
@@ -63,10 +94,11 @@ export function ScoreBreakdown({ score, className }: ScoreBreakdownProps) {
       <ul className="space-y-4">
         {score.categories.map((cat: ScoreCategory) => {
           const catPct = cat.max_possible > 0 ? (cat.weighted_score / cat.max_possible) * 100 : 0;
+          const label = cat.display_name ?? CATEGORY_LABELS[cat.category] ?? cat.category;
           return (
             <li key={cat.category}>
               <div className="flex items-baseline justify-between text-sm mb-1">
-                <span className="text-slate-200 font-medium">{CATEGORY_LABELS[cat.category] ?? cat.category}</span>
+                <span className="text-slate-200 font-medium">{label}</span>
                 <span className="font-mono text-slate-400">
                   {Math.round(cat.weighted_score)} / {Math.round(cat.max_possible)}
                 </span>

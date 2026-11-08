@@ -368,6 +368,7 @@ export interface EventResolveResponse {
 
 export interface ScoreCategory {
   category: string;
+  display_name?: string;
   weighted_score: number;
   max_possible: number;
   explanation: string;
@@ -383,6 +384,26 @@ export interface ScoreResponse {
   star_criteria?: string[];
   explanation?: string;
   categories: ScoreCategory[];
+  primary_objectives_completed?: number;
+  primary_objectives_total?: number;
+  optional_objectives_completed?: number;
+  optional_objectives_total?: number;
+  safety_flags?: string[];
+  safety_cap_triggered?: boolean;
+  safety_cap_reason?: string | null;
+  missed_tasks?: string[];
+  success_failure_causes?: string[];
+  primary_cause?: string;
+  resource_metrics?: {
+    data_collected_mb?: number;
+    data_target_mb?: number;
+    alerts_delivered?: number;
+    alerts_total?: number;
+    energy_used_wh?: number;
+    budget_spent?: number;
+    spacecraft_health_pct?: number;
+  };
+  team_summary?: TeamContributionBreakdown | null;
 }
 
 // ── Campaign, Tutorial & Difficulty ─────────────────────────────────────────
@@ -646,5 +667,146 @@ export interface CheckpointData {
   sim_checkpoint: Record<string, any>;
   game_state: Record<string, any>;
   created_at: number;
+}
+
+// ── Prompt 15: Post-Mission Results, Replay, What-If & Cost Analysis ────────
+
+export interface LifecycleCostModel {
+  bus_development_cost_usd: number;
+  launch_rideshare_cost_usd: number;
+  total_capex_usd: number;
+  design_lifespan_years: number;
+  design_lifetime_orbits: number;
+  amortized_capex_per_orbit_usd: number;
+  orbits_evaluated: number;
+  amortized_mission_capex_usd: number;
+  mission_operational_spent_usd: number;
+  total_amortized_mission_cost_usd: number;
+  data_downlinked_mb: number;
+  alerts_delivered: number;
+  cost_per_mb_usd: number;
+  cost_per_alert_usd: number;
+  benchmark_flagship_cost_per_mb_usd: number;
+  cost_efficiency_gain_pct: number;
+  cost_efficiency_multiplier: number;
+  educational_assumptions: string[];
+}
+
+export interface RoleContributionSummary {
+  player_id: string;
+  display_name: string;
+  roles: string[];
+  total_actions: number;
+  effective_actions: number;
+  spam_filtered_count: number;
+  coordination_events: number;
+  standby_vigilance_points: number;
+  impact_metrics: Record<string, any>;
+  role_highlights: string[];
+  raw_contribution_points: number;
+  contribution_percentage: number;
+}
+
+export interface TeamContributionBreakdown {
+  participants: RoleContributionSummary[];
+  coordination_index: number;
+  cross_role_assistance_count: number;
+  tactical_pings_count: number;
+  summary_narrative: string;
+}
+
+export interface StepReplaySnapshot {
+  step: number;
+  elapsed_seconds: number;
+  status: string;
+  spacecraft_health_pct: number;
+  budget_remaining: number;
+  telemetry: Record<string, any>;
+  events: Array<Record<string, any>>;
+  actions: Array<Record<string, any>>;
+  decision?: Record<string, any> | null;
+  advisory_forecast?: Record<string, any> | null;
+  advisory_recommendations?: Array<Record<string, any>>;
+  warnings?: string[];
+}
+
+export interface KeyEvent {
+  step: number;
+  elapsed_seconds: number;
+  category: "eclipse" | "contact" | "anomaly" | "decision" | "advisory" | "event";
+  title: string;
+  description: string;
+  severity: "nominal" | "warning" | "critical";
+}
+
+export interface MissionTrajectoryRecord {
+  session_id: string;
+  mission_id: string;
+  seed: number;
+  total_steps: number;
+  time_step_seconds: number;
+  status: string;
+  outcome?: string | null;
+  spacecraft_name: string;
+  difficulty: string;
+  steps: StepReplaySnapshot[];
+  key_events: KeyEvent[];
+  score_breakdown?: ScoreResponse | null;
+  team_contributions?: TeamContributionBreakdown | null;
+  cost_analysis?: LifecycleCostModel | null;
+  checkpoints?: Record<number, any>;
+}
+
+export interface WhatIfBranchRequest {
+  branch_step: number;
+  modified_actions: Array<Record<string, any>>;
+  label?: string;
+}
+
+export interface TrajectoryPoint {
+  step: number;
+  elapsed_seconds: number;
+  battery_soc_pct: number;
+  temperature_c: number;
+  data_downlinked_mb: number;
+  spacecraft_health_pct: number;
+  cpu_usage_pct: number;
+}
+
+export interface WhatIfComparisonResult {
+  branch_step: number;
+  label: string;
+  semantic_tag: string;
+  is_what_if: boolean;
+  original_score: number;
+  modified_score: number;
+  score_delta: number;
+  original_grade: string;
+  modified_grade: string;
+  original_stars: number;
+  modified_stars: number;
+  stars_delta: number;
+  original_health_final: number;
+  modified_health_final: number;
+  health_delta: number;
+  original_downlink_mb: number;
+  modified_downlink_mb: number;
+  downlink_delta: number;
+  delta_explanation: string;
+  original_trajectory: TrajectoryPoint[];
+  modified_trajectory: TrajectoryPoint[];
+  original_score_breakdown?: ScoreResponse | null;
+  modified_score_breakdown?: ScoreResponse | null;
+}
+
+export interface ReplayListItem {
+  session_id: string;
+  mission_id: string;
+  seed: number;
+  total_steps: number;
+  outcome?: string | null;
+  final_score: number;
+  grade: string;
+  stars: number;
 }
 

@@ -456,3 +456,4 @@ class TestCoopWebSocketFlows:
         pruned = room_manager.cleanup_stale_rooms(max_idle_seconds=10.0, max_age_seconds=10.0)
         assert pruned >= 1
         assert room_manager.get_room(room.room_code) is None
+

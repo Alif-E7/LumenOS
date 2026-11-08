@@ -116,6 +116,18 @@ class ScoreResponse(BaseModel):
     star_criteria: list[str] = Field(default_factory=list)
     explanation: str = ""
     categories: list[dict[str, Any]]
+    primary_objectives_completed: int = 0
+    primary_objectives_total: int = 0
+    optional_objectives_completed: int = 0
+    optional_objectives_total: int = 0
+    safety_flags: list[str] = Field(default_factory=list)
+    safety_cap_triggered: bool = False
+    safety_cap_reason: Optional[str] = None
+    missed_tasks: list[str] = Field(default_factory=list)
+    success_failure_causes: list[str] = Field(default_factory=list)
+    primary_cause: str = ""
+    resource_metrics: dict[str, Any] = Field(default_factory=dict)
+    team_summary: Optional[dict[str, Any]] = None
 
 
 class FastForwardRequest(BaseModel):
@@ -294,12 +306,25 @@ async def get_score(session_id: str):
         categories=[
             {
                 "category": cat.category.value,
+                "display_name": getattr(cat, "display_name", cat.category.value),
                 "weighted_score": cat.weighted_score,
                 "max_possible": cat.max_possible * cat.weight,
                 "explanation": cat.explanation,
             }
             for cat in breakdown.categories
         ],
+        primary_objectives_completed=breakdown.primary_objectives_completed,
+        primary_objectives_total=breakdown.primary_objectives_total,
+        optional_objectives_completed=breakdown.optional_objectives_completed,
+        optional_objectives_total=breakdown.optional_objectives_total,
+        safety_flags=breakdown.safety_flags,
+        safety_cap_triggered=breakdown.safety_cap_triggered,
+        safety_cap_reason=breakdown.safety_cap_reason,
+        missed_tasks=breakdown.missed_tasks,
+        success_failure_causes=breakdown.success_failure_causes,
+        primary_cause=breakdown.primary_cause,
+        resource_metrics=breakdown.resource_metrics,
+        team_summary=breakdown.team_summary,
     )
 
 

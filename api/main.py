@@ -20,6 +20,7 @@ from api.routers import game as game_router
 from api.routers import rooms as rooms_router
 from api.routers import data_sources as data_sources_router
 from api.routers import benchmark as benchmark_router
+from api.routers import replay as replay_router
 
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ app.include_router(game_router.router, prefix="/api")
 app.include_router(rooms_router.router, prefix="/api")
 app.include_router(data_sources_router.router, prefix="/api")
 app.include_router(benchmark_router.router, prefix="/api")
+app.include_router(replay_router.router, prefix="/api")
 
 
 # ── WebSocket health endpoint ────────────────────────────────────────────────

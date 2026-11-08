@@ -812,9 +812,11 @@ class SimulationRuntime:
             if "data" in obj.id.lower() or "downlink" in obj.id.lower():
                 data_target = obj.target_value
 
+        snap = self._sim.get_snapshot()
+        health_pct = snap.spacecraft_health_pct if snap else 100.0
         return self.scorer.calculate(
             objective_results=obj_results,
-            spacecraft_health_pct=self._sim.get_snapshot().spacecraft_health_pct if self._sim.get_snapshot() else 100.0,
+            spacecraft_health_pct=health_pct,
             data_collected_mb=self._sim._comms.state.data_collected_mb,
             data_target_mb=data_target,
             steps_elapsed=self.current_step,
@@ -823,6 +825,7 @@ class SimulationRuntime:
             total_events=max(1, len(self.event_director.all_events)),
             budget_remaining=self.budget_remaining,
             total_budget=self.budget_total,
+            critical_safety_violation=health_pct <= 0.0,
         )
 
     def _package_telemetry(self, snapshot: SimulationSnapshot) -> dict[str, Any]:

@@ -32,6 +32,12 @@ import type {
   RoomInfoResponse,
   BenchmarkScenarioItem,
   BenchmarkComparisonResult,
+  LifecycleCostModel,
+  TeamContributionBreakdown,
+  MissionTrajectoryRecord,
+  WhatIfBranchRequest,
+  WhatIfComparisonResult,
+  ReplayListItem,
 } from "../types";
 
 const BASE = "/api";
@@ -358,6 +364,27 @@ export const runBenchmarkSuite = (params: {
     method: "POST",
     body: JSON.stringify(params),
   });
+
+// ── Replay, What-If & Post-Mission Analysis API (Prompt 15) ──────────────────
+
+export const getMissionReplay = (sessionId: string) =>
+  fetchJSON<MissionTrajectoryRecord>(`/replay/${sessionId}`);
+
+export const runWhatIf = (sessionId: string, params: WhatIfBranchRequest) =>
+  fetchJSON<WhatIfComparisonResult>(`/replay/${sessionId}/what_if`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const getCostAnalysis = (sessionId: string) =>
+  fetchJSON<LifecycleCostModel>(`/replay/${sessionId}/cost_analysis`);
+
+export const getTeamContributions = (sessionId: string) =>
+  fetchJSON<TeamContributionBreakdown>(`/replay/${sessionId}/contributions`);
+
+export const listReplays = () =>
+  fetchJSON<ReplayListItem[]>("/replay");
+
 
 
 
