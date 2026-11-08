@@ -33,3 +33,4 @@ class TestPrompt20JudgeDemo:
     def test_judge_demo_volcano_watch_fast(self):
         exit_code = run_judge_demo(scenario_id="volcano", seed=42, fast=True)
         assert exit_code == 0
+
