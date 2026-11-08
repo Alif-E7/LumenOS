@@ -4,6 +4,7 @@
  */
 
 export * from "./canonical";
+export * from "./benchmark";
 
 // ── Spacecraft ──────────────────────────────────────────────────────────────
 

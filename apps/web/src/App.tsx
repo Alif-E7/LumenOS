@@ -15,6 +15,7 @@ import { DataSourcesPage } from "./pages/DataSourcesPage";
 import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { CoopLobbyPage } from "./pages/CoopLobbyPage";
+import { BenchmarkPage } from "./pages/BenchmarkPage";
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/coop/lobby" element={<CoopLobbyPage />} />
 
         {/* Career & Knowledge */}
+        <Route path="/benchmark" element={<BenchmarkPage />} />
         <Route path="/rewards" element={<RewardsPage />} />
         <Route path="/progression" element={<Navigate to="/rewards" replace />} />
         <Route path="/sources" element={<DataSourcesPage />} />

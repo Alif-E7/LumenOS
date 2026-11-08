@@ -69,5 +69,15 @@ describe("Route & Navigation Acceptance Checks", () => {
     expect(screen.getByRole("button", { name: /create new room/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /join existing room/i })).toBeInTheDocument();
   });
+
+  it("renders BenchmarkPage at /benchmark", () => {
+    render(
+      <MemoryRouter initialEntries={["/benchmark"]}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole("heading", { name: /control strategy benchmark/i })).toBeInTheDocument();
+    expect(screen.getByText(/fair three-way flight control benchmark harness/i)).toBeInTheDocument();
+  });
 });
 

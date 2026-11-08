@@ -30,6 +30,8 @@ import type {
   CreateRoomResponse,
   JoinRoomResponse,
   RoomInfoResponse,
+  BenchmarkScenarioItem,
+  BenchmarkComparisonResult,
 } from "../types";
 
 const BASE = "/api";
@@ -328,6 +330,35 @@ export const setAdvisoryAutomation = (
 
 export const getAdvisoryMetrics = (sessionId: string) =>
   fetchJSON<any>(`/game/${sessionId}/advisory/metrics`);
+
+// ── Benchmark Harness API (Prompt 13) ─────────────────────────────────────────
+
+export const getBenchmarkScenarios = () =>
+  fetchJSON<BenchmarkScenarioItem[]>("/benchmark/scenarios");
+
+export const runBenchmarkComparison = (params: {
+  scenario_id: string;
+  seed?: number;
+  max_steps?: number;
+}) =>
+  fetchJSON<BenchmarkComparisonResult>("/benchmark/run", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const getLatestBenchmark = () =>
+  fetchJSON<BenchmarkComparisonResult>("/benchmark/latest");
+
+export const runBenchmarkSuite = (params: {
+  scenarios?: string[];
+  seeds?: number[];
+  max_steps?: number;
+}) =>
+  fetchJSON<any>("/benchmark/suite", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
 
 
 

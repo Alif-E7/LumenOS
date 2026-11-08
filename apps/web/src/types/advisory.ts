@@ -126,3 +126,4 @@ export interface AdvisoryState {
   auto_pilot_enabled: boolean;
   metrics: AdvisoryMetricsSummary;
 }
+

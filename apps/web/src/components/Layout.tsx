@@ -49,6 +49,9 @@ export function Layout() {
               <NavLink to="/operate" className={linkClass}>
                 Control
               </NavLink>
+              <NavLink to="/benchmark" className={linkClass}>
+                Benchmark
+              </NavLink>
               <NavLink to="/rewards" className={linkClass}>
                 Rewards
               </NavLink>
@@ -93,6 +96,9 @@ export function Layout() {
             </NavLink>
             <NavLink to="/operate" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
               Mission Control
+            </NavLink>
+            <NavLink to="/benchmark" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
+              Benchmark Harness
             </NavLink>
             <NavLink to="/rewards" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
               Rewards & Progression
