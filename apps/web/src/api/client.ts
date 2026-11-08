@@ -43,7 +43,8 @@ import type {
   RecordMissionProgressionResponse,
 } from "../types";
 
-const BASE = "/api";
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+const BASE = API_BASE_URL ? `${API_BASE_URL}/api` : "/api";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${BASE}${url}`, {
@@ -222,15 +223,25 @@ export const joinRoom = (roomCode: string, displayName: string) =>
 export const getRoomInfo = (roomCode: string) =>
   fetchJSON<RoomInfoResponse>(`/rooms/${roomCode}`);
 
-/** Build the room WebSocket URL (same origin; Vite proxies /ws in dev). */
+/** Build the room WebSocket URL (supports VITE_WS_URL, VITE_API_URL, or same-origin fallback). */
 export const roomSocketUrl = (
   roomCode: string,
   playerId: string,
   displayName?: string
 ) => {
-  const proto = window.location.protocol === "https:" ? "wss" : "ws";
   const name = displayName ? `?display_name=${encodeURIComponent(displayName)}` : "";
-  return `${proto}://${window.location.host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
+  if (import.meta.env.VITE_WS_URL) {
+    const wsBase = (import.meta.env.VITE_WS_URL as string).replace(/\/+$/, "");
+    return `${wsBase}/api/rooms/ws/${roomCode}/${playerId}${name}`;
+  }
+  if (API_BASE_URL) {
+    const wsProto = API_BASE_URL.startsWith("https") ? "wss" : "ws";
+    const host = API_BASE_URL.replace(/^https?:\/\//, "");
+    return `${wsProto}://${host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
+  }
+  const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
+  const host = typeof window !== "undefined" ? window.location.host : "localhost:5173";
+  return `${proto}://${host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
 };
 
 // ── Simulation Clock, Environment & Timeline API (Prompt 6) ─────────────────

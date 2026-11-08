@@ -244,6 +244,7 @@ class TestPrompt18ExtremePhysicalStatesReliability:
         assert model.state.priority_alerts_mb == 10.0
         assert model.state.dropped_overflow_mb >= 10.0
 
+
     def test_thermal_saturation_stability(self):
         """Verify spacecraft survives extreme thermal input without runaway or crash."""
         cfg = ThermalConfig(
@@ -302,4 +303,3 @@ class TestPrompt18MultiplayerLifecycleAndReconnection:
             assert reconnect_msg["phase"] == "playing"
             assert "state" in reconnect_msg
             assert "telemetry" in reconnect_msg
-
