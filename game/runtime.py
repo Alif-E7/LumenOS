@@ -48,7 +48,13 @@ from simulation.core import (
     SimulationSnapshot,
 )
 from simulation.physics.orbital import GroundTarget
-from simulation.physics.orbital import GroundTarget
+from game.advisory import (
+    LumenOSPredictiveScheduler,
+    ForecastWindow,
+    AdvisoryRecommendation,
+    AdvisoryMetricsSummary,
+    PredictionAccuracyRecord,
+)
 
 
 class HeadlessRunResult(BaseModel):
@@ -196,8 +202,29 @@ class SimulationRuntime:
         self.telemetry_history: list[dict[str, Any]] = []
         self.objective_history: list[dict[str, Any]] = []
 
+        # LumenOS signature predictive workload scheduler (Prompt 12)
+        self.advisory_scheduler = LumenOSPredictiveScheduler(
+            horizon_steps=5,
+            time_step_seconds=self.time_step_seconds,
+        )
+
         # Command queue for pending step execution
         self._pending_commands: list[CommandRequest] = []
+
+    @property
+    def action_log(self) -> list[dict[str, Any]]:
+        """Unified action log exposing executed commands."""
+        return [
+            {
+                "actor": r.actor,
+                "action_type": r.action_type,
+                "role": r.role,
+                "step": r.step,
+                "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+                "params": r.params,
+            }
+            for r in self.command_resolver.audit_log
+        ]
 
     @classmethod
     def from_mission(
@@ -540,6 +567,20 @@ class SimulationRuntime:
             telemetry = self._package_telemetry(snapshot)
             self.telemetry_history.append(telemetry)
 
+            # 9. Evaluate Prior Predictions Against Measured Telemetry
+            self.advisory_scheduler.evaluate_actuals(snapshot.step, telemetry)
+
+            # 10. Generate Predictive 5-Minute Advisory Forecast & Recommendations
+            forecast = self.advisory_scheduler.generate_forecast(snapshot.step, self)
+            auto_executed = self.advisory_scheduler.tick_automation(self)
+            self.prediction_records = [p.model_dump() for p in self.advisory_scheduler.prediction_accuracy_log]
+
+            active_recs = (
+                list(self.advisory_scheduler.active_recommendations.values())
+                if isinstance(self.advisory_scheduler.active_recommendations, dict)
+                else list(self.advisory_scheduler.active_recommendations)
+            )
+
             step_summary = {
                 "step": snapshot.step,
                 "elapsed_seconds": snapshot.elapsed_seconds,
@@ -548,7 +589,15 @@ class SimulationRuntime:
                 "budget_remaining": self.budget_remaining,
                 "new_events": [e.model_dump() for e in new_events],
                 "executed_commands": [r.model_dump() for r in executed_records],
+                "auto_executed_advisories": [r if isinstance(r, dict) else r.model_dump() for r in auto_executed],
                 "telemetry": telemetry,
+                "advisory": {
+                    "forecast": forecast.model_dump(),
+                    "forecast_steps": [s.model_dump() for s in forecast.steps],
+                    "recommendations": [r.model_dump() for r in active_recs],
+                    "metrics": self.advisory_scheduler.compute_metrics_summary().model_dump(),
+                    "auto_pilot_enabled": self.advisory_scheduler.auto_pilot_enabled,
+                },
             }
             results.append(step_summary)
 
@@ -865,10 +914,22 @@ class SimulationRuntime:
             "warnings_log": copy.deepcopy(self.warnings_log),
             "decisions_log": copy.deepcopy(self.decisions_log),
             "prediction_records": copy.deepcopy(self.prediction_records),
+            "advisory": {
+                "auto_pilot_enabled": self.advisory_scheduler.auto_pilot_enabled,
+                "auto_pilot_authorized_by": self.advisory_scheduler.auto_pilot_authorized_by,
+                "recommendation_history": [r.model_dump() for r in self.advisory_scheduler.recommendation_history],
+                "prediction_accuracy_log": [p.model_dump() for p in self.advisory_scheduler.prediction_accuracy_log],
+            },
+            "advisory_scheduler": {
+                "auto_pilot_enabled": self.advisory_scheduler.auto_pilot_enabled,
+                "auto_pilot_authorized_by": self.advisory_scheduler.auto_pilot_authorized_by,
+                "recommendation_history": [r.model_dump() for r in self.advisory_scheduler.recommendation_history],
+                "prediction_accuracy_log": [p.model_dump() for p in self.advisory_scheduler.prediction_accuracy_log],
+            },
             "metadata": metadata or {},
         }
 
-    def load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+    def load_checkpoint(self, checkpoint: dict[str, Any]) -> bool:
         """
         Restore runtime state bit-for-bit from a checkpoint dictionary.
         """
@@ -898,3 +959,14 @@ class SimulationRuntime:
         self.warnings_log = copy.deepcopy(checkpoint.get("warnings_log", []))
         self.decisions_log = copy.deepcopy(checkpoint.get("decisions_log", []))
         self.prediction_records = copy.deepcopy(checkpoint.get("prediction_records", []))
+        adv_data = checkpoint.get("advisory", checkpoint.get("advisory_scheduler"))
+        if adv_data:
+            self.advisory_scheduler.auto_pilot_enabled = adv_data.get("auto_pilot_enabled", False)
+            self.advisory_scheduler.auto_pilot_authorized_by = adv_data.get("auto_pilot_authorized_by")
+            self.advisory_scheduler.recommendation_history = [
+                AdvisoryRecommendation.model_validate(r) for r in adv_data.get("recommendation_history", [])
+            ]
+            self.advisory_scheduler.prediction_accuracy_log = [
+                PredictionAccuracyRecord.model_validate(p) for p in adv_data.get("prediction_accuracy_log", [])
+            ]
+        return True

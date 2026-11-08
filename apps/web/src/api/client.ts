@@ -298,4 +298,36 @@ export const restoreSimulationCheckpoint = (
     }
   );
 
+// ── LumenOS Predictive Advisory API (Prompt 12) ──────────────────────────────
+
+export const getAdvisoryState = (sessionId: string) =>
+  fetchJSON<any>(`/game/${sessionId}/advisory`);
+
+export const respondToAdvisory = (
+  sessionId: string,
+  params: {
+    recommendation_id: string;
+    action: string;
+    modified_parameters?: Record<string, any>;
+    player_id?: string;
+  }
+) =>
+  fetchJSON<any>(`/game/${sessionId}/advisory/respond`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const setAdvisoryAutomation = (
+  sessionId: string,
+  params: { enabled: boolean; player_id?: string }
+) =>
+  fetchJSON<any>(`/game/${sessionId}/advisory/automation`, {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const getAdvisoryMetrics = (sessionId: string) =>
+  fetchJSON<any>(`/game/${sessionId}/advisory/metrics`);
+
+
 

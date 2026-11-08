@@ -211,6 +211,10 @@ class Room:
                 await self._handle_action(player_id, command)
             elif cmd_type == "resolve_event":
                 await self._handle_resolve_event(player_id, command)
+            elif cmd_type == "advisory_respond":
+                await self._handle_advisory_respond(player_id, command)
+            elif cmd_type == "set_automation":
+                await self._handle_set_automation(player_id, command)
             elif cmd_type == "ready":
                 await self._handle_ready(player_id)
             elif cmd_type == "get_state":
@@ -355,6 +359,60 @@ class Room:
             })
         else:
             await self._send_to(player_id, {"type": "error", **result})
+
+    async def _handle_advisory_respond(self, player_id: str, command: dict) -> None:
+        """Handle player response to a predictive advisory recommendation."""
+        if self._phase != "playing" or self._game_session is None:
+            await self._send_to(player_id, {"type": "error", "error": "Game not running"})
+            return
+
+        rec_id = command.get("recommendation_id", "")
+        action = command.get("action", "")
+        modified_params = command.get("modified_parameters")
+
+        result = self._game_session.respond_to_advisory(
+            player_id=player_id,
+            recommendation_id=rec_id,
+            action=action,
+            modified_parameters=modified_params,
+        )
+
+        await self._send_to(player_id, {
+            "type": "advisory_response_result",
+            **result,
+        })
+
+        if result.get("success"):
+            await self._broadcast({
+                "type": "advisory_updated",
+                "player_id": player_id,
+                "recommendation_id": rec_id,
+                "action": action,
+                "advisory": self._game_session.get_advisory_state(),
+                "state": self._game_session.get_full_state(),
+            })
+
+    async def _handle_set_automation(self, player_id: str, command: dict) -> None:
+        """Enable or disable LumenOS advisory autopilot automation."""
+        if self._phase != "playing" or self._game_session is None:
+            await self._send_to(player_id, {"type": "error", "error": "Game not running"})
+            return
+
+        enabled = bool(command.get("enabled", False))
+        result = self._game_session.set_advisory_automation(player_id=player_id, enabled=enabled)
+
+        await self._send_to(player_id, {
+            "type": "advisory_automation_result",
+            **result,
+        })
+
+        if result.get("success"):
+            await self._broadcast({
+                "type": "advisory_automation_changed",
+                "player_id": player_id,
+                "enabled": enabled,
+                "advisory": self._game_session.get_advisory_state(),
+            })
 
     async def _handle_ready(self, player_id: str) -> None:
         """Toggle player ready status in lobby."""

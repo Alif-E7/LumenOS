@@ -33,6 +33,12 @@ from game.roles import RoleName, RoleAssignment, assign_roles, has_permission
 from game.actions import ActionType, build_action, PlayerAction
 from game.scoring import MissionScorer, ScoreBreakdown
 from game.state import GameState
+from game.advisory import (
+    LumenOSPredictiveScheduler,
+    ForecastWindow,
+    AdvisoryRecommendation,
+    AdvisoryMetricsSummary,
+)
 from simulation.core import (
     SimulationRunner, SimulationConfig, SpacecraftConfig, SimulationSnapshot,
 )
@@ -164,6 +170,12 @@ class GameSession:
         # Command resolver (authoritative serializer)
         self._command_resolver = CommandResolver(roles=self._roles)
 
+        # LumenOS predictive workload scheduler (Prompt 12)
+        self._advisory = LumenOSPredictiveScheduler(
+            horizon_steps=5,
+            time_step_seconds=getattr(self._sim.config, "time_step_seconds", 60.0),
+        )
+
         # Game state
         self._state = GameState(
             session_id=session_id,
@@ -247,10 +259,18 @@ class GameSession:
             # 5. Check win/fail conditions
             self._check_outcome(snapshot)
 
+            # 6. Evaluate Prior Predictions Against Measured Telemetry
+            telemetry_data = self._telemetry(snapshot)
+            self._advisory.evaluate_actuals(snapshot.step, telemetry_data)
+
+            # 7. Generate 5-Minute Forward Forecast & Action Recommendations
+            forecast = self._advisory.generate_forecast(snapshot.step, self)
+            auto_executed = self._advisory.tick_automation(self)
+
             results.append({
                 "step": snapshot.step,
                 "elapsed_seconds": snapshot.elapsed_seconds,
-                "telemetry": self._telemetry(snapshot),
+                "telemetry": telemetry_data,
                 "new_events": [
                     {
                         "event_id": e.event_id,
@@ -266,6 +286,12 @@ class GameSession:
                     for e in new_events
                 ],
                 "game_state": self._state.to_summary(),
+                "advisory": {
+                    "forecast": forecast.model_dump(),
+                    "recommendations": [r.model_dump() for r in self._advisory.active_recommendations],
+                    "auto_executed": [r.model_dump() for r in auto_executed],
+                    "metrics": self._advisory.compute_metrics_summary().model_dump(),
+                },
             })
 
         return results
@@ -319,6 +345,60 @@ class GameSession:
             ],
             "active_events": self.get_active_events(),
         }
+
+    # ── LumenOS Predictive Mission Management (Prompt 12) ─────────────────────
+
+    def get_advisory_state(self) -> dict[str, Any]:
+        """Retrieve current advisory forecast, active recommendations, and accuracy metrics."""
+        fc = self._advisory.active_forecast
+        recs = (
+            list(self._advisory.active_recommendations.values())
+            if isinstance(self._advisory.active_recommendations, dict)
+            else list(self._advisory.active_recommendations)
+        )
+        rec_dumps = [r.model_dump() for r in recs]
+        return {
+            "forecast": fc.model_dump() if fc else None,
+            "recommendations": rec_dumps,
+            "active_recommendations": rec_dumps,
+            "auto_pilot_enabled": self._advisory.auto_pilot_enabled,
+            "metrics": self._advisory.compute_metrics_summary().model_dump(),
+        }
+
+    def respond_to_advisory(
+        self,
+        player_id: str = "operator",
+        recommendation_id: str = "",
+        action: str = "accept",
+        modified_parameters: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Accept, reject, or modify an advisory recommendation."""
+        # Normalize args if called positionally or with alternate names
+        rec_id = recommendation_id or kwargs.get("rec_id", "")
+        act = action or kwargs.get("response", "accept")
+        params = modified_parameters or kwargs.get("modified_params")
+        actor = player_id or kwargs.get("actor", "operator")
+
+        return self._advisory.respond_to_recommendation(
+            recommendation_id=rec_id,
+            action=act,
+            modified_parameters=params,
+            player_id=actor,
+            runtime=self,
+        )
+
+    def set_advisory_automation(self, player_id: str = "operator", enabled: bool = False, **kwargs: Any) -> dict[str, Any]:
+        """Toggle optional autopilot automation."""
+        if "enabled" not in kwargs and isinstance(player_id, bool):
+            enabled = player_id
+            player_id = "operator"
+        res = self._advisory.set_automation(enabled=enabled, player_id=player_id)
+        return {"success": True, "auto_pilot_enabled": self._advisory.auto_pilot_enabled, **res}
+
+    def get_advisory_metrics(self) -> dict[str, Any]:
+        """Get prediction accuracy scorecard."""
+        return self._advisory.compute_metrics_summary().model_dump()
 
     @staticmethod
     def _telemetry(snapshot: SimulationSnapshot) -> dict[str, Any]:

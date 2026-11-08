@@ -38,7 +38,16 @@ import {
   getGroundTrack,
   saveSimulationCheckpoint,
   restoreSimulationCheckpoint,
+  getAdvisoryState,
+  respondToAdvisory,
+  setAdvisoryAutomation,
 } from "../api/client";
+import { PredictiveAdvisoryPanel } from "../components/PredictiveAdvisoryPanel";
+import type {
+  ForecastWindow,
+  AdvisoryRecommendation,
+  AdvisoryMetricsSummary,
+} from "../types/advisory";
 import { useRoomSocket } from "../hooks/useRoomSocket";
 import {
   loadMissionSession,
@@ -94,6 +103,12 @@ export function OperatePage() {
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // LumenOS Predictive Advisory state (Prompt 12)
+  const [advisoryForecast, setAdvisoryForecast] = useState<ForecastWindow | null>(null);
+  const [advisoryRecs, setAdvisoryRecs] = useState<AdvisoryRecommendation[]>([]);
+  const [advisoryMetrics, setAdvisoryMetrics] = useState<AdvisoryMetricsSummary | null>(null);
+  const [advisoryAutoPilot, setAdvisoryAutoPilot] = useState<boolean>(false);
+
   // Co-op audit feed & pending requests
   const [pendingRequests, setPendingRequests] = useState<PendingActionRequest[]>([]);
   const [recentActions, setRecentActions] = useState<ActionAuditEntry[]>([]);
@@ -134,10 +149,73 @@ export function OperatePage() {
           if (resp?.timeline_events) setForecastEvents(resp.timeline_events);
         })
         .catch(() => {});
+
+      void getAdvisoryState(session.sessionId)
+        .then((adv) => {
+          if (adv?.forecast) setAdvisoryForecast(adv.forecast);
+          if (adv?.recommendations || adv?.active_recommendations) {
+            setAdvisoryRecs(adv.recommendations || adv.active_recommendations);
+          }
+          if (adv?.metrics) setAdvisoryMetrics(adv.metrics);
+          if (adv?.auto_pilot_enabled !== undefined) {
+            setAdvisoryAutoPilot(adv.auto_pilot_enabled);
+          }
+        })
+        .catch(() => {});
     } catch (err) {
       setError((err as Error).message);
     }
   }, [session?.sessionId]);
+
+  const handleAdvisoryResponse = async (
+    recId: string,
+    action: "accept" | "reject" | "modify",
+    modifiedParams?: Record<string, any>
+  ) => {
+    if (!session?.sessionId) return;
+    try {
+      if (session.mode === "solo") {
+        await respondToAdvisory(session.sessionId, {
+          recommendation_id: recId,
+          action,
+          modified_parameters: modifiedParams,
+        });
+        setStatusMessage(`Advisory recommendation ${action}ed.`);
+        void refreshSolo();
+      } else {
+        room.send({
+          command: "advisory_respond",
+          recommendation_id: recId,
+          action,
+          modified_parameters: modifiedParams,
+        });
+        setStatusMessage(`Broadcasted advisory ${action} to team.`);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleToggleAdvisoryAutomation = async (enabled: boolean) => {
+    if (!session?.sessionId) return;
+    try {
+      if (session.mode === "solo") {
+        await setAdvisoryAutomation(session.sessionId, { enabled });
+        setAdvisoryAutoPilot(enabled);
+        setStatusMessage(`LumenOS autopilot automation set to ${enabled ? "ACTIVE" : "STANDBY"}.`);
+        void refreshSolo();
+      } else {
+        room.send({
+          command: "set_automation",
+          enabled,
+        });
+        setAdvisoryAutoPilot(enabled);
+        setStatusMessage(`Team autopilot set to ${enabled ? "ACTIVE" : "STANDBY"}.`);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
   useEffect(() => {
     if (session?.mode === "solo") void refreshSolo();
@@ -626,6 +704,16 @@ export function OperatePage() {
           />
         </Card>
       </div>
+
+      {/* ── LumenOS Predictive Mission Management & Advisory (Prompt 12) ── */}
+      <PredictiveAdvisoryPanel
+        forecast={advisoryForecast}
+        recommendations={advisoryRecs}
+        metrics={advisoryMetrics}
+        autoPilotEnabled={advisoryAutoPilot}
+        onRespond={handleAdvisoryResponse}
+        onToggleAutomation={handleToggleAdvisoryAutomation}
+      />
 
       {/* ── Subsystems Resource Gauges & Telemetry Bar ── */}
       <Card

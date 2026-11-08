@@ -8,6 +8,13 @@ export type DataProvenanceCategory =
   | "SIMULATED_ENVIRONMENT"
   | "MODEL_PREDICTION";
 
+export const DataProvenance = {
+  REAL_NASA_REFERENCE: "REAL_NASA_REFERENCE",
+  SIMULATED_SPACECRAFT: "SIMULATED_SPACECRAFT",
+  SIMULATED_ENVIRONMENT: "SIMULATED_ENVIRONMENT",
+  MODEL_PREDICTION: "MODEL_PREDICTION",
+} as const;
+
 export interface DataProvenanceMetadata {
   provenance_type: DataProvenanceCategory;
   source_id: string;

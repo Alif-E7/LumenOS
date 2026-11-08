@@ -140,6 +140,19 @@ class CheckpointRestoreRequest(BaseModel):
     checkpoint: dict[str, Any]
 
 
+class AdvisoryResponseRequest(BaseModel):
+    """Request body for player response to advisory recommendation."""
+    recommendation_id: str
+    response: str = "accept"  # accept | reject | modify
+    modified_params: Optional[dict[str, Any]] = None
+    actor: str = "operator"
+
+
+class AdvisoryAutomationRequest(BaseModel):
+    """Request body to toggle advisory automation."""
+    enabled: bool
+
+
 class SessionDeletedResponse(BaseModel):
     """Confirmation that a session was deleted."""
     session_id: str
@@ -402,6 +415,61 @@ async def restore_checkpoint(session_id: str, body: CheckpointRestoreRequest):
         "session_id": session_id,
         "restored": True,
         "clock": session.get_clock_state(),
+    }
+
+
+# ── LumenOS Predictive Workload Scheduler Endpoints (Prompt 12) ───────────────
+
+
+@router.get("/{session_id}/advisory")
+async def get_advisory(session_id: str):
+    """Get current 5-minute predictive forecast, recommendations, and scorecard."""
+    session = _get_session_or_404(session_id)
+    return {
+        "session_id": session_id,
+        "advisory": session.get_advisory_state(),
+    }
+
+
+@router.post("/{session_id}/advisory/respond")
+async def respond_advisory(session_id: str, body: AdvisoryResponseRequest):
+    """Accept, reject, or modify an advisory recommendation."""
+    session = _get_session_or_404(session_id)
+    result = session.respond_to_advisory(
+        recommendation_id=body.recommendation_id,
+        response=body.response,
+        modified_params=body.modified_params,
+        actor=body.actor,
+    )
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("error", "Failed to process advisory response"),
+        )
+    return {
+        "session_id": session_id,
+        "result": result,
+    }
+
+
+@router.post("/{session_id}/advisory/automation")
+async def set_advisory_automation(session_id: str, body: AdvisoryAutomationRequest):
+    """Toggle optional player-authorized advisory automation."""
+    session = _get_session_or_404(session_id)
+    result = session.set_advisory_automation(body.enabled)
+    return {
+        "session_id": session_id,
+        **result,
+    }
+
+
+@router.get("/{session_id}/advisory/metrics")
+async def get_advisory_metrics(session_id: str):
+    """Get verification scorecard: continuous MAE/RMSE, precision/recall, and mission utility."""
+    session = _get_session_or_404(session_id)
+    return {
+        "session_id": session_id,
+        "metrics": session._advisory.compute_metrics_summary().model_dump(),
     }
 
 
