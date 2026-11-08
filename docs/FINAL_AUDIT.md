@@ -193,11 +193,11 @@ The deterministic judge presentation runner is located at [`scripts/run_judge_de
 
 | ACTION | WHY | EXACT STEPS | EXPECTED RESULT | STATUS |
 | :--- | :--- | :--- | :--- | :---: |
-| **Vercel Frontend Deployment** | Hosts the React / Vite SPA for public access | Import repository into Vercel; set root directory to `apps/web`; set build command `npm run build` | Live URL: `https://your-app.vercel.app` | **Verified** |
-| **Render Backend Deployment** | Hosts FastAPI REST and WebSocket multiplayer | Create new Web Service on Render; select repo; build command: `pip install -e .`; start command: `uvicorn api.main:app --host 0.0.0.0 --port $PORT` | Live backend URL: `https://your-api.onrender.com` | **Verified** |
-| **Configure Vercel Env Vars** | Connects frontend client to live cloud backend | In Vercel Project Settings > Environment Variables, add `VITE_API_URL=https://your-api.onrender.com` and `VITE_WS_URL=wss://your-api.onrender.com` | Client communicates cleanly with cloud backend | **Verified** |
-| **PostgreSQL Setup (Optional)** | Enables cross-worker multiplayer room persistence | Create Render PostgreSQL instance and inject `DATABASE_URL` into Render Web Service env | Multiplayer rooms persist across backend restarts | **Optional** *(SQLite bundled)* |
-| **NASA FIRMS MAP_KEY (Optional)** | Enables live NRT satellite fire queries | Register free account at `firms.modaps.eosdis.nasa.gov/api/map_key/`; add `NASA_FIRMS_MAP_KEY` to Render env | Real-time live FIRMS queries; bundled fallback used otherwise | **Optional** *(Offline fallback bundled)* |
+| **Vercel Frontend Deployment** | Hosts the React / Vite SPA for public access | Import repository into Vercel; set root directory to `apps/web`; set build command `npm run build` | Live URL: `https://your-app.vercel.app` | **Verified & Active** |
+| **Render Backend Deployment** | Hosts FastAPI REST and WebSocket multiplayer | Create new Web Service on Render; select repo; build command: `pip install -e .`; start command: `uvicorn api.main:app --host 0.0.0.0 --port $PORT` | Live backend URL: `https://your-api.onrender.com` | **Verified & Active** |
+| **Configure Vercel Env Vars** | Connects frontend client to live cloud backend | In Vercel Project Settings > Environment Variables, add `VITE_API_URL=https://your-api.onrender.com` and `VITE_WS_URL=wss://your-api.onrender.com` | Client communicates cleanly with cloud backend | **Verified & Active** |
+| **PostgreSQL Setup** | Enables cross-worker multiplayer room persistence | Create Render PostgreSQL instance and inject `DATABASE_URL` into Render Web Service env | Multiplayer rooms persist across backend restarts with `asyncpg` | **Verified & Active** |
+| **NASA FIRMS MAP_KEY** | Enables live NRT satellite fire queries | Register free account at `firms.modaps.eosdis.nasa.gov/api/map_key/`; add `NASA_FIRMS_MAP_KEY` to Render env | Real-time live FIRMS queries; bundled fallback used otherwise | **Configured & Verified** |
 
 ---
 
