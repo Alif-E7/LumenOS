@@ -325,3 +325,4 @@ def get_data_manager() -> DataManager:
     if _global_data_manager is None:
         _global_data_manager = DataManager()
     return _global_data_manager
+

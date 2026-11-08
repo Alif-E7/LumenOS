@@ -281,3 +281,4 @@ def get_sources_by_scenario(scenario_id: str) -> list[DataSourceRecord]:
     }
     source_ids = mapping.get(scenario_id.lower(), ["nasa_tsis1_tsi", "nasa_ceres_ebaf"])
     return [DATA_SOURCES_CATALOG[sid] for sid in source_ids if sid in DATA_SOURCES_CATALOG]
+

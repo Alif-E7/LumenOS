@@ -8,10 +8,16 @@ import { EventCard } from "../components/EventCard";
 import { WarningPanel, type Warning } from "../components/WarningPanel";
 import { Timeline } from "../components/Timeline";
 import { BudgetMeter } from "../components/BudgetMeter";
-import { RoleBadge } from "../components/RoleBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import { ResourceMeter } from "../components/ResourceMeter";
-import { Tooltip } from "../components/Tooltip";
+import { CesiumMissionViewer } from "../components/CesiumMissionViewer";
+import { MissionClockBar } from "../components/MissionClockBar";
+import {
+  ParticipantList,
+  type PendingActionRequest,
+  type ActionAuditEntry,
+} from "../components/ParticipantList";
+import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import {
   STATION_COMPONENTS,
   STATION_ORDER,
@@ -23,6 +29,15 @@ import {
   getGameTelemetry,
   performAction,
   resolveEvent,
+  getSimulationClock,
+  pauseSimulationClock,
+  resumeSimulationClock,
+  setSimulationClockSpeed,
+  fastForwardSimulation,
+  getForecastTimeline,
+  getGroundTrack,
+  saveSimulationCheckpoint,
+  restoreSimulationCheckpoint,
 } from "../api/client";
 import { useRoomSocket } from "../hooks/useRoomSocket";
 import {
@@ -30,7 +45,15 @@ import {
   clearMissionSession,
   type MissionSession,
 } from "../lib/mission";
-import type { ActiveEvent, GameStateSummary, StepResult, Telemetry } from "../types";
+import type {
+  ActiveEvent,
+  GameStateSummary,
+  StepResult,
+  Telemetry,
+  ClockState,
+  GroundTrackPoint,
+  TimelineEvent,
+} from "../types";
 import { ROLES, type RoleId } from "../lib/constants";
 
 const BUDGET_TOTAL = 10000;
@@ -42,11 +65,14 @@ function fmtClock(seconds: number, durationHours: number): string {
 }
 
 /**
- * Operate / Mission Control — the live flight deck.
+ * Operate / Mission Control — Live Flight Deck.
+ * Centered around decisions: primary & optional objectives, countdown/deadlines,
+ * upcoming forecast timeline, active event cards, resource meters, non-color warnings,
+ * command status, and primary 3D Cesium mission view with accessible 2D fallback.
  *
- * Solo: REST-driven (step, actions, events). All four stations available.
- * Co-op: room WebSocket drives the shared state; players see only their
- * assigned stations and the server enforces role permissions.
+ * Solo mode: All Stations workspace with four role panels + action history.
+ * Co-op mode: Role-specific workstations, crew member connection status, action requests,
+ * and shared authoritative state across all participants.
  */
 export function OperatePage() {
   const navigate = useNavigate();
@@ -54,13 +80,23 @@ export function OperatePage() {
   const [engineerMode, setEngineerMode] = useState(
     () => localStorage.getItem("lumenos.engineerMode") === "true"
   );
+  const [force2DMap, setForce2DMap] = useState(false);
 
   // Solo REST state
   const [gameState, setGameState] = useState<GameStateSummary | null>(null);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
+  const [clock, setClock] = useState<ClockState | null>(null);
+  const [groundTrack, setGroundTrack] = useState<GroundTrackPoint[]>([]);
+  const [forecastEvents, setForecastEvents] = useState<TimelineEvent[]>([]);
+  const [savedCheckpoint, setSavedCheckpoint] = useState<any>(null);
   const [stepping, setStepping] = useState(false);
   const [autoRun, setAutoRun] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  // Co-op audit feed & pending requests
+  const [pendingRequests, setPendingRequests] = useState<PendingActionRequest[]>([]);
+  const [recentActions, setRecentActions] = useState<ActionAuditEntry[]>([]);
 
   // Co-op room state
   const room = useRoomSocket(
@@ -77,12 +113,27 @@ export function OperatePage() {
   const refreshSolo = useCallback(async () => {
     if (!session?.sessionId) return;
     try {
-      const [stateResp, telResp] = await Promise.all([
+      const [stateResp, telResp, clockResp] = await Promise.all([
         getGameState(session.sessionId),
         getGameTelemetry(session.sessionId),
+        getSimulationClock(session.sessionId).catch(() => null),
       ]);
       setGameState(stateResp.game_state);
       if (Object.keys(telResp.telemetry).length > 0) setTelemetry(telResp.telemetry);
+      if (clockResp?.clock) setClock(clockResp.clock);
+
+      // Async fetch ground track and timeline forecast
+      void getGroundTrack(session.sessionId, 60)
+        .then((resp) => {
+          if (resp?.points) setGroundTrack(resp.points);
+        })
+        .catch(() => {});
+
+      void getForecastTimeline(session.sessionId, 14400)
+        .then((resp) => {
+          if (resp?.timeline_events) setForecastEvents(resp.timeline_events);
+        })
+        .catch(() => {});
     } catch (err) {
       setError((err as Error).message);
     }
@@ -121,13 +172,114 @@ export function OperatePage() {
     }
   };
 
+  // ── Clock & Simulation Controls ──────────────────────────────────────
+  const handlePause = async () => {
+    if (session?.mode === "coop") {
+      room.send({ command: "pause" });
+      return;
+    }
+    if (!session?.sessionId) return;
+    try {
+      const resp = await pauseSimulationClock(session.sessionId);
+      if (resp.clock) setClock(resp.clock);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleResume = async () => {
+    if (session?.mode === "coop") {
+      room.send({ command: "resume" });
+      return;
+    }
+    if (!session?.sessionId) return;
+    try {
+      const resp = await resumeSimulationClock(session.sessionId);
+      if (resp.clock) setClock(resp.clock);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleSetSpeed = async (multiplier: number) => {
+    if (session?.mode === "coop") {
+      room.send({ command: "clock_speed", speed: multiplier });
+      return;
+    }
+    if (!session?.sessionId) return;
+    try {
+      const resp = await setSimulationClockSpeed(session.sessionId, multiplier);
+      if (resp.clock) setClock(resp.clock);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleFastForward = async (params: { target_seconds?: number; event_type?: string }) => {
+    if (!session?.sessionId) return;
+    try {
+      setStatusMessage(`Fast-forwarding to ${params.event_type ?? "target"}...`);
+      await fastForwardSimulation(session.sessionId, params);
+      await refreshSolo();
+      setStatusMessage("Simulation advanced to event timestamp.");
+      setTimeout(() => setStatusMessage(null), 3000);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleSaveCheckpoint = async () => {
+    if (!session?.sessionId) return;
+    try {
+      const resp = await saveSimulationCheckpoint(session.sessionId);
+      if (resp?.checkpoint) {
+        setSavedCheckpoint(resp.checkpoint);
+        setStatusMessage("Checkpoint snapshot saved successfully.");
+        setTimeout(() => setStatusMessage(null), 3000);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleRestoreCheckpoint = async () => {
+    if (!session?.sessionId || !savedCheckpoint) {
+      setError("No saved checkpoint available to restore.");
+      return;
+    }
+    try {
+      const resp = await restoreSimulationCheckpoint(session.sessionId, savedCheckpoint);
+      if (resp.restored) {
+        if (resp.clock) setClock(resp.clock);
+        await refreshSolo();
+        setStatusMessage("Checkpoint restored successfully.");
+        setTimeout(() => setStatusMessage(null), 3000);
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
   // ── Action dispatch (solo REST / co-op WS) ───────────────────────────
   const dispatchAction = async (actionType: string, params: Record<string, unknown>, label: string) => {
     setError(null);
+    const nowStr = new Date().toLocaleTimeString();
+
     if (session?.mode === "coop") {
       room.send({ command: "action", action_type: actionType, params });
+      setRecentActions((prev) => [
+        {
+          actor: "You",
+          role: myRoles[0] ?? "crew",
+          actionType: label,
+          timestamp: nowStr,
+          result: "ACCEPTED",
+        },
+        ...prev,
+      ]);
       return;
     }
+
     if (!session?.sessionId) return;
     try {
       const resp = await performAction(session.sessionId, {
@@ -137,6 +289,28 @@ export function OperatePage() {
       });
       if (!resp.success) {
         setError(`${label} rejected: ${resp.error ?? "unknown reason"}`);
+        setRecentActions((prev) => [
+          {
+            actor: "Director/You",
+            role: "flight_deck",
+            actionType: label,
+            timestamp: nowStr,
+            result: "REJECTED",
+            detail: resp.error,
+          },
+          ...prev,
+        ]);
+      } else {
+        setRecentActions((prev) => [
+          {
+            actor: "Director/You",
+            role: "flight_deck",
+            actionType: label,
+            timestamp: nowStr,
+            result: "ACCEPTED",
+          },
+          ...prev,
+        ]);
       }
       await refreshSolo();
     } catch (err) {
@@ -169,9 +343,24 @@ export function OperatePage() {
   const phase = isCoop ? room.phase : gameState?.status === "pending" ? "lobby" : "playing";
   const activeGameState = isCoop ? room.gameState : gameState;
   const activeTelemetry = isCoop ? room.telemetry : telemetry;
-  const activeEvents = isCoop ? room.activeEvents : (gameState?.active_events ?? []).filter((e) => e.is_pending);
+  const activeEvents = isCoop
+    ? room.activeEvents
+    : (gameState?.active_events ?? []).filter((e) => e.is_pending);
   const objectives = activeGameState?.objectives ?? [];
   const budgetRemaining = activeGameState?.budget_remaining ?? BUDGET_TOTAL;
+
+  // Derive active clock state
+  const activeClock: ClockState = useMemo(() => {
+    if (clock) return clock;
+    return {
+      status: autoRun ? "RUNNING" : "PAUSED",
+      speed_multiplier: 1.0,
+      time_step_seconds: 60.0,
+      elapsed_seconds: activeGameState?.elapsed_seconds ?? 0,
+      step_count: activeGameState?.step ?? 0,
+      max_steps: 1440,
+    };
+  }, [clock, autoRun, activeGameState?.elapsed_seconds, activeGameState?.step]);
 
   const myRoles = useMemo<RoleId[]>(() => {
     if (!session) return [];
@@ -183,15 +372,26 @@ export function OperatePage() {
   const warnings = useMemo<Warning[]>(() => {
     if (!activeTelemetry) return [];
     const w: Warning[] = [];
-    if (activeTelemetry.power.power_critical) w.push({ id: "power-critical", message: "Battery critical — imminent shutdown", level: "critical" });
-    else if (activeTelemetry.power.low_power_warning) w.push({ id: "power-low", message: "Low power state — battery below reserve", level: "warning" });
-    if (activeTelemetry.thermal.thermal_critical) w.push({ id: "thermal-critical", message: "Thermal boundary exceeded — component damage risk", level: "critical" });
-    else if (activeTelemetry.thermal.overtemp_warning) w.push({ id: "overtemp", message: `Bus overheating (${activeTelemetry.thermal.temperature_c.toFixed(1)} °C)`, level: "critical" });
-    if (activeTelemetry.thermal.undertemp_warning) w.push({ id: "undertemp", message: "Bus temperature below lower limit", level: "warning" });
-    if (activeTelemetry.comms.buffer_full_warning) w.push({ id: "buffer-full", message: "Data buffer nearly full — downlink required", level: "warning" });
-    if (activeTelemetry.workload.cpu_overload_warning) w.push({ id: "cpu", message: "CPU overload — processing queue backing up", level: "warning" });
-    if (activeTelemetry.storage.storage_full_warning) w.push({ id: "storage", message: "Onboard storage nearly full — overflow risk", level: "warning" });
-    if (activeTelemetry.radiation_debris?.radiation_warning) w.push({ id: "radiation", message: "Elevated radiation flux (SAA / Auroral zone)", level: "warning" });
+    if (activeTelemetry.power.power_critical)
+      w.push({ id: "power-critical", message: "CRITICAL: Battery level below safety threshold — imminent bus shutdown", level: "critical" });
+    else if (activeTelemetry.power.low_power_warning)
+      w.push({ id: "power-low", message: "WARN: Low battery state — non-critical loads should be shed", level: "warning" });
+
+    if (activeTelemetry.thermal.thermal_critical)
+      w.push({ id: "thermal-critical", message: "CRITICAL: Thermal boundary exceeded — payload overheat risk", level: "critical" });
+    else if (activeTelemetry.thermal.overtemp_warning)
+      w.push({ id: "overtemp", message: `WARN: Bus temperature high (${activeTelemetry.thermal.temperature_c.toFixed(1)} °C)`, level: "critical" });
+    else if (activeTelemetry.thermal.undertemp_warning)
+      w.push({ id: "undertemp", message: "WARN: Bus temperature below lower tolerance limit — heaters firing", level: "warning" });
+
+    if (activeTelemetry.comms.buffer_full_warning)
+      w.push({ id: "buffer-full", message: "WARN: Onboard data buffer full — downlink pass required", level: "warning" });
+    if (activeTelemetry.workload.cpu_overload_warning)
+      w.push({ id: "cpu", message: "WARN: CPU overload — observation processing backing up", level: "warning" });
+    if (activeTelemetry.storage.storage_full_warning)
+      w.push({ id: "storage", message: "WARN: Solid-state storage capacity near overflow", level: "warning" });
+    if (activeTelemetry.radiation_debris?.radiation_warning)
+      w.push({ id: "radiation", message: "WARN: High radiation environment (SAA / Auroral crossing)", level: "warning" });
     return w;
   }, [activeTelemetry]);
 
@@ -244,7 +444,7 @@ export function OperatePage() {
     );
   }
 
-  const missionHours = 24; // displayed as contract duration reference
+  const missionHours = 24;
 
   const stationTabs = myRoles.map((roleId) => ({
     id: roleId,
@@ -261,73 +461,135 @@ export function OperatePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-white">Mission Control — {session.missionName}</h1>
-        <StatusBadge
-          label={isCoop ? "CO-OP CREW" : "SOLO — ALL STATIONS"}
-          variant="info"
-        />
-        <StatusBadge
-          label={
-            activeGameState?.status === "completed"
-              ? `Completed — ${activeGameState.outcome}`
-              : activeGameState?.status === "failed"
-                ? "Mission Failed"
-                : `Step ${activeGameState?.step ?? 0} · Running`
-          }
-          variant={
-            activeGameState?.status === "completed"
-              ? "success"
-              : activeGameState?.status === "failed"
-                ? "danger"
-                : "info"
-          }
-        />
-        {myRoles.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 ml-auto">
-            {isCoop ? (
-              myRoles.map((r) => <RoleBadge key={r} role={r} size="sm" />)
-            ) : (
-              <Tooltip content="Solo mode: you hold all four crew roles.">
-                <span><RoleBadge role="mission_director" size="sm" /> +3 more</span>
-              </Tooltip>
-            )}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      {/* ── Top Header & Mission Identity ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl" aria-hidden="true">🛰️</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-white tracking-tight">
+                {session.missionName}
+              </h1>
+              <ProvenanceBadge provenance="SIMULATED_SPACECRAFT" />
+            </div>
+            <p className="text-xs text-slate-400">
+              Contract Ref: <span className="font-mono text-cyan-400">{session.missionId}</span> ·
+              Orbiter: <span className="font-mono text-slate-200">LUMEN-1</span>
+            </p>
           </div>
-        )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <StatusBadge
+            label={isCoop ? `CO-OP ROOM: ${session.roomCode}` : "SOLO FLIGHT DECK"}
+            variant="info"
+          />
+          <StatusBadge
+            label={
+              activeGameState?.status === "completed"
+                ? `Mission Complete — ${activeGameState.outcome}`
+                : activeGameState?.status === "failed"
+                  ? "Mission Failed"
+                  : `Step ${activeGameState?.step ?? 0} · Running`
+            }
+            variant={
+              activeGameState?.status === "completed"
+                ? "success"
+                : activeGameState?.status === "failed"
+                  ? "danger"
+                  : "info"
+            }
+          />
+          <button
+            type="button"
+            onClick={() => setForce2DMap(!force2DMap)}
+            className="px-3 py-1 text-xs font-mono rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:text-white"
+            title="Toggle between 3D Cesium View and 2D Accessible Map"
+          >
+            {force2DMap ? "Switch to 3D Cesium View" : "Accessible 2D Map"}
+          </button>
+        </div>
       </div>
 
-      {/* Prominent: objectives + events + budget */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card title="Objectives" icon="🎯" className="lg:col-span-2">
+      {/* ── Simulation Runtime Clock & Time Controls Bar ── */}
+      <MissionClockBar
+        clock={activeClock}
+        onPause={() => void handlePause()}
+        onResume={() => void handleResume()}
+        onSetSpeed={(s) => void handleSetSpeed(s)}
+        onStep={(n) => void doStep(n)}
+        onFastForward={(p) => void handleFastForward(p)}
+        onSaveCheckpoint={() => void handleSaveCheckpoint()}
+        onRestoreCheckpoint={() => void handleRestoreCheckpoint()}
+        disabled={stepping || isFinished(activeGameState)}
+        isCoop={isCoop}
+      />
+
+      {/* Status or Success Notifications */}
+      {statusMessage && (
+        <div className="p-3 bg-blue-950/60 border border-blue-500/40 rounded-lg text-xs font-mono text-blue-200 flex items-center gap-2 animate-fade-in">
+          <span>ℹ️</span> {statusMessage}
+        </div>
+      )}
+
+      {/* ── Decision Matrix Grid: Objectives, Forecast Timeline, Budget & Events ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Objectives (Col span 2) */}
+        <Card title="Contract Objectives & Scoring Weights" icon="🎯" className="lg:col-span-2">
           <ObjectiveTracker objectives={objectives} />
         </Card>
+
+        {/* Forecast Timeline & Budget */}
         <div className="space-y-4">
-          <Card title="Budget" icon="💰">
+          <Card title="Mission Budget" icon="💰">
             <BudgetMeter remaining={budgetRemaining} total={BUDGET_TOTAL} />
           </Card>
           <Timeline
             marks={[
-              { label: "Now", fraction: (activeGameState?.step ?? 0) / Math.max(1, activeGameState?.step ?? 1) * 0.999, kind: "active" },
+              {
+                label: "Now",
+                fraction:
+                  ((activeGameState?.step ?? 0) / Math.max(1, activeGameState?.step ?? 1)) *
+                  0.999,
+                kind: "active",
+              },
             ]}
             timeLabel={fmtClock(activeGameState?.elapsed_seconds ?? 0, missionHours)}
           />
+          {forecastEvents.length > 0 && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 space-y-2">
+              <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                <span>🛰️</span> Upcoming Orbital Pass Forecast
+              </h4>
+              <ul className="space-y-1 text-xs font-mono">
+                {forecastEvents.slice(0, 3).map((ev) => (
+                  <li
+                    key={ev.event_id}
+                    className="flex items-center justify-between text-slate-300 border-b border-slate-800/40 pb-1"
+                  >
+                    <span className="text-white truncate max-w-[160px]">{ev.label}</span>
+                    <span className="text-cyan-400">T+{Math.floor(ev.timestamp_seconds / 60)}m</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Events — most decision-critical surface */}
+      {/* Active Events & Critical Command Feedback */}
       {(activeEvents.length > 0 || room.lastError || error) && (
-        <div className="mb-6 space-y-3">
+        <div className="space-y-3">
           {error && (
             <WarningPanel
               title="Command Feedback"
-              warnings={[{ id: "cmd", message: error, level: "warning" }]}
+              warnings={[{ id: "cmd-err", message: error, level: "warning" }]}
             />
           )}
           {room.lastError && (
             <WarningPanel
-              title="Room Message"
+              title="Room Network Error"
               warnings={[{ id: "room-err", message: room.lastError, level: "warning" }]}
             />
           )}
@@ -342,112 +604,161 @@ export function OperatePage() {
         </div>
       )}
 
-      {/* Warnings */}
-      <div className="mb-6">
+      {/* Active Subsystem Warnings */}
+      <div className="mb-2">
         <WarningPanel warnings={warnings} />
       </div>
 
-      {/* Shared mission view: telemetry */}
+      {/* ── Primary 3D Mission View (CesiumJS) & Live Operations Deck ── */}
+      <div className="grid grid-cols-1 gap-6">
+        <Card
+          title="Primary 3D Mission View"
+          icon="🌍"
+          subtitle="CesiumJS WGS-84 Orbit & Observation Swath (with Accessible 2D Fallback)"
+        >
+          <CesiumMissionViewer
+            orbital={activeTelemetry?.orbital}
+            comms={activeTelemetry?.comms}
+            clock={activeClock}
+            scenarioId={session.missionId}
+            groundTrackPoints={groundTrack}
+            forceFallback={force2DMap}
+          />
+        </Card>
+      </div>
+
+      {/* ── Subsystems Resource Gauges & Telemetry Bar ── */}
       <Card
-        title="Shared Telemetry"
+        title="Authoritative Spacecraft Telemetry"
         icon="📊"
-        className="mb-6"
-        subtitle="All crew members see this view — SIMULATED physics data"
+        subtitle="Live state transition telemetry from physics subsystem accounting"
       >
         {activeTelemetry ? (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              <ResourceMeter label="Health" value={activeTelemetry.spacecraft_health_pct} max={100} unit="%" />
-              <ResourceMeter label="Battery" value={activeTelemetry.power.battery_soc_pct} max={100} unit="%" />
-              <ResourceMeter label="Bus temp" value={activeTelemetry.thermal.temperature_c} max={100} unit="°C" invert />
-              <ResourceMeter label="Buffer" value={activeTelemetry.comms.data_buffer_pct} max={100} unit="%" invert />
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <ResourceMeter
+                label="Spacecraft Health"
+                value={activeTelemetry.spacecraft_health_pct}
+                max={100}
+                unit="%"
+              />
+              <ResourceMeter
+                label="Battery SoC"
+                value={activeTelemetry.power.battery_soc_pct}
+                max={100}
+                unit="%"
+              />
+              <ResourceMeter
+                label="Bus Temp"
+                value={activeTelemetry.thermal.temperature_c}
+                max={100}
+                unit="°C"
+                invert
+              />
+              <ResourceMeter
+                label="Comms Buffer"
+                value={activeTelemetry.comms.data_buffer_pct}
+                max={100}
+                unit="%"
+                invert
+              />
             </div>
+
+            {/* Engineer Mode Subsystem Assumptions */}
             {engineerMode && (
               <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-4" open>
                 <summary className="text-sm font-medium text-cyan-400 cursor-pointer">
-                  Engineer Mode — full subsystem assumptions
+                  Engineer Mode — Deep Physics Telemetry & Rate Calculations
                 </summary>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 font-mono text-xs text-slate-400">
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">POWER</p>
-                    <p>solar {activeTelemetry.power.solar_output_w.toFixed(0)} W</p>
-                    <p>load {activeTelemetry.power.total_load_w.toFixed(0)} W</p>
-                    <p>net {activeTelemetry.power.net_power_w.toFixed(0)} W</p>
-                    <p>eclipse {activeTelemetry.power.in_eclipse ? "yes" : "no"}</p>
+                    <p className="text-slate-300 font-semibold mb-1">POWER ACCOUNTING</p>
+                    <p>Solar Gen: {activeTelemetry.power.solar_output_w.toFixed(0)} W</p>
+                    <p>Bus Load: {activeTelemetry.power.total_load_w.toFixed(0)} W</p>
+                    <p>Net Power: {activeTelemetry.power.net_power_w.toFixed(0)} W</p>
+                    <p>DoD: {activeTelemetry.power.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
+                    <p>EFC: {activeTelemetry.power.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">THERMAL</p>
-                    <p>in {activeTelemetry.thermal.heat_input_w.toFixed(0)} W</p>
-                    <p>out {activeTelemetry.thermal.heat_rejected_w.toFixed(0)} W</p>
-                    <p>T {activeTelemetry.thermal.temperature_c.toFixed(1)} °C</p>
+                    <p className="text-slate-300 font-semibold mb-1">THERMAL BALANCE</p>
+                    <p>Solar+Albedo: {((activeTelemetry.thermal.solar_absorbed_w ?? 0) + (activeTelemetry.thermal.albedo_absorbed_w ?? 0)).toFixed(0)} W</p>
+                    <p>Internal Heat: {activeTelemetry.thermal.internal_dissipation_w?.toFixed(0) ?? "0"} W</p>
+                    <p>Rejected: {activeTelemetry.thermal.heat_rejected_w.toFixed(0)} W</p>
+                    <p>T Bus: {activeTelemetry.thermal.temperature_c.toFixed(1)} °C</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">COMMS</p>
-                    <p>buffer {activeTelemetry.comms.data_buffer_mb.toFixed(0)} MB</p>
-                    <p>rate contact {activeTelemetry.comms.in_contact ? "yes" : "no"}</p>
-                    <p>station {activeTelemetry.comms.active_station || "—"}</p>
+                    <p className="text-slate-300 font-semibold mb-1">COMMS & STORAGE</p>
+                    <p>Data Buffer: {activeTelemetry.comms.data_buffer_mb.toFixed(1)} MB</p>
+                    <p>RF Link: {activeTelemetry.comms.in_contact ? "ACTIVE" : "NO CONTACT"}</p>
+                    <p>Ground Stn: {activeTelemetry.comms.active_station || "None"}</p>
+                    <p>Downlinked: {activeTelemetry.comms.data_downlinked_mb.toFixed(1)} MB</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">ORBIT</p>
-                    <p>alt {activeTelemetry.orbital.altitude_km.toFixed(0)} km</p>
-                    <p>v {activeTelemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
-                    <p>anomaly {activeTelemetry.orbital.true_anomaly_deg.toFixed(0)}°</p>
+                    <p className="text-slate-300 font-semibold mb-1">ORBIT & ENVIRONMENT</p>
+                    <p>Altitude: {activeTelemetry.orbital.altitude_km.toFixed(1)} km</p>
+                    <p>Velocity: {activeTelemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
+                    <p>True Anomaly: {activeTelemetry.orbital.true_anomaly_deg.toFixed(1)}°</p>
+                    <p>Illumination: {activeTelemetry.orbital.in_eclipse ? "Umbra" : "Sunlit"}</p>
                   </div>
                 </div>
-                <p className="mt-3 text-[11px] text-slate-600">
-                  Model assumptions: cylindrical eclipse shadow, sun-tracking solar array
-                  (P ∝ cos β), radiator rejection ∝ εσA(T⁴ − T_sink⁴). Sources: /data
-                </p>
               </details>
             )}
-          </>
+          </div>
         ) : (
           <p className="text-sm text-slate-500">
-            No telemetry yet — {isCoop ? "waiting for the first step from any crew member." : "advance the mission to start the flow."}
+            Waiting for simulation telemetry... {isCoop ? "Advance the mission to start the flow." : "Press Step or Resume."}
           </p>
         )}
       </Card>
 
-      {/* Stations */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold text-white">
-            {isCoop ? "Your Stations" : "All Stations"}
+      {/* ── Co-op Team Desk vs Solo Workstations ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold text-white">
+            {isCoop ? "Role-Specific Control Station" : "All Flight Deck Stations"}
           </h2>
-          {!isCoop && (
-            <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={engineerMode}
-                onChange={(e) => setEngineerMode(e.target.checked)}
-                className="accent-blue-500"
-              />
-              Engineer Mode
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={engineerMode}
+              onChange={(e) => setEngineerMode(e.target.checked)}
+              className="accent-blue-500"
+            />
+            Engineer Mode
+          </label>
         </div>
+
+        {/* In Co-op: Display Crew Roster & Command Feed */}
+        {isCoop && (
+          <Card title="Crew Network & Command Operations" icon="👥" className="mb-4">
+            <ParticipantList
+              participants={room.participants}
+              selfId={session.playerId}
+              roles={room.roles}
+              pendingRequests={pendingRequests}
+              recentActions={recentActions}
+              canApprove={myRoles.includes("mission_director")}
+              onApproveRequest={(id) => {
+                setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+                setStatusMessage(`Authorized action request ${id}.`);
+              }}
+              onRejectRequest={(id) => {
+                setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+              }}
+            />
+          </Card>
+        )}
+
+        {/* Role Workstations Tabs */}
         <Tabs
-          tabs={stationTabs.length > 0 ? stationTabs : [{ id: "none", label: "No station assigned" }]}
+          tabs={stationTabs.length > 0 ? stationTabs : [{ id: "none", label: "No Station Assigned" }]}
         >
           {stationTabs.length === 0 ? (
             <p className="text-sm text-slate-500">
-              You have no station yet — roles are assigned when the host starts the mission.
+              No station assigned yet. Contact room host.
             </p>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {isCoop && (
-                <Card title="Crew Feed" icon="📻" className="xl:col-span-2">
-                  {room.feed.length === 0 ? (
-                    <p className="text-sm text-slate-500">No crew activity yet.</p>
-                  ) : (
-                    <ul className="space-y-1 text-sm text-slate-300">
-                      {room.feed.map((line, i) => (
-                        <li key={i} className="font-mono text-xs">{line}</li>
-                      ))}
-                    </ul>
-                  )}
-                </Card>
-              )}
               {myRoles.map((roleId) => {
                 const Station = STATION_COMPONENTS[roleId];
                 return (
@@ -455,7 +766,7 @@ export function OperatePage() {
                     key={roleId}
                     title={ROLES[roleId].label}
                     icon={ROLES[roleId].icon}
-                    subtitle={`Station — ${ROLES[roleId].label}`}
+                    subtitle={`Flight Station — ${ROLES[roleId].label}`}
                   >
                     <Station {...stationProps} />
                   </Card>
@@ -466,54 +777,41 @@ export function OperatePage() {
         </Tabs>
       </div>
 
-      {/* Mission progress controls */}
+      {/* ── Bottom Controls Bar ── */}
       <Card className="sticky bottom-4">
-        <div className="flex flex-wrap items-center gap-3">
-          {isCoop ? (
-            <>
-              <Button
-                onClick={() => room.send({ command: "step", steps: 1 })}
-                disabled={phase !== "playing"}
-              >
-                Advance Mission ▸ 1 Step
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => room.send({ command: "step", steps: 5 })}
-                disabled={phase !== "playing"}
-              >
-                ▸▸ 5 Steps
-              </Button>
-              <Button variant="ghost" onClick={() => room.send({ command: "get_state" })}>
-                Sync State
-              </Button>
-              <p className="text-xs text-slate-500">
-                Any crew member can advance the shared mission clock.
-              </p>
-            </>
-          ) : (
-            <>
-              <Button onClick={() => void doStep(1)} disabled={stepping || gameState?.status !== "running"}>
-                {stepping ? "Stepping…" : "Advance Mission ▸ 1 Step"}
-              </Button>
-              <Button variant="secondary" onClick={() => void doStep(5)} disabled={stepping || gameState?.status !== "running"}>
-                ▸▸ 5 Steps
-              </Button>
-              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => void doStep(1)}
+              disabled={stepping || isFinished(activeGameState)}
+            >
+              {stepping ? "Stepping…" : "Advance ▸ 1 Step (60s)"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => void doStep(5)}
+              disabled={stepping || isFinished(activeGameState)}
+            >
+              ▸▸ 5 Steps (5m)
+            </Button>
+            {!isCoop && (
+              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer ml-2">
                 <input
                   type="checkbox"
                   checked={autoRun}
                   onChange={(e) => setAutoRun(e.target.checked)}
-                  disabled={gameState?.status !== "running"}
+                  disabled={isFinished(activeGameState)}
                   className="accent-blue-500"
                 />
                 Auto-run
               </label>
-            </>
-          )}
+            )}
+          </div>
 
-          <div className="ml-auto flex gap-2">
-            {(activeGameState?.status === "completed" || activeGameState?.status === "failed" || room.phase === "finished") && (
+          <div className="flex items-center gap-2">
+            {(activeGameState?.status === "completed" ||
+              activeGameState?.status === "failed" ||
+              room.phase === "finished") && (
               <Button onClick={() => navigate("/results")}>View Mission Results →</Button>
             )}
             <Button
@@ -523,7 +821,9 @@ export function OperatePage() {
                   try {
                     const { deleteGameSession } = await import("../api/client");
                     await deleteGameSession(session.sessionId);
-                  } catch { /* session may already be gone */ }
+                  } catch {
+                    /* ignore */
+                  }
                 }
                 clearMissionSession();
                 navigate("/");
@@ -542,5 +842,4 @@ function isFinished(state: GameStateSummary | null): boolean {
   return state?.status === "completed" || state?.status === "failed";
 }
 
-// Re-export for the results page navigation convenience
 export type { StepResult };

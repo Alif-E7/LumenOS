@@ -161,3 +161,4 @@ LumenOS is architected to be completely operational in air-gapped, offline, clas
      "note": "Free registration MAP_KEY required for live NASA FIRMS API; offline bundle active."
    }
    ```
+
