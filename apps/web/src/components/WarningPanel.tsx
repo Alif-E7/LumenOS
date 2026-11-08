@@ -13,20 +13,21 @@ interface WarningPanelProps {
 }
 
 const levelStyles = {
-  critical: { row: "text-red-300", dot: "bg-red-500", label: "CRITICAL" },
-  warning: { row: "text-amber-300", dot: "bg-amber-500", label: "CAUTION" },
-  info: { row: "text-cyan-300", dot: "bg-cyan-500", label: "INFO" },
+  critical: { row: "text-red-300", dot: "bg-red-500", icon: "⛔", label: "CRITICAL" },
+  warning: { row: "text-amber-300", dot: "bg-amber-500", icon: "⚠️", label: "CAUTION" },
+  info: { row: "text-cyan-300", dot: "bg-cyan-500", icon: "ℹ️", label: "INFO" },
 } as const;
 
 /**
  * Master caution panel — aggregates live warnings from telemetry.
  * Sits above station controls so problems are seen before actions.
+ * Guarantees non-color-only presentation (distinct icons + textual severity prefixes).
  */
 export function WarningPanel({ warnings, title = "System Warnings", className }: WarningPanelProps) {
   if (warnings.length === 0) {
     return (
       <div className={cn("rounded-xl border border-green-500/30 bg-green-950/20 px-4 py-3 text-sm text-green-400 flex items-center gap-2", className)} role="status">
-        <span aria-hidden>✓</span> All systems nominal — no active warnings.
+        <span aria-hidden="true">✓</span> All systems nominal — no active warnings.
       </div>
     );
   }
@@ -37,17 +38,19 @@ export function WarningPanel({ warnings, title = "System Warnings", className }:
       role="alert"
       aria-label={title}
     >
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-2">
-        {title} ({warnings.length})
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-2 flex items-center gap-2">
+        <span aria-hidden="true">⚠️</span>
+        <span>{title} ({warnings.length})</span>
       </h3>
       <ul className="space-y-1.5">
         {warnings.map((w) => {
           const s = levelStyles[w.level];
           return (
             <li key={w.id} className={cn("flex items-center gap-2 text-sm", s.row)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", s.dot)} aria-hidden />
-              <span className="text-[10px] font-mono opacity-70">{s.label}</span>
-              {w.message}
+              <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", s.dot)} aria-hidden="true" />
+              <span aria-hidden="true" className="text-xs">{s.icon}</span>
+              <span className="text-[10px] font-mono font-bold tracking-wider opacity-90">[{s.label}]</span>
+              <span>{w.message}</span>
             </li>
           );
         })}

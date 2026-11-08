@@ -7,6 +7,7 @@ achievement tracking, and unlockable subsystems.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Optional
 
@@ -33,23 +34,40 @@ PROFILES_DIR = Path("data/profiles")
 _PROFILES_CACHE: dict[str, PlayerProfile] = {}
 
 
-def get_or_create_profile(player_id: str = "pilot-local") -> PlayerProfile:
-    """Retrieve an existing profile from cache/disk or initialize a new one."""
-    if player_id in _PROFILES_CACHE:
-        return _PROFILES_CACHE[player_id]
+def _sanitize_player_id(player_id: str) -> str:
+    """Sanitize player_id to prevent path traversal or filesystem manipulation."""
+    if not player_id or not isinstance(player_id, str):
+        return "pilot-local"
+    cleaned = re.sub(r"[^a-zA-Z0-9_\-]", "", player_id)[:40]
+    return cleaned if cleaned else "pilot-local"
 
-    profile_file = PROFILES_DIR / f"{player_id}.json"
+
+def get_or_create_profile(player_id: str = "pilot-local") -> PlayerProfile:
+    """Retrieve an existing profile from cache/disk or initialize a new one with strict path validation."""
+    safe_id = _sanitize_player_id(player_id)
+    if safe_id in _PROFILES_CACHE:
+        return _PROFILES_CACHE[safe_id]
+
+    PROFILES_DIR.mkdir(parents=True, exist_ok=True)
+    profile_file = (PROFILES_DIR / f"{safe_id}.json").resolve()
+    base_dir = PROFILES_DIR.resolve()
+    if not profile_file.is_relative_to(base_dir):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid player_id: path traversal rejected",
+        )
+
     if profile_file.exists():
         try:
             profile = PlayerProfile.load_from_file(profile_file)
-            _PROFILES_CACHE[player_id] = profile
+            _PROFILES_CACHE[safe_id] = profile
             return profile
         except Exception:
             pass
 
     # Create new profile
     profile = PlayerProfile(
-        player_id=player_id,
+        player_id=safe_id,
         display_name="Cadet Operator",
         total_xp=0,
         engineering_credits=500,  # Starting credits to test unlock system
@@ -62,18 +80,21 @@ def get_or_create_profile(player_id: str = "pilot-local") -> PlayerProfile:
             progress_value=0.0,
             target_value=1.0,
         )
-    PROFILES_DIR.mkdir(parents=True, exist_ok=True)
     profile.save_to_file(profile_file)
-    _PROFILES_CACHE[player_id] = profile
+    _PROFILES_CACHE[safe_id] = profile
     return profile
 
 
 def save_profile_disk(profile: PlayerProfile) -> None:
-    """Persist profile to disk."""
-    _PROFILES_CACHE[profile.player_id] = profile
+    """Persist profile to disk with path traversal guard."""
+    safe_id = _sanitize_player_id(profile.player_id)
+    profile.player_id = safe_id
+    _PROFILES_CACHE[safe_id] = profile
     PROFILES_DIR.mkdir(parents=True, exist_ok=True)
-    profile_file = PROFILES_DIR / f"{profile.player_id}.json"
-    profile.save_to_file(profile_file)
+    profile_file = (PROFILES_DIR / f"{safe_id}.json").resolve()
+    base_dir = PROFILES_DIR.resolve()
+    if profile_file.is_relative_to(base_dir):
+        profile.save_to_file(profile_file)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────

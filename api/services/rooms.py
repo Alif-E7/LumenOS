@@ -30,9 +30,13 @@ from api.services.game_session import GameSession, SessionManager, session_manag
 from game.roles import assign_roles, assign_custom_roles, RoleAssignment, RoleName, _ALL_ROLES
 
 
+# 32 unambiguous characters: excludes 0, 1, I, O to avoid font/display confusion for learners
+_ROOM_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+
+
 def _generate_room_code() -> str:
-    """Generate a 6-char alphanumeric room code, hard to guess."""
-    return secrets.token_hex(3).upper()  # e.g. "A3F1B2"
+    """Generate a high-entropy (32^6 = 1.07 billion combinations) 6-char room code, hard to guess and unambiguous."""
+    return "".join(secrets.choice(_ROOM_CODE_ALPHABET) for _ in range(6))
 
 
 class ActionRequest(BaseModel):

@@ -82,31 +82,71 @@ export function useRoomSocket(
 
   useEffect(() => {
     if (!roomCode || !playerId) return;
+    const code = roomCode;
 
-    const ws = new WebSocket(roomSocketUrl(roomCode, playerId, displayName));
-    wsRef.current = ws;
+    let isUnmounted = false;
+    let retryCount = 0;
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null;
+    const maxRetries = 5;
 
-    ws.onopen = () => setState((s) => ({ ...s, status: "open" }));
+    function connect() {
+      if (isUnmounted) return;
+      const ws = new WebSocket(roomSocketUrl(code, playerId, displayName));
+      wsRef.current = ws;
 
-    ws.onclose = () => setState((s) => ({ ...s, status: "closed" }));
+      ws.onopen = () => {
+        retryCount = 0;
+        setState((s) => ({ ...s, status: "open", lastError: null }));
+      };
 
-    ws.onerror = () => setState((s) => ({ ...s, status: "error" }));
+      ws.onclose = (event) => {
+        if (isUnmounted) return;
+        // Clean closures (normal close or room terminal status codes)
+        if (event.code === 1000 || event.code === 4004 || event.code === 4009) {
+          setState((s) => ({ ...s, status: "closed" }));
+          return;
+        }
+        // Unexpected disconnect: trigger reconnect backoff
+        setState((s) => ({ ...s, status: "connecting" }));
+        if (retryCount < maxRetries) {
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 8000);
+          retryCount++;
+          retryTimeout = setTimeout(connect, delay);
+        } else {
+          setState((s) => ({
+            ...s,
+            status: "error",
+            lastError: "Connection lost. Please refresh or rejoin the room.",
+          }));
+        }
+      };
 
-    ws.onmessage = (ev) => {
-      let msg: RoomServerMessage;
-      try {
-        msg = JSON.parse(ev.data);
-      } catch {
-        return;
-      }
-      setState((s) => reduce(s, msg));
-    };
+      ws.onerror = () => {
+        // onclose will follow and manage reconnect backoff
+      };
+
+      ws.onmessage = (ev) => {
+        let msg: RoomServerMessage;
+        try {
+          msg = JSON.parse(ev.data);
+        } catch {
+          return;
+        }
+        setState((s) => reduce(s, msg));
+      };
+    }
+
+    connect();
 
     return () => {
-      ws.close();
-      wsRef.current = null;
+      isUnmounted = true;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (wsRef.current) {
+        wsRef.current.close(1000, "Normal closure");
+        wsRef.current = null;
+      }
     };
-  }, [roomCode, playerId]);
+  }, [roomCode, playerId, displayName]);
 
   const send = useCallback((message: Record<string, unknown>) => {
     wsRef.current?.send(JSON.stringify(message));

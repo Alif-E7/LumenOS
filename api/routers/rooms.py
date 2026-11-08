@@ -198,6 +198,13 @@ async def room_websocket(
     try:
         while True:
             raw = await websocket.receive_text()
+            if len(raw) > 65536:
+                await websocket.send_json({
+                    "type": "error",
+                    "error": "Payload exceeds maximum allowed size (64 KB)",
+                })
+                continue
+
             try:
                 command = json.loads(raw)
             except json.JSONDecodeError:

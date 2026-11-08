@@ -661,6 +661,23 @@ export function OperatePage() {
         </div>
       </div>
 
+      {/* Co-op Reconnecting Banner */}
+      {isCoop && room.status === "connecting" && (
+        <div
+          className="rounded-xl border border-amber-500/40 bg-amber-950/20 px-4 py-2.5 text-sm text-amber-300 flex items-center justify-between"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" aria-hidden="true" />
+            <span>Reconnecting to mission network... holding your station slot and telemetry sync.</span>
+          </div>
+          <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">
+            [RECONNECTING]
+          </span>
+        </div>
+      )}
+
       {/* Active Events & Critical Command Feedback */}
       {(activeEvents.length > 0 || room.lastError || error) && (
         <div className="space-y-3">

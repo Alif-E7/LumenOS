@@ -29,6 +29,7 @@ env/
 # Database files (local dev)
 data/*.db
 data/*.sqlite
+data/profiles/
 
 # Node / Frontend
 node_modules/
