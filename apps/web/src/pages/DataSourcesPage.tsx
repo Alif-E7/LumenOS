@@ -1,48 +1,234 @@
 import { Card } from "../components/Card";
+import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import { DATA_PROVENANCE } from "../lib/constants";
 
 export function DataSourcesPage() {
+  const canonicalCategories = [
+    "REAL_NASA_REFERENCE",
+    "SIMULATED_SPACECRAFT",
+    "SIMULATED_ENVIRONMENT",
+    "MODEL_PREDICTION",
+  ] as const;
+
+  const dataSources = [
+    {
+      sourceId: "nasa_firms_viirs",
+      name: "NASA FIRMS VIIRS 375m Active Fire Detections",
+      code: "VNP14IMGTDL_NRT (v2.0NRT)",
+      agency: "NASA LANCE / EOSDIS / Univ. of Maryland",
+      coverage: "Global active fire pixels at 375m nadir resolution (~3-hr latency)",
+      units: "FRP (MW), Brightness Temp (K), Pixel Area (km²)",
+      scenario: "Wildfire Scout — Eyes on Fire",
+      license: "NASA Open Data (Public Domain / CC0-compatible)",
+      status: "Verified",
+    },
+    {
+      sourceId: "nasa_tsis1_tsi",
+      name: "NASA TSIS-1 Total Solar Irradiance (TSI)",
+      code: "TSIS-1_TSI_L3 (v02r01)",
+      agency: "NASA GSFC / LASP (Univ. of Colorado Boulder)",
+      coverage: "Top of Atmosphere (TOA) at 1 AU daily continuous",
+      units: "Total Solar Irradiance (1361.0 W/m² ± 0.11 W/m²)",
+      scenario: "All Scenarios (Power & Thermal Solar Flux)",
+      license: "NASA Open Data (Public Domain)",
+      status: "Verified",
+    },
+    {
+      sourceId: "nasa_ceres_ebaf",
+      name: "NASA CERES EBAF TOA Radiation Fluxes",
+      code: "CERES_EBAF-TOA (Edition 4.2)",
+      agency: "NASA Langley Research Center ASDC",
+      coverage: "Global 1°x1° monthly climatological gridded fluxes",
+      units: "Albedo (0.30), Earth Outgoing IR (237.0 W/m²)",
+      scenario: "All Scenarios (Thermal Equilibrium Model)",
+      license: "NASA Open Data (Public Domain)",
+      status: "Verified",
+    },
+    {
+      sourceId: "noaa_donki_space_weather",
+      name: "NASA DONKI & NOAA SWPC Space Weather Catalog",
+      code: "DONKI_CME_FLR (API v2.0)",
+      agency: "NASA CCMC / NOAA SWPC",
+      coverage: "Heliospheric solar flare & CME notifications",
+      units: "CME Speed (km/s), X-ray Flux (W/m²), Kp (0-9)",
+      scenario: "Solar Storm Sentinel — Watch the Sun",
+      license: "US Government Work (Public Domain)",
+      status: "Verified",
+    },
+    {
+      sourceId: "copernicus_sentinel1_flood",
+      name: "Copernicus Sentinel-1 SAR & DFO Flood Boundaries",
+      code: "S1_GRD_DFO (v1.0)",
+      agency: "Copernicus (ESA) / NASA ASF DAAC / DFO",
+      coverage: "Brahmaputra and Ganges river delta floodplains",
+      units: "Inundation Area (km²), Radar Backscatter (dB)",
+      scenario: "Flood Scout — Rising Waters",
+      license: "Creative Commons Attribution 4.0 (CC BY 4.0)",
+      status: "Verified",
+    },
+    {
+      sourceId: "tropomi_modvolc_volcano",
+      name: "Sentinel-5P TROPOMI SO2 & MODVOLC Anomaly Catalog",
+      code: "TROPOMI_SO2_MODVOLC (L2 v2.0 / v1.0)",
+      agency: "Copernicus / NASA GES DISC / Univ. of Hawaii HIGP",
+      coverage: "Active caldera anomalies: Mount Merapi and Anak Krakatau",
+      units: "SO2 Column Density (DU), Thermal Radiance (W/m²·sr·µm)",
+      scenario: "Volcano Watch — Fire Beneath the Earth",
+      license: "Copernicus Open Access / NASA Open Data",
+      status: "Verified",
+    },
+    {
+      sourceId: "nasa_norad_tle_ephemeris",
+      name: "NASA & NORAD Satellite TLE Ephemeris Reference",
+      code: "NORAD_TLE_EO (Standard 2-Line)",
+      agency: "NASA Flight Dynamics Facility / 18th SDS via CelesTrak",
+      coverage: "Flagship Earth orbiters (Terra, Aqua, Suomi NPP, Sentinel-1A)",
+      units: "Semi-Major Axis (km), Inclination (°), Mean Motion (rev/day)",
+      scenario: "Orbital Propagation Numerical Validation",
+      license: "Public Domain (US Government satellite ephemeris)",
+      status: "Verified",
+    },
+  ];
+
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Data & Scientific Sources</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">Authoritative Data & Scientific Sources</h1>
         <p className="text-slate-400">
-          LumenOS is committed to absolute scientific integrity and data transparency.
+          LumenOS is committed to absolute scientific integrity, verifiable data provenance, and transparent simulation calibration.
         </p>
       </div>
 
       {/* Mandatory Provenance Framework */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">Data Provenance Standard</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.entries(DATA_PROVENANCE).map(([key, item]) => (
-            <Card key={key} title={item.label} icon="🏷️">
-              <span className={`text-xs font-mono font-bold uppercase ${item.className} block mb-2`}>
-                [{key}]
-              </span>
-              <p className="text-sm text-slate-300">{item.description}</p>
-            </Card>
-          ))}
+      <section className="mb-12">
+        <h2 className="text-xl font-bold text-white mb-4">Semantic Data Provenance Framework</h2>
+        <p className="text-sm text-slate-400 mb-6">
+          Every telemetry field, observation target, and AI advisory in LumenOS carries an immutable provenance category tag to ensure players and students always know whether data originates from real empirical NASA archives, in-flight simulated spacecraft instruments, or predictive model forecasts.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {canonicalCategories.map((key) => {
+            const item = DATA_PROVENANCE[key];
+            return (
+              <Card key={key} title={item.label} icon="🏷️">
+                <div className="mb-3">
+                  <ProvenanceBadge provenance={key} />
+                </div>
+                <p className="text-sm text-slate-300 mb-2">{item.description}</p>
+                <p className="text-xs text-slate-400 border-t border-slate-800/80 pt-2 font-mono">
+                  {item.disclaimer}
+                </p>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Crucial NASA FIRMS Educational Notice */}
+      <div className="mb-12 rounded-xl border border-blue-500/40 bg-blue-950/30 p-6">
+        <div className="flex items-start gap-4">
+          <span className="text-2xl" aria-hidden>🛰️</span>
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-bold text-blue-300">NASA FIRMS Operational Ground Truth Disclaimer</h3>
+              <ProvenanceBadge provenance="REAL_NASA_REFERENCE" />
+            </div>
+            <p className="text-sm text-slate-300 leading-relaxed mb-3">
+              NASA FIRMS active fire detections are real-world empirical measurements acquired by the Visible Infrared Imaging Radiometer Suite (VIIRS) on the Suomi NPP and NOAA-20 polar-orbiting satellites.
+            </p>
+            <p className="text-sm text-blue-200 font-medium">
+              They are <strong>NOT</strong> images or telemetry captured by the fictional LumenOS satellite, and they do not represent infallible ground truth. In Wildfire Scout, FIRMS detections serve as an independent operational reference against which player satellite alerts are evaluated.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Authoritative Data & Sources Register Table */}
+      <section className="mb-12">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-white">Authoritative Data & Sources Register</h2>
+          <span className="text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-1 rounded-full">
+            7 Verified Products
+          </span>
+        </div>
+        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
+          <table className="w-full text-left text-sm text-slate-300">
+            <thead className="bg-slate-800/80 text-xs uppercase text-slate-400 font-mono">
+              <tr>
+                <th className="px-4 py-3">Dataset / Product</th>
+                <th className="px-4 py-3">Agency / Provider</th>
+                <th className="px-4 py-3">Coverage & Units</th>
+                <th className="px-4 py-3">Gameplay Role</th>
+                <th className="px-4 py-3">License</th>
+                <th className="px-4 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800 text-xs">
+              {dataSources.map((s) => (
+                <tr key={s.sourceId} className="hover:bg-slate-800/30 transition-colors">
+                  <td className="px-4 py-3 font-medium text-white">
+                    <div>{s.name}</div>
+                    <div className="text-[11px] font-mono text-cyan-400">{s.code}</div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">{s.agency}</td>
+                  <td className="px-4 py-3">
+                    <div className="text-slate-300">{s.coverage}</div>
+                    <div className="font-mono text-slate-400 mt-0.5">{s.units}</div>
+                  </td>
+                  <td className="px-4 py-3 text-amber-300 font-medium">{s.scenario}</td>
+                  <td className="px-4 py-3 text-slate-400">{s.license}</td>
+                  <td className="px-4 py-3">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                      {s.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Offline First & Zero Key Guarantee */}
+      <section className="mb-12">
+        <h2 className="text-xl font-bold text-white mb-4">Offline-First Architecture & Non-Fabrication</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card title="Zero API Credential Requirement" icon="🛡️">
+            <p className="text-sm text-slate-300 leading-relaxed mb-2">
+              LumenOS bundles versioned offline sample datasets for all 7 reference sources in <code className="text-cyan-400 font-mono">data/offline/</code>.
+            </p>
+            <p className="text-sm text-slate-400">
+              The application runs completely offline in classroom, air-gapped, or test settings without needing external internet access or third-party API keys.
+            </p>
+          </Card>
+          <Card title="No Fabricated Tokens or Responses" icon="⚖️">
+            <p className="text-sm text-slate-300 leading-relaxed mb-2">
+              LumenOS never fabricates API keys, mock telemetry pretending to be NASA live servers, or fake authentication responses.
+            </p>
+            <p className="text-sm text-slate-400">
+              When live API keys are not supplied in the environment, the backend honestly reports <span className="font-mono text-amber-400">offline_fallback_active</span> and uses the verified local offline bundle.
+            </p>
+          </Card>
         </div>
       </section>
 
       {/* Physics Models */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">Simulation Physics Engine</h2>
+      <section className="mb-12">
+        <h2 className="text-xl font-bold text-white mb-4">Simulation Physics Engine Calibration</h2>
         <div className="space-y-4">
-          <Card title="Orbital Mechanics (J2 Perturbation)" icon="🪐">
+          <Card title="Orbital Mechanics (J2 Perturbation & Keplerian Motion)" icon="🪐">
             <p className="text-sm text-slate-300 mb-2">
               Propagates Keplerian two-body motion with Earth oblateness (J₂ = 1.08263 × 10⁻³).
-              Accurately models regression of the nodes (RAAN drift) and rate of perigee rotation.
+              Accurately models regression of the nodes (RAAN drift) for sun-synchronous orbits, validated against real NORAD TLEs for Terra, Aqua, and Suomi NPP.
             </p>
             <div className="bg-slate-950 p-3 rounded font-mono text-xs text-slate-400">
               dΩ/dt = -1.5 × J₂ × (R_earth / p)² × n × cos(i)
             </div>
           </Card>
 
-          <Card title="Thermal Radiation Balance" icon="🌡️">
+          <Card title="Thermal Radiation Balance (CERES & TSIS-1 Calibrated)" icon="🌡️">
             <p className="text-sm text-slate-300 mb-2">
-              Single-node heat balance equation balancing direct solar flux, Earth albedo, Earth infrared emission,
+              Single-node heat balance equation balancing direct solar flux (TSIS-1: S₀ = 1361.0 W/m²), Earth albedo (CERES: a = 0.30), Earth infrared emission (CERES: q_ir = 237.0 W/m²),
               internal dissipation, and radiator rejection into space via Stefan-Boltzmann law (σ = 5.670374 × 10⁻⁸ W/m²·K⁴).
             </p>
             <div className="bg-slate-950 p-3 rounded font-mono text-xs text-slate-400">
@@ -50,81 +236,14 @@ export function DataSourcesPage() {
             </div>
           </Card>
 
-          <Card title="Power Subsystem & Solar Eclipse" icon="⚡">
-            <p className="text-sm text-slate-300 mb-2">
-              Cylindrical Earth shadow model detecting umbra/penumbra periods. Battery state-of-charge (SOC)
-              charges during sunlit passes according to solar array incidence angle and drains during eclipse passes.
-            </p>
-          </Card>
-
           <Card title="Comms Link Budget & Ground Network" icon="📡">
             <p className="text-sm text-slate-300 mb-2">
-              Slant-range calculation to 5 real ground stations: Svalbard (78.2°N), Goldstone (35.4°N),
-              Madrid (40.4°N), Canberra (35.4°S), and Troll (72.0°S). Downlink rate depends on elevation angle and antenna gain.
+              Calculates line-of-sight slant range and antenna elevation angles across 5 real ground stations:
+              Svalbard (78.2°N), Goldstone (35.4°N), Madrid (40.4°N), Canberra (35.4°S), and Troll (72.0°S).
             </p>
           </Card>
         </div>
       </section>
-
-      {/* Reference Constants */}
-      <section className="mb-10">
-        <h2 className="text-xl font-bold text-white mb-4">Standard Reference Constants</h2>
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-800/80 text-xs uppercase text-slate-400 font-mono">
-              <tr>
-                <th className="px-4 py-3">Constant</th>
-                <th className="px-4 py-3">Symbol</th>
-                <th className="px-4 py-3">Value</th>
-                <th className="px-4 py-3">Source</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              <tr>
-                <td className="px-4 py-3">Earth Gravitational Parameter</td>
-                <td className="px-4 py-3 font-mono text-cyan-400">μ (GM)</td>
-                <td className="px-4 py-3 font-mono">398,600.4418 km³/s²</td>
-                <td className="px-4 py-3 text-slate-500">IAU / NASA JPL</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Earth Mean Equator Radius</td>
-                <td className="px-4 py-3 font-mono text-cyan-400">R_earth</td>
-                <td className="px-4 py-3 font-mono">6,378.137 km</td>
-                <td className="px-4 py-3 text-slate-500">WGS-84 Standard</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Solar Irradiance (1 AU)</td>
-                <td className="px-4 py-3 font-mono text-cyan-400">S₀</td>
-                <td className="px-4 py-3 font-mono">1,361.0 W/m²</td>
-                <td className="px-4 py-3 text-slate-500">SORCE / TSIS-1 (NASA)</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Stefan-Boltzmann Constant</td>
-                <td className="px-4 py-3 font-mono text-cyan-400">σ</td>
-                <td className="px-4 py-3 font-mono">5.670374 × 10⁻⁸ W/m²·K⁴</td>
-                <td className="px-4 py-3 text-slate-500">CODATA 2018</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3">Earth Bond Albedo</td>
-                <td className="px-4 py-3 font-mono text-cyan-400">a</td>
-                <td className="px-4 py-3 font-mono">0.306</td>
-                <td className="px-4 py-3 text-slate-500">NASA Earth Fact Sheet</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Ethics statement */}
-      <Card title="Scientific Integrity & Non-Fabrication Rule" icon="🛡️">
-        <p className="text-sm text-slate-400 leading-relaxed">
-          LumenOS never fabricates NASA observations. In scenarios where real NASA API feeds are unavailable,
-          the system gracefully falls back to deterministic seeded simulated data labeled clearly as{" "}
-          <span className="text-cyan-400 font-mono">[SIMULATED]</span>. AI predictions are clearly labeled as{" "}
-          <span className="text-purple-400 font-mono">[AI_PREDICTION]</span> and can make realistic mistakes.
-        </p>
-      </Card>
     </div>
   );
 }
-

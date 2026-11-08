@@ -18,6 +18,7 @@ from api.database import init_db
 from api.routers import health, missions, spacecraft
 from api.routers import game as game_router
 from api.routers import rooms as rooms_router
+from api.routers import data_sources as data_sources_router
 
 
 # ── Lifespan ─────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ app.include_router(spacecraft.router, prefix="/api")
 app.include_router(missions.router, prefix="/api")
 app.include_router(game_router.router, prefix="/api")
 app.include_router(rooms_router.router, prefix="/api")
+app.include_router(data_sources_router.router, prefix="/api")
 
 
 # ── WebSocket health endpoint ────────────────────────────────────────────────

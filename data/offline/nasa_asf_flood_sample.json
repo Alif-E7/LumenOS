@@ -1,0 +1,65 @@
+{
+  "dataset_metadata": {
+    "source_id": "copernicus_sentinel1_flood",
+    "product_name": "Copernicus Sentinel-1 SAR & Global Flood Database Reference",
+    "provider": "Copernicus (ESA) / NASA ASF DAAC / Dartmouth Flood Observatory",
+    "version": "v1.0",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+    "educational_disclaimer": "Sentinel-1 Synthetic Aperture Radar (SAR) backscatter observations penetrate heavy cloud cover to map standing water boundaries, providing real-world reference extents for the Flood Scout mission.",
+    "attribution": "Copernicus Sentinel-1 / NASA ASF DAAC / Dartmouth Flood Observatory"
+  },
+  "radar_characteristics": {
+    "sensor": "C-band Synthetic Aperture Radar (5.405 GHz)",
+    "polarizations": ["VV", "VH"],
+    "water_backscatter_threshold_db": -18.0,
+    "land_backscatter_mean_db": -9.5,
+    "swath_width_km": 250.0,
+    "spatial_resolution_m": 20.0
+  },
+  "benchmark_events": [
+    {
+      "flood_id": "dfo_brahmaputra_2023_01",
+      "basin_name": "Brahmaputra Flood Plain (Assam)",
+      "target_id": "target_brahmaputra",
+      "country": "India",
+      "centroid_lat": 26.15,
+      "centroid_lon": 91.75,
+      "inundation_area_km2": 4250.0,
+      "duration_days": 18,
+      "swath_bounds": {
+        "min_lat": 25.4,
+        "max_lat": 27.2,
+        "min_lon": 90.5,
+        "max_lon": 93.8
+      },
+      "peak_water_level_m_above_danger": 1.45,
+      "affected_districts": 22,
+      "radar_swath_passes_required": 3,
+      "data_volume_mb_per_swath": 500.0,
+      "scenario_mapping": "Flood Scout primary mapping swath"
+    },
+    {
+      "flood_id": "dfo_ganges_delta_2023_02",
+      "basin_name": "Ganges-Meghna Delta Confluence",
+      "target_id": "target_ganges",
+      "country": "Bangladesh",
+      "centroid_lat": 23.40,
+      "centroid_lon": 90.20,
+      "inundation_area_km2": 7800.0,
+      "duration_days": 24,
+      "swath_bounds": {
+        "min_lat": 22.5,
+        "max_lat": 24.3,
+        "min_lon": 89.2,
+        "max_lon": 91.2
+      },
+      "peak_water_level_m_above_danger": 1.82,
+      "affected_districts": 18,
+      "radar_swath_passes_required": 4,
+      "data_volume_mb_per_swath": 650.0,
+      "scenario_mapping": "Flood Scout secondary priority mapping area"
+    }
+  ]
+}

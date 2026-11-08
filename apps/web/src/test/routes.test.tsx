@@ -34,8 +34,8 @@ describe("Route & Navigation Acceptance Checks", () => {
       </MemoryRouter>
     );
     expect(screen.getByRole("heading", { name: /data & scientific sources/i })).toBeInTheDocument();
-    expect(screen.getByText(/data provenance standard/i)).toBeInTheDocument();
-    expect(screen.getByText(/standard reference constants/i)).toBeInTheDocument();
+    expect(screen.getByText(/semantic data provenance framework/i)).toBeInTheDocument();
+    expect(screen.getByText(/simulation physics engine calibration/i)).toBeInTheDocument();
   });
 
   it("renders HelpPage at /help", () => {

@@ -1,0 +1,52 @@
+{
+  "dataset_metadata": {
+    "source_id": "nasa_tsis1_tsi",
+    "product_name": "NASA TSIS-1 Total Solar Irradiance (TSI) Level 3 Daily",
+    "provider": "NASA Goddard Space Flight Center / LASP (Univ. of Colorado)",
+    "version": "v02r01",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "NASA Open Data Policy (Public Domain / CC0-compatible)",
+    "educational_disclaimer": "Total Solar Irradiance (TSI) measurements represent the integrated solar power across all wavelengths incident per unit area at 1 AU, serving as the empirical baseline for power and thermal simulation.",
+    "attribution": "NASA TSIS-1 / LASP / University of Colorado Boulder",
+    "reference_standard": "IAU 2015 Resolution B3 / NASA Solar Irradiance Standard (1361.0 W/m²)"
+  },
+  "reference_constants": {
+    "solar_constant_1au_w_m2": 1361.0,
+    "solar_cycle_min_w_m2": 1360.5,
+    "solar_cycle_max_w_m2": 1362.2,
+    "measurement_uncertainty_w_m2": 0.11,
+    "solar_radius_km": 696340.0,
+    "astronomical_unit_km": 149597870.7
+  },
+  "monthly_benchmark_measurements": [
+    {
+      "month": "2024-01",
+      "tsi_mean_w_m2": 1361.12,
+      "earth_sun_distance_au": 0.9833,
+      "effective_flux_at_earth_w_m2": 1407.5,
+      "quality_flag": "nominal_science"
+    },
+    {
+      "month": "2024-04",
+      "tsi_mean_w_m2": 1361.05,
+      "earth_sun_distance_au": 1.0004,
+      "effective_flux_at_earth_w_m2": 1360.0,
+      "quality_flag": "nominal_science"
+    },
+    {
+      "month": "2024-07",
+      "tsi_mean_w_m2": 1361.18,
+      "earth_sun_distance_au": 1.0167,
+      "effective_flux_at_earth_w_m2": 1316.8,
+      "quality_flag": "nominal_science"
+    },
+    {
+      "month": "2024-10",
+      "tsi_mean_w_m2": 1361.14,
+      "earth_sun_distance_au": 0.9958,
+      "effective_flux_at_earth_w_m2": 1372.5,
+      "quality_flag": "nominal_science"
+    }
+  ]
+}

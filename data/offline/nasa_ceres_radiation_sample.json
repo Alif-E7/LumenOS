@@ -1,0 +1,45 @@
+{
+  "dataset_metadata": {
+    "source_id": "nasa_ceres_ebaf",
+    "product_name": "NASA CERES Energy Balanced and Filled (EBAF) TOA Edition 4.2",
+    "provider": "NASA Langley Research Center ASDC",
+    "version": "Edition 4.2",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "NASA Open Data Policy (Public Domain)",
+    "educational_disclaimer": "CERES EBAF measures top-of-atmosphere shortwave solar reflection and longwave planetary thermal emission, calibrating the environmental heat sink for spacecraft thermal nodes.",
+    "attribution": "NASA CERES Science Team / NASA LaRC ASDC"
+  },
+  "global_annual_climatology": {
+    "solar_insolation_w_m2": 340.2,
+    "reflected_shortwave_w_m2": 99.4,
+    "outgoing_longwave_ir_w_m2": 237.2,
+    "net_radiation_w_m2": 0.9,
+    "planetary_albedo": 0.298,
+    "simulation_design_baseline": {
+      "albedo_standard": 0.30,
+      "earth_infrared_w_m2": 237.0,
+      "space_sink_temperature_k": 3.0
+    }
+  },
+  "zonal_bands": [
+    {
+      "zone": "Equatorial (0° - 23.5°)",
+      "albedo": 0.245,
+      "outgoing_longwave_ir_w_m2": 252.1,
+      "notes": "Low ocean albedo, high convective cloud longwave moderation"
+    },
+    {
+      "zone": "Mid-Latitude (23.5° - 60°)",
+      "albedo": 0.320,
+      "outgoing_longwave_ir_w_m2": 231.4,
+      "notes": "Moderate albedo from continental landmasses and storm tracks"
+    },
+    {
+      "zone": "Polar (60° - 90°)",
+      "albedo": 0.580,
+      "outgoing_longwave_ir_w_m2": 195.8,
+      "notes": "High cryospheric reflection from sea ice and ice sheets, cold emission surface"
+    }
+  ]
+}

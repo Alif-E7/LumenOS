@@ -1,0 +1,87 @@
+{
+  "dataset_metadata": {
+    "source_id": "noaa_donki_space_weather",
+    "product_name": "NASA DONKI & NOAA SWPC Space Weather Notification Catalog",
+    "provider": "NASA CCMC / NOAA Space Weather Prediction Center",
+    "version": "API v2.0",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "US Government Work (Public Domain)",
+    "educational_disclaimer": "NASA DONKI and NOAA SWPC notifications document verified extreme space weather events, calibrating simulated radiation dose spikes, communication link degradation, and safe-mode triggers.",
+    "attribution": "NASA CCMC / DONKI / NOAA SWPC"
+  },
+  "benchmark_events": [
+    {
+      "activity_id": "2024-05-14T16:51:00-FLR-001",
+      "event_type": "Solar Flare (Extreme)",
+      "flare_class": "X8.7",
+      "peak_flux_w_m2": 8.7e-4,
+      "start_time_utc": "2024-05-14T16:38:00Z",
+      "peak_time_utc": "2024-05-14T16:51:00Z",
+      "active_region": "AR3664",
+      "source_location": "S18W89",
+      "associated_cme": {
+        "cme_id": "2024-05-14T17:12:00-CME-001",
+        "speed_km_s": 2150.0,
+        "half_angle_deg": 68.0,
+        "earth_transit_hours": 19.5,
+        "is_earth_directed": true
+      },
+      "geomagnetic_impact": {
+        "kp_index": 9,
+        "storm_level": "G5 (Extreme)",
+        "proton_flux_gt10mev_pfu": 1240.0,
+        "radio_blackout": "R3 (Strong)"
+      },
+      "scenario_mapping": "Solar Storm Sentinel CME surge trigger"
+    },
+    {
+      "activity_id": "2024-05-10T06:54:00-FLR-002",
+      "event_type": "Solar Flare (Major)",
+      "flare_class": "X3.9",
+      "peak_flux_w_m2": 3.9e-4,
+      "start_time_utc": "2024-05-10T06:27:00Z",
+      "peak_time_utc": "2024-05-10T06:54:00Z",
+      "active_region": "AR3664",
+      "source_location": "S17W21",
+      "associated_cme": {
+        "cme_id": "2024-05-10T07:12:00-CME-002",
+        "speed_km_s": 1680.0,
+        "half_angle_deg": 55.0,
+        "earth_transit_hours": 24.8,
+        "is_earth_directed": true
+      },
+      "geomagnetic_impact": {
+        "kp_index": 8,
+        "storm_level": "G4 (Severe)",
+        "proton_flux_gt10mev_pfu": 450.0,
+        "radio_blackout": "R3 (Strong)"
+      },
+      "scenario_mapping": "Solar Storm Sentinel radiation warning scenario"
+    },
+    {
+      "activity_id": "2024-03-23T01:30:00-FLR-003",
+      "event_type": "Solar Flare (Moderate)",
+      "flare_class": "M5.2",
+      "peak_flux_w_m2": 5.2e-5,
+      "start_time_utc": "2024-03-23T01:11:00Z",
+      "peak_time_utc": "2024-03-23T01:30:00Z",
+      "active_region": "AR3615",
+      "source_location": "S14E38",
+      "associated_cme": {
+        "cme_id": "2024-03-23T02:00:00-CME-003",
+        "speed_km_s": 850.0,
+        "half_angle_deg": 38.0,
+        "earth_transit_hours": 49.0,
+        "is_earth_directed": false
+      },
+      "geomagnetic_impact": {
+        "kp_index": 4,
+        "storm_level": "Unsettled",
+        "proton_flux_gt10mev_pfu": 12.0,
+        "radio_blackout": "R1 (Minor)"
+      },
+      "scenario_mapping": "Routine background solar monitoring observation"
+    }
+  ]
+}

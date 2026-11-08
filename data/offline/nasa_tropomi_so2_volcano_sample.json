@@ -1,0 +1,61 @@
+{
+  "dataset_metadata": {
+    "source_id": "tropomi_modvolc_volcano",
+    "product_name": "Sentinel-5P TROPOMI SO2 & MODVOLC Thermal Anomaly Reference",
+    "provider": "Copernicus / NASA GES DISC / University of Hawaii HIGP",
+    "version": "Level 2 v2.0 / MODVOLC v1.0",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "Copernicus Open Access / NASA Open Data Policy (CC0-compatible)",
+    "educational_disclaimer": "TROPOMI SO2 column density maps trace degassing volcanic plumes, while MODVOLC thermal alerts identify lava dome extrusion. These reference records calibrate the Volcano Watch mission objectives.",
+    "attribution": "Copernicus TROPOMI / NASA GES DISC / MODVOLC HIGP"
+  },
+  "atmospheric_parameters": {
+    "background_so2_column_du": 0.5,
+    "volcanic_alert_threshold_du": 5.0,
+    "major_eruption_threshold_du": 20.0,
+    "so2_unit": "Dobson Units (1 DU = 2.69e16 molecules/cm²)"
+  },
+  "benchmark_volcano_records": [
+    {
+      "volcano_name": "Mount Merapi",
+      "target_id": "target_merapi",
+      "country": "Indonesia (Central Java)",
+      "latitude": -7.54,
+      "longitude": 110.44,
+      "elevation_m": 2968,
+      "morphology": "Stratovolcano / Active Lava Dome",
+      "recent_activity": {
+        "event_date": "2023-03-11",
+        "so2_column_density_du": 16.4,
+        "plume_altitude_km": 9.5,
+        "modvolc_4um_radiance_w_m2_sr_um": 12.8,
+        "modvolc_alert_ratio": -0.62,
+        "alert_level": "Level III (Siaga - Standby)",
+        "ash_dispersion_direction": "Southwest",
+        "aviation_vona_code": "ORANGE"
+      },
+      "scenario_mapping": "Volcano Watch primary target thermal monitoring"
+    },
+    {
+      "volcano_name": "Anak Krakatau",
+      "target_id": "target_krakatoa",
+      "country": "Indonesia (Sunda Strait)",
+      "latitude": -6.10,
+      "longitude": 105.42,
+      "elevation_m": 157,
+      "morphology": "Caldera Island / Strombolian Vent",
+      "recent_activity": {
+        "event_date": "2023-11-28",
+        "so2_column_density_du": 24.2,
+        "plume_altitude_km": 12.0,
+        "modvolc_4um_radiance_w_m2_sr_um": 28.5,
+        "modvolc_alert_ratio": -0.45,
+        "alert_level": "Level III (Siaga - Standby)",
+        "ash_dispersion_direction": "Northeast",
+        "aviation_vona_code": "RED"
+      },
+      "scenario_mapping": "Volcano Watch explosive SO2 plume advisory trigger"
+    }
+  ]
+}

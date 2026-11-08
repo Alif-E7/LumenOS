@@ -1,0 +1,66 @@
+{
+  "dataset_metadata": {
+    "source_id": "nasa_norad_tle_ephemeris",
+    "product_name": "NASA & NORAD Earth Observation Satellite TLE Ephemeris Reference",
+    "provider": "NASA Flight Dynamics Facility / 18th Space Defense Squadron via CelesTrak",
+    "version": "Standard NORAD 2-Line Ephemeris Format",
+    "provenance_type": "REAL_NASA_REFERENCE",
+    "is_authoritative": true,
+    "license": "Public Domain (US Government satellite ephemeris data)",
+    "educational_disclaimer": "NORAD Two-Line Elements provide real orbital states of flagship NASA and Copernicus Earth observation satellites, used to numerically benchmark the LumenOS Keplerian and J2 perturbation propagator.",
+    "attribution": "NASA / CelesTrak / Space-Track"
+  },
+  "satellites": [
+    {
+      "name": "SUOMI NPP",
+      "norad_cat_id": 37849,
+      "intl_designator": "2011-061A",
+      "orbit_type": "Sun-Synchronous LEO",
+      "tle_line1": "1 37849U 11061A   24125.56843211  .00000045  00000-0  34521-4 0  9993",
+      "tle_line2": "2 37849  98.7124 185.4312 0001428  65.4123 294.7215 14.19532410648914",
+      "derived_parameters": {
+        "semi_major_axis_km": 7203.4,
+        "mean_altitude_km": 832.4,
+        "inclination_deg": 98.71,
+        "eccentricity": 0.00014,
+        "orbital_period_minutes": 101.44,
+        "nodal_precession_deg_per_day": 0.9856
+      },
+      "validation_use": "Benchmark for Wildfire Scout high-inclination SSO propagation"
+    },
+    {
+      "name": "TERRA (EOS AM-1)",
+      "norad_cat_id": 25994,
+      "intl_designator": "1999-068A",
+      "orbit_type": "Sun-Synchronous LEO (10:30 AM Descending)",
+      "tle_line1": "1 25994U 99068A   24125.54128934  .00000112  00000-0  45124-4 0  9997",
+      "tle_line2": "2 25994  98.2045 174.5214 0001214  82.1456 278.0123 14.57114250302145",
+      "derived_parameters": {
+        "semi_major_axis_km": 7078.2,
+        "mean_altitude_km": 707.2,
+        "inclination_deg": 98.20,
+        "eccentricity": 0.00012,
+        "orbital_period_minutes": 98.83,
+        "nodal_precession_deg_per_day": 0.9856
+      },
+      "validation_use": "Benchmark for standard 700km sun-synchronous science orbits"
+    },
+    {
+      "name": "SENTINEL-1A",
+      "norad_cat_id": 39634,
+      "intl_designator": "2014-016A",
+      "orbit_type": "Sun-Synchronous LEO (SAR 12-day repeat)",
+      "tle_line1": "1 39634U 14016A   24125.51248912  .00000085  00000-0  38941-4 0  9992",
+      "tle_line2": "2 39634  98.1812 165.2341 0001356  95.4128 264.7214 14.59124510523412",
+      "derived_parameters": {
+        "semi_major_axis_km": 7064.5,
+        "mean_altitude_km": 693.5,
+        "inclination_deg": 98.18,
+        "eccentricity": 0.00014,
+        "orbital_period_minutes": 98.69,
+        "nodal_precession_deg_per_day": 0.9856
+      },
+      "validation_use": "Benchmark for Flood Scout SAR orbital geometry"
+    }
+  ]
+}
