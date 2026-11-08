@@ -12,3 +12,4 @@ sqlalchemy[asyncio]>=2.0.0
 greenlet>=3.0.0
 httpx>=0.25.0
 -e .
+

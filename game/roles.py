@@ -83,6 +83,9 @@ PERMISSION_MATRIX: dict[RoleName, set[ActionType]] = {
         ActionType.RESPOND_TO_EVENT,
         ActionType.REQUEST_AI_PREDICTION,
         ActionType.SET_CONTROL_MODE,
+        ActionType.CHANGE_PRIORITY,
+        ActionType.INJECT_FAULT,
+        ActionType.RESET_FAULT,
     },
     RoleName.SYSTEMS_ENGINEER: {
         ActionType.TOGGLE_SUBSYSTEM,
@@ -90,18 +93,28 @@ PERMISSION_MATRIX: dict[RoleName, set[ActionType]] = {
         ActionType.ADJUST_THERMAL,
         ActionType.REPAIR_SUBSYSTEM,
         ActionType.SET_CONTROL_MODE,
+        ActionType.REDUCE_WORKLOAD,
+        ActionType.DELAY_NONCRITICAL_PROCESSING,
+        ActionType.ENTER_SAFE_MODE,
+        ActionType.RESET_FAULT,
     },
     RoleName.SCIENCE_OFFICER: {
         ActionType.COLLECT_DATA,
         ActionType.SCHEDULE_OBSERVATION,
         ActionType.DOWNLINK_DATA,
         ActionType.SET_CONTROL_MODE,
+        ActionType.ADJUST_OBSERVATION_PLAN,
+        ActionType.REQUEUE_DATA,
+        ActionType.USE_LATER_PASS,
+        ActionType.RESET_FAULT,
     },
     RoleName.FLIGHT_CONTROLLER: {
         ActionType.ADJUST_ORBIT,
         ActionType.FIRE_THRUSTER,
         ActionType.SET_ATTITUDE,
         ActionType.SET_CONTROL_MODE,
+        ActionType.ENTER_SAFE_MODE,
+        ActionType.USE_LATER_PASS,
     },
 }
 

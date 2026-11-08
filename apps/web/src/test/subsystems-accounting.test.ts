@@ -165,3 +165,4 @@ describe("Prompt 7 — Subsystems Physical Accounting Contracts", () => {
     expect(note).toContain("not synonyms for FP32");
   });
 });
+

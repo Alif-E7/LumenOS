@@ -44,6 +44,17 @@ class ActionType(str, Enum):
     # Shared / multi-role
     SET_CONTROL_MODE = "set_control_mode"
 
+    # Educational recovery actions
+    REDUCE_WORKLOAD = "reduce_workload"
+    CHANGE_PRIORITY = "change_priority"
+    DELAY_NONCRITICAL_PROCESSING = "delay_noncritical_processing"
+    ENTER_SAFE_MODE = "enter_safe_mode"
+    ADJUST_OBSERVATION_PLAN = "adjust_observation_plan"
+    REQUEUE_DATA = "requeue_data"
+    USE_LATER_PASS = "use_later_pass"
+    INJECT_FAULT = "inject_fault"
+    RESET_FAULT = "reset_fault"
+
 
 # ── Action effects ───────────────────────────────────────────────────────────
 
@@ -181,6 +192,60 @@ ACTION_CATALOG: dict[ActionType, dict[str, Any]] = {
         "budget_cost": 0.0,
         "description": "Switch between manual, autopilot, or AI control.",
         "param_schema": {"mode": str},
+        "effect_templates": [],
+    },
+    ActionType.REDUCE_WORKLOAD: {
+        "budget_cost": 0.0,
+        "description": "Lower flight computer workload to ECO mode to shed heat and conserve power.",
+        "param_schema": {"profile": str},
+        "effect_templates": [],
+    },
+    ActionType.CHANGE_PRIORITY: {
+        "budget_cost": 0.0,
+        "description": "Re-rank task priorities, elevating priority alerts above routine observations.",
+        "param_schema": {"priority_target": str},
+        "effect_templates": [],
+    },
+    ActionType.DELAY_NONCRITICAL_PROCESSING: {
+        "budget_cost": 0.0,
+        "description": "Postpone raw image compression to free CPU cycles and reduce thermal dissipation.",
+        "param_schema": {"delay_steps": int},
+        "effect_templates": [],
+    },
+    ActionType.ENTER_SAFE_MODE: {
+        "budget_cost": 0.0,
+        "description": "Safing: disable payload and transmitter, minimal 5W avionics survival mode.",
+        "param_schema": {"duration_steps": int},
+        "effect_templates": [],
+    },
+    ActionType.ADJUST_OBSERVATION_PLAN: {
+        "budget_cost": 0.0,
+        "description": "Modify payload duty cycle or pause science imaging during high-risk windows.",
+        "param_schema": {"payload_active": bool},
+        "effect_templates": [],
+    },
+    ActionType.REQUEUE_DATA: {
+        "budget_cost": 0.0,
+        "description": "Re-order solid-state storage queues, prioritizing critical hazard alerts.",
+        "param_schema": {"queue_name": str},
+        "effect_templates": [],
+    },
+    ActionType.USE_LATER_PASS: {
+        "budget_cost": 0.0,
+        "description": "Hold buffered telemetry and data for a higher-elevation ground station pass.",
+        "param_schema": {"min_elevation_deg": float},
+        "effect_templates": [],
+    },
+    ActionType.INJECT_FAULT: {
+        "budget_cost": 0.0,
+        "description": "Developer/instructor command to inject an anomaly into spacecraft systems.",
+        "param_schema": {"fault_type": str, "subsystem": str},
+        "effect_templates": [],
+    },
+    ActionType.RESET_FAULT: {
+        "budget_cost": 150.0,
+        "description": "Execute subsystem reset/reboot and software re-calibration to clear an anomaly.",
+        "param_schema": {"fault_id": str},
         "effect_templates": [],
     },
 }

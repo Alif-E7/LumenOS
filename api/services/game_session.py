@@ -27,6 +27,7 @@ from api.models.mission import MissionDetail
 from game.contracts import MissionContract, ObjectiveDefinition, Difficulty, OutcomeType
 from game.difficulty import apply_difficulty_to_contract
 from game.events import EventDirector, EventConsequence
+from game.command_resolver import CommandResolver, CommandRequest, CommandAuditRecord
 from game.objectives import ObjectiveEvaluator
 from game.roles import RoleName, RoleAssignment, assign_roles, has_permission
 from game.actions import ActionType, build_action, PlayerAction
@@ -141,6 +142,9 @@ class GameSession:
         self._roles = assign_roles(pids)
         self._player_ids = pids
 
+        # Command resolver (authoritative serializer)
+        self._command_resolver = CommandResolver(roles=self._roles)
+
         # Game state
         self._state = GameState(
             session_id=session_id,
@@ -170,6 +174,25 @@ class GameSession:
     def contract(self) -> MissionContract:
         return self._contract
 
+    @property
+    def spacecraft(self) -> SpacecraftConfig:
+        return self._sim.spacecraft
+
+    @property
+    def budget_remaining(self) -> float:
+        return self._state.budget_remaining
+
+    def spend_budget(self, amount: float) -> bool:
+        return self._state.spend_budget(amount)
+
+    def execute_command(self, command: CommandRequest) -> CommandAuditRecord:
+        """Execute a validated CommandRequest via the authoritative serializer."""
+        return self._command_resolver.execute_command(
+            command=command,
+            current_step=self._sim.current_step,
+            runtime=self,
+        )
+
     # ── Core game loop ───────────────────────────────────────────────────
 
     def step(self, num_steps: int = 1) -> list[dict[str, Any]]:
@@ -194,7 +217,7 @@ class GameSession:
             snapshot = self._sim.step()
 
             # 2. Tick event director
-            new_events = self._events.tick(snapshot.step)
+            new_events = self._events.tick(snapshot.step, sim_snapshot=snapshot)
 
             # 3. Update objectives based on simulation state
             self._update_objectives(snapshot)
@@ -481,7 +504,20 @@ class GameSession:
 
         # Apply event effects to simulation
         for key, value in consequence.effects.items():
-            self._sim.apply_action({"type": "adjust_" + key, "delta": value})
+            if key == "enter_safe_mode":
+                self._sim.apply_action({"type": "set_power_mode", "mode": "safe"})
+            elif key in ("power_mode_eco", "reduce_workload_eco"):
+                self._sim.apply_action({"type": "set_operational_profile", "profile": "ECO"})
+            elif key == "reorient_attitude":
+                self._sim.apply_action({"type": "set_attitude", "mode": "Nadir (Earth)"})
+            elif key == "pipeline_compress":
+                self._sim.apply_action({"type": "set_operational_profile", "profile": "FULL"})
+            elif key == "payload_active":
+                self._sim.apply_action({"type": "set_payload_active", "active": bool(value)})
+            elif key == "purge_storage":
+                self._sim.apply_action({"type": "purge_storage", "amount_mb": float(value)})
+            else:
+                self._sim.apply_action({"type": "adjust_" + key, "delta": value})
 
         self._state.resolved_event_count += 1
         self._state.well_handled_event_count += 1  # Simplified: any response = handled
@@ -654,6 +690,38 @@ class GameSession:
                     "type": "set_operational_profile",
                     "profile": params["profile"],
                 })
+        elif action_type == ActionType.ENTER_SAFE_MODE:
+            return self._sim.apply_action({"type": "set_power_mode", "mode": "safe"})
+        elif action_type == ActionType.REDUCE_WORKLOAD:
+            return self._sim.apply_action({
+                "type": "set_operational_profile",
+                "profile": params.get("profile", "ECO"),
+            })
+        elif action_type == ActionType.DELAY_NONCRITICAL_PROCESSING:
+            return self._sim.apply_action({
+                "type": "set_operational_profile",
+                "profile": "ECO",
+            })
+        elif action_type == ActionType.ADJUST_OBSERVATION_PLAN:
+            return self._sim.apply_action({
+                "type": "set_payload_active",
+                "active": params.get("payload_active", True),
+            })
+        elif action_type == ActionType.USE_LATER_PASS:
+            return self._sim.apply_action({
+                "type": "shed_load",
+                "load_name": "comms_transmitter",
+            })
+        elif action_type == ActionType.REQUEUE_DATA:
+            return self._sim.apply_action({
+                "type": "requeue_data",
+                "queue": params.get("queue_name", "priority"),
+            })
+        elif action_type in (ActionType.RESET_FAULT, ActionType.REPAIR_SUBSYSTEM):
+            return self._sim.apply_action({
+                "type": "restore_load",
+                "load_name": "payload",
+            })
 
         return {"applied": False, "changes": ["no_sim_mapping"]}
 

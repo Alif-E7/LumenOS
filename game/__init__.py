@@ -78,6 +78,27 @@ from game.engineering_review import (
     PreLaunchReviewer,
     PRESET_BUILDS,
 )
+from game.events import (
+    EventDirector,
+    ActiveEvent,
+    EventConsequence,
+    EventType,
+)
+from game.faults import (
+    SystemFault,
+    FaultType,
+    create_fault,
+)
+from game.command_resolver import (
+    CommandResolver,
+    CommandRequest,
+    CommandAuditRecord,
+    CommandStatus,
+)
+from game.runtime import (
+    SimulationRuntime,
+    HeadlessRunResult,
+)
 
 __all__ = [
     "MissionContract",
@@ -140,4 +161,18 @@ __all__ = [
     "PreLaunchReviewReport",
     "PreLaunchReviewer",
     "PRESET_BUILDS",
+    # Prompt 8: Runtime, Command Resolver, Events & Faults
+    "SimulationRuntime",
+    "HeadlessRunResult",
+    "CommandResolver",
+    "CommandRequest",
+    "CommandAuditRecord",
+    "CommandStatus",
+    "SystemFault",
+    "FaultType",
+    "create_fault",
+    "EventType",
+    "EventDirector",
+    "ActiveEvent",
+    "EventConsequence",
 ]

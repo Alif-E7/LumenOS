@@ -738,6 +738,9 @@ CANONICAL_ROLE_ACTIONS: dict[PlayerRole, set[str]] = {
         "respond_to_event",
         "request_ai_prediction",
         "set_control_mode",
+        "change_priority",
+        "inject_fault",
+        "reset_fault",
     },
     PlayerRole.SYSTEMS_ENGINEER: {
         "toggle_subsystem",
@@ -745,18 +748,28 @@ CANONICAL_ROLE_ACTIONS: dict[PlayerRole, set[str]] = {
         "adjust_thermal",
         "repair_subsystem",
         "set_control_mode",
+        "reduce_workload",
+        "delay_noncritical_processing",
+        "enter_safe_mode",
+        "reset_fault",
     },
     PlayerRole.SCIENCE_OFFICER: {
         "collect_data",
         "schedule_observation",
         "downlink_data",
         "set_control_mode",
+        "adjust_observation_plan",
+        "requeue_data",
+        "use_later_pass",
+        "reset_fault",
     },
     PlayerRole.FLIGHT_CONTROLLER: {
         "adjust_orbit",
         "fire_thruster",
         "set_attitude",
         "set_control_mode",
+        "enter_safe_mode",
+        "use_later_pass",
     },
 }
 
