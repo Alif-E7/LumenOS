@@ -126,17 +126,17 @@ export function AccessibleMissionMap({
 
   return (
     <div
-      className={`rounded-xl border border-slate-800 bg-slate-950/80 p-4 space-y-4 ${className}`}
+      className={`rounded-none border border-edge bg-void/80 p-4 space-y-4 ${className}`}
       role="region"
       aria-label="2D Accessible Mission Map and Orbital Telemetry"
     >
       {/* Map Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge pb-3">
         <div className="flex items-center gap-2">
           <span className="text-xl" aria-hidden="true">🗺️</span>
           <div>
-            <h3 className="text-sm font-semibold text-white">2D Accessible Ground Track & Telemetry</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-sm font-semibold text-ink">2D Accessible Ground Track & Telemetry</h3>
+            <p className="text-xs text-muted">
               Equirectangular projection (WGS-84) · Complete screen-reader accessible alternative
             </p>
           </div>
@@ -146,20 +146,20 @@ export function AccessibleMissionMap({
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium border ${
               inEclipse
                 ? "bg-indigo-950/60 border-indigo-500/30 text-indigo-300"
-                : "bg-amber-950/60 border-amber-500/30 text-amber-300"
+                : "bg-warn/10/60 border-warn/30 text-warn"
             }`}
           >
             <span aria-hidden="true">{inEclipse ? "🌑" : "☀️"}</span>
             <span>{inEclipse ? "In Eclipse (Umbra)" : "Sunlit Orbit"}</span>
           </span>
-          <span className="text-xs font-mono bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full text-cyan-400">
+          <span className="text-xs font-mono bg-panel border border-edge px-2.5 py-1 rounded-full text-info">
             Alt: {satAltKm.toFixed(1)} km · Vel: {satVelKmS.toFixed(2)} km/s
           </span>
         </div>
       </div>
 
       {/* SVG Map Canvas */}
-      <div className="relative w-full aspect-[2/1] bg-slate-900/90 rounded-lg overflow-hidden border border-slate-800/80 shadow-inner">
+      <div className="relative w-full aspect-[2/1] bg-panel/90 rounded-none overflow-hidden border border-edge/80 shadow-inner">
         <svg
           viewBox="0 0 800 400"
           className="w-full h-full select-none"
@@ -337,7 +337,7 @@ export function AccessibleMissionMap({
         </svg>
 
         {/* Floating coordinates badge */}
-        <div className="absolute bottom-2 left-2 bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded border border-slate-800 text-[10px] font-mono text-slate-300">
+        <div className="absolute bottom-2 left-2 bg-void/80 backdrop-blur-md px-2.5 py-1 rounded border border-edge text-[10px] font-mono text-ink">
           Sub-Sat: {satLat >= 0 ? `${satLat.toFixed(1)}°N` : `${Math.abs(satLat).toFixed(1)}°S`},{" "}
           {satLon >= 0 ? `${satLon.toFixed(1)}°E` : `${Math.abs(satLon).toFixed(1)}°W`}
         </div>
@@ -346,48 +346,48 @@ export function AccessibleMissionMap({
       {/* Accessible Telemetry Tables */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Ground Station Contact Table */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <div className="rounded-none border border-edge bg-panel/50 p-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
               <span>📡</span> Ground Station Network (RF Passes)
             </h4>
-            <span className="text-[10px] font-mono text-slate-400">Elevation Mask: 5.0°</span>
+            <span className="text-[10px] font-mono text-muted">Elevation Mask: 5.0°</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono">
               <caption className="sr-only">Ground Station Network Link and Elevation Status</caption>
               <thead>
-                <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase">
+                <tr className="border-b border-edge text-ink0 text-[10px] uppercase">
                   <th className="py-1 px-1.5">Station</th>
                   <th className="py-1 px-1.5">Elevation</th>
                   <th className="py-1 px-1.5">Slant Range</th>
                   <th className="py-1 px-1.5">Link State</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-edge/60 text-ink">
                 {stationRows.map((gs) => (
                   <tr
                     key={gs.id}
-                    className={gs.isContacting ? "bg-cyan-950/30 font-semibold" : ""}
+                    className={gs.isContacting ? "bg-info/10/30 font-semibold" : ""}
                   >
-                    <td className="py-1.5 px-1.5 text-white">{gs.name.split(" ")[0]}</td>
+                    <td className="py-1.5 px-1.5 text-ink">{gs.name.split(" ")[0]}</td>
                     <td className="py-1.5 px-1.5">
-                      <span className={gs.isVisible ? "text-emerald-400 font-bold" : "text-slate-400"}>
+                      <span className={gs.isVisible ? "text-ok font-bold" : "text-muted"}>
                         {gs.elevationDeg.toFixed(1)}°
                       </span>
                     </td>
                     <td className="py-1.5 px-1.5">{gs.distanceKm.toFixed(0)} km</td>
                     <td className="py-1.5 px-1.5">
                       {gs.isContacting ? (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-info/20 text-info border border-info/40">
                           LINK ACTIVE
                         </span>
                       ) : gs.isVisible ? (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-ok/20 text-ok border border-ok/40">
                           IN VIEW
                         </span>
                       ) : (
-                        <span className="text-slate-500 text-[10px]">BELOW HORIZON</span>
+                        <span className="text-ink0 text-[10px]">BELOW HORIZON</span>
                       )}
                     </td>
                   </tr>
@@ -398,12 +398,12 @@ export function AccessibleMissionMap({
         </div>
 
         {/* Observation Opportunities Table */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+        <div className="rounded-none border border-edge bg-panel/50 p-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center gap-1.5">
               <span>🎯</span> Observation Targets & Swath Geometry
             </h4>
-            <span className="text-[10px] font-mono text-cyan-400">
+            <span className="text-[10px] font-mono text-info">
               Swath Radius: {footprintRadiusKm.toFixed(0)} km
             </span>
           </div>
@@ -411,32 +411,32 @@ export function AccessibleMissionMap({
             <table className="w-full text-left text-xs font-mono">
               <caption className="sr-only">Scenario Observation Targets and Nadir Swath Status</caption>
               <thead>
-                <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase">
+                <tr className="border-b border-edge text-ink0 text-[10px] uppercase">
                   <th className="py-1 px-1.5">Target</th>
                   <th className="py-1 px-1.5">Type</th>
                   <th className="py-1 px-1.5">Slant Range</th>
                   <th className="py-1 px-1.5">Window</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-edge/60 text-ink">
                 {targetRows.map((tgt) => (
                   <tr
                     key={tgt.id}
-                    className={tgt.inFootprint ? "bg-amber-950/30 font-semibold" : ""}
+                    className={tgt.inFootprint ? "bg-warn/10/30 font-semibold" : ""}
                   >
-                    <td className="py-1.5 px-1.5 text-white flex items-center gap-1">
+                    <td className="py-1.5 px-1.5 text-ink flex items-center gap-1">
                       <span aria-hidden="true">{tgt.icon}</span>
                       <span>{tgt.name.split(" ")[0]}</span>
                     </td>
-                    <td className="py-1.5 px-1.5 text-slate-400 text-[11px]">{tgt.targetType}</td>
+                    <td className="py-1.5 px-1.5 text-muted text-[11px]">{tgt.targetType}</td>
                     <td className="py-1.5 px-1.5">{tgt.distanceKm.toFixed(0)} km</td>
                     <td className="py-1.5 px-1.5">
                       {tgt.inFootprint ? (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-warn/20 text-warn border border-warn/40">
                           IN FOOTPRINT
                         </span>
                       ) : (
-                        <span className="text-slate-500 text-[10px]">OUT OF SWATH</span>
+                        <span className="text-ink0 text-[10px]">OUT OF SWATH</span>
                       )}
                     </td>
                   </tr>

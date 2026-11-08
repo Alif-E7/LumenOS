@@ -87,14 +87,14 @@ export function DesignPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
-        <h1 className="text-3xl font-bold text-white">Spacecraft Designer</h1>
+        <h1 className="text-3xl font-bold text-ink">Spacecraft Designer</h1>
         {session && (
-          <div className="text-sm text-slate-400">
-            Target Mission: <span className="text-blue-400 font-medium">{session.missionName}</span>
+          <div className="text-sm text-muted">
+            Target Mission: <span className="text-accent font-medium">{session.missionName}</span>
           </div>
         )}
       </div>
-      <p className="text-slate-400 mb-8">
+      <p className="text-muted mb-8">
         Engineer your satellite bus. Configure solar array, battery reserve, radiator sizing, and primary sensor.
       </p>
 
@@ -102,7 +102,7 @@ export function DesignPage() {
       <Card title="Build Custom Spacecraft" icon="🛠️" className="mb-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">⚡ Power Subsystem</h4>
+            <h4 className="text-sm font-semibold text-ink border-b border-edge pb-1">⚡ Power Subsystem</h4>
             <Slider
               label="Solar Array Area"
               value={solarArea}
@@ -124,7 +124,7 @@ export function DesignPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">❄️ Thermal & Comms</h4>
+            <h4 className="text-sm font-semibold text-ink border-b border-edge pb-1">❄️ Thermal & Comms</h4>
             <Slider
               label="Radiator Area"
               value={radiatorArea}
@@ -155,7 +155,7 @@ export function DesignPage() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-slate-200 border-b border-slate-800 pb-1">🔬 Payload Instrument</h4>
+            <h4 className="text-sm font-semibold text-ink border-b border-edge pb-1">🔬 Payload Instrument</h4>
             <Selector
               label="Sensor Suite"
               value={payloadType}
@@ -171,15 +171,15 @@ export function DesignPage() {
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row gap-3">
+        <div className="pt-4 border-t border-edge flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Name your spacecraft configuration (e.g. Phoenix-1)..."
-            className="flex-1 px-4 py-2 rounded-lg bg-slate-800 border border-slate-700
-                       text-white placeholder-slate-500 focus:outline-none focus:ring-2
-                       focus:ring-blue-500 focus:border-transparent text-sm"
+            className="flex-1 px-4 py-2 rounded-none bg-raised border border-edge-strong
+                       text-ink placeholder-faint focus:outline-none focus:ring-2
+                       focus:ring-accent focus:border-transparent text-sm"
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           />
           <Button onClick={handleCreate} disabled={creating || !newName.trim()}>
@@ -191,28 +191,28 @@ export function DesignPage() {
       {/* Loading */}
       {loading && (
         <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading configurations...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent mx-auto mb-4" />
+          <p className="text-muted">Loading configurations...</p>
         </div>
       )}
 
       {/* Error */}
       {error && (
         <Card title="Error" icon="⚠️">
-          <p className="text-red-400">Failed to load spacecraft: {error}</p>
+          <p className="text-crit">Failed to load spacecraft: {error}</p>
         </Card>
       )}
 
       {/* Success Notification */}
       {successNotice && (
-        <div className="mb-6 p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 text-sm text-emerald-300 flex items-center justify-between">
+        <div className="mb-6 p-4 rounded-none border border-ok/40 bg-ok/10/20 text-sm text-ok flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span>✨</span>
             <span>{successNotice}</span>
           </div>
           <button
             onClick={() => setSuccessNotice(null)}
-            className="text-xs text-emerald-400 hover:text-emerald-200"
+            className="text-xs text-ok hover:text-emerald-200"
           >
             ✕
           </button>
@@ -220,10 +220,10 @@ export function DesignPage() {
       )}
 
       {/* Spacecraft list */}
-      <h2 className="text-xl font-bold text-white mb-4">Saved Configurations</h2>
+      <h2 className="text-xl font-bold text-ink mb-4">Saved Configurations</h2>
       {spacecraft && spacecraft.length === 0 && !loading && (
         <Card>
-          <p className="text-slate-400 text-center py-8">
+          <p className="text-muted text-center py-8">
             No configurations saved yet. Use the builder above to craft your first satellite!
           </p>
         </Card>
@@ -236,32 +236,32 @@ export function DesignPage() {
               key={sc.id}
               title={sc.name}
               icon="🛰️"
-              className={selectedId === sc.id ? "border-blue-500 bg-blue-950/20" : ""}
+              className={selectedId === sc.id ? "border-accent bg-accent/10/20" : ""}
             >
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Total Mass</span>
-                  <span className="text-slate-300 font-mono">{sc.total_mass_kg.toFixed(1)} kg</span>
+                  <span className="text-ink0">Total Mass</span>
+                  <span className="text-ink font-mono">{sc.total_mass_kg.toFixed(1)} kg</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Solar Panels</span>
-                  <span className="text-slate-300 font-mono">{sc.power.solar_panel_area_m2} m²</span>
+                  <span className="text-ink0">Solar Panels</span>
+                  <span className="text-ink font-mono">{sc.power.solar_panel_area_m2} m²</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Battery</span>
-                  <span className="text-slate-300 font-mono">{sc.power.battery_capacity_wh} Wh</span>
+                  <span className="text-ink0">Battery</span>
+                  <span className="text-ink font-mono">{sc.power.battery_capacity_wh} Wh</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Radiator</span>
-                  <span className="text-slate-300 font-mono">{sc.thermal.radiator_area_m2} m²</span>
+                  <span className="text-ink0">Radiator</span>
+                  <span className="text-ink font-mono">{sc.thermal.radiator_area_m2} m²</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Sensor Payload</span>
-                  <span className="text-slate-300 capitalize">{sc.payload.payload_type.replace(/_/g, " ")}</span>
+                  <span className="text-ink0">Sensor Payload</span>
+                  <span className="text-ink capitalize">{sc.payload.payload_type.replace(/_/g, " ")}</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-                <span className="text-xs text-slate-500">
+              <div className="flex items-center justify-between pt-3 border-t border-edge">
+                <span className="text-xs text-ink0">
                   {new Date(sc.created_at).toLocaleDateString()}
                 </span>
                 <Button size="sm" onClick={() => handleSelectAndProceed(sc.id)}>

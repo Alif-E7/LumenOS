@@ -76,25 +76,25 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
   const getGradeColor = (grade: string) => {
     switch (grade) {
       case "A":
-        return "text-emerald-400 bg-emerald-950/60 border-emerald-700/60";
+        return "text-ok bg-ok/10/60 border-emerald-700/60";
       case "B":
-        return "text-cyan-400 bg-cyan-950/60 border-cyan-700/60";
+        return "text-info bg-info/10/60 border-cyan-700/60";
       case "C":
-        return "text-amber-400 bg-amber-950/60 border-amber-700/60";
+        return "text-warn bg-warn/10/60 border-amber-700/60";
       case "D":
-        return "text-orange-400 bg-orange-950/60 border-orange-700/60";
+        return "text-warn bg-warn/10/60 border-orange-700/60";
       default:
         return "text-rose-400 bg-rose-950/60 border-rose-700/60";
     }
   };
 
   const formatDelta = (val: number, unit = "", invertBetter = false) => {
-    if (val === 0) return <span className="text-slate-400">0 {unit}</span>;
+    if (val === 0) return <span className="text-muted">0 {unit}</span>;
     const isPositive = val > 0;
     const isBetter = invertBetter ? !isPositive : isPositive;
     const sign = isPositive ? "+" : "";
     return (
-      <span className={isBetter ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
+      <span className={isBetter ? "text-ok font-medium" : "text-rose-400 font-medium"}>
         {sign}
         {val.toFixed(1)} {unit}
       </span>
@@ -104,57 +104,57 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
   return (
     <div data-testid="benchmark-comparison-view" className="space-y-8">
       {/* Methodology & Rigor Header Banner */}
-      <div className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-5 shadow-lg backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="bg-panel/90 border border-edge-strong/80 rounded-none p-5 shadow-lg backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-edge pb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xl">⚖️</span>
-              <h2 className="text-lg font-bold text-white tracking-wide">
+              <h2 className="text-lg font-bold text-ink tracking-wide">
                 Fair Three-Way Flight Control Benchmark Harness
               </h2>
             </div>
-            <p className="text-xs text-slate-300 max-w-3xl">
+            <p className="text-xs text-ink max-w-3xl">
               Strictly controlled comparison between{" "}
-              <strong className="text-slate-200">Manual Pilot</strong> (human checklist execution),{" "}
-              <strong className="text-cyan-300">Reactive Autopilot</strong> (classic aerospace threshold-based FDIR),
-              and <strong className="text-blue-400">LumenOS Predictive Control</strong> (5-min forward physics ODE scheduling).
+              <strong className="text-ink">Manual Pilot</strong> (human checklist execution),{" "}
+              <strong className="text-info">Reactive Autopilot</strong> (classic aerospace threshold-based FDIR),
+              and <strong className="text-accent">LumenOS Predictive Control</strong> (5-min forward physics ODE scheduling).
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-mono">
-            <span className="px-2 py-0.5 rounded bg-blue-950/80 border border-blue-700/70 text-blue-300">
+            <span className="px-2 py-0.5 rounded bg-accent/10/80 border border-blue-700/70 text-accent-hi">
               ISOLATED SEEDS
             </span>
-            <span className="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-700/70 text-cyan-300">
+            <span className="px-2 py-0.5 rounded bg-info/10/80 border border-cyan-700/70 text-info">
               ZERO LOOKAHEAD LEAKAGE
             </span>
-            <span className="px-2 py-0.5 rounded bg-purple-950/80 border border-purple-700/70 text-purple-300">
+            <span className="px-2 py-0.5 rounded bg-raised/80 border border-purple-700/70 text-muted">
               IDENTICAL INITIAL STATE
             </span>
           </div>
         </div>
 
         {/* Methodology Notes */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 text-xs text-slate-300">
-          <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400 font-semibold block mb-0.5">1. Identical Test Conditions</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 text-xs text-ink">
+          <div className="p-2.5 rounded-none bg-void/60 border border-edge">
+            <span className="text-muted font-semibold block mb-0.5">1. Identical Test Conditions</span>
             Initial orbit, design, components, battery SoC, and temperature are strictly bit-exact across all three strategies.
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400 font-semibold block mb-0.5">2. Decoupled Random Streams</span>
+          <div className="p-2.5 rounded-none bg-void/60 border border-edge">
+            <span className="text-muted font-semibold block mb-0.5">2. Decoupled Random Streams</span>
             Exogenous environmental events arrive on a separate precomputed stream. Controller actions consume an isolated RNG stream.
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-            <span className="text-slate-400 font-semibold block mb-0.5">3. State-Only Observation</span>
+          <div className="p-2.5 rounded-none bg-void/60 border border-edge">
+            <span className="text-muted font-semibold block mb-0.5">3. State-Only Observation</span>
             No controller has knowledge of future random events. Predictive control projects only through physics integration from $S_t$.
           </div>
         </div>
       </div>
 
       {/* Control / Execution Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-panel border border-edge rounded-none p-4 flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4">
           <div>
-            <label className="block text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+            <label className="block text-[11px] uppercase tracking-wider font-semibold text-muted mb-1">
               Mission Scenario
             </label>
             <select
@@ -162,7 +162,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
               aria-label="Mission Scenario"
               value={selectedScenario}
               onChange={(e) => setSelectedScenario(e.target.value)}
-              className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 font-medium"
+              className="bg-void border border-edge-strong rounded-none px-3 py-1.5 text-xs text-ink focus:outline-none focus:border-accent font-medium"
             >
               {scenarios.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -173,7 +173,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
           </div>
 
           <div>
-            <label className="block text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+            <label className="block text-[11px] uppercase tracking-wider font-semibold text-muted mb-1">
               Random Seed
             </label>
             <input
@@ -182,12 +182,12 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
               aria-label="Random Seed"
               value={seed}
               onChange={(e) => setSeed(parseInt(e.target.value) || 0)}
-              className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
+              className="w-24 bg-void border border-edge-strong rounded-none px-3 py-1.5 text-xs text-ink font-mono focus:outline-none focus:border-accent"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+            <label className="block text-[11px] uppercase tracking-wider font-semibold text-muted mb-1">
               Max Steps
             </label>
             <input
@@ -196,7 +196,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
               aria-label="Max Steps"
               value={maxSteps}
               onChange={(e) => setMaxSteps(parseInt(e.target.value) || 100)}
-              className="w-24 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-blue-500"
+              className="w-24 bg-void border border-edge-strong rounded-none px-3 py-1.5 text-xs text-ink font-mono focus:outline-none focus:border-accent"
             />
           </div>
         </div>
@@ -207,7 +207,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
             data-testid="run-benchmark-btn"
             onClick={handleRunBenchmark}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-md shadow-blue-600/30 transition-all flex items-center gap-2"
+            className="px-4 py-2 bg-accent hover:bg-accent disabled:opacity-50 text-ink rounded-none text-xs font-semibold shadow-md shadow-blue-600/30 transition-all flex items-center gap-2"
           >
             {loading ? (
               <>
@@ -225,7 +225,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
       </div>
 
       {error && (
-        <div className="bg-rose-950/70 border border-rose-800 text-rose-200 px-4 py-3 rounded-lg text-xs flex items-center gap-2">
+        <div className="bg-rose-950/70 border border-rose-800 text-rose-200 px-4 py-3 rounded-none text-xs flex items-center gap-2">
           <span>⚠️</span>
           <span>{error}</span>
         </div>
@@ -240,7 +240,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
             <StrategyCard
               title="Manual Pilot"
               tag="Human Crew Emulation"
-              tagColor="bg-slate-800 text-slate-300 border-slate-600"
+              tagColor="bg-raised text-ink border-edge-strong"
               trial={comparison.trials.manual_pilot}
               getGradeColor={getGradeColor}
               isHighlight={false}
@@ -250,7 +250,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
             <StrategyCard
               title="Reactive Autopilot"
               tag="Classic Threshold FDIR"
-              tagColor="bg-cyan-950 text-cyan-300 border-cyan-700"
+              tagColor="bg-info/10 text-info border-cyan-700"
               trial={comparison.trials.reactive_autopilot}
               getGradeColor={getGradeColor}
               isHighlight={false}
@@ -260,7 +260,7 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
             <StrategyCard
               title="LumenOS Predictive"
               tag="Physics ODE Lookahead"
-              tagColor="bg-blue-950 text-blue-300 border-blue-600"
+              tagColor="bg-accent/10 text-accent-hi border-accent"
               trial={comparison.trials.lumenos_predictive}
               getGradeColor={getGradeColor}
               isHighlight={true}
@@ -269,45 +269,45 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
           </div>
 
           {/* Metric Comparison Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-            <div className="px-5 py-4 border-b border-slate-800 bg-slate-950/60 flex flex-wrap items-center justify-between gap-2">
+          <div className="bg-panel border border-edge rounded-none overflow-hidden shadow-xl">
+            <div className="px-5 py-4 border-b border-edge bg-void/60 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-white tracking-wide">
+                <h3 className="text-sm font-bold text-ink tracking-wide">
                   Head-to-Head Physical & Mission Metrics
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted">
                   Comprehensive performance comparison across thermal, power, data, and mission objectives
                 </p>
               </div>
-              <div className="text-[11px] font-mono text-slate-400">
-                Seed: <span className="text-slate-200 font-semibold">{comparison.seed}</span> | Steps:{" "}
-                <span className="text-slate-200 font-semibold">{comparison.max_steps}</span>
+              <div className="text-[11px] font-mono text-muted">
+                Seed: <span className="text-ink font-semibold">{comparison.seed}</span> | Steps:{" "}
+                <span className="text-ink font-semibold">{comparison.max_steps}</span>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/40 text-slate-400">
+                  <tr className="border-b border-edge bg-void/40 text-muted">
                     <th className="py-2.5 px-4 font-semibold">Evaluation Metric</th>
                     <th className="py-2.5 px-4 font-semibold text-center">Manual Pilot</th>
                     <th className="py-2.5 px-4 font-semibold text-center">Reactive Autopilot</th>
-                    <th className="py-2.5 px-4 font-semibold text-center text-blue-400">LumenOS Predictive</th>
+                    <th className="py-2.5 px-4 font-semibold text-center text-accent">LumenOS Predictive</th>
                     <th className="py-2.5 px-4 font-semibold text-center">Advantage vs Reactive</th>
                     <th className="py-2.5 px-4 font-semibold text-center">Top Strategy</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-mono text-slate-200">
+                <tbody className="divide-y divide-edge/60 font-mono text-ink">
                   {/* Mission Score */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Mission Score</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Mission Score</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.mission_score.toFixed(1)}
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.mission_score.toFixed(1)}
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.mission_score.toFixed(1)}
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -322,15 +322,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Thermal Violations */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Thermal Violations Count</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Thermal Violations Count</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.thermal_violations_count}
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.thermal_violations_count}
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.thermal_violations_count}
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -346,15 +346,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Min Thermal Margin */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Min Thermal Margin (°C)</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Min Thermal Margin (°C)</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.min_thermal_margin_c.toFixed(1)}°C
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.min_thermal_margin_c.toFixed(1)}°C
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.min_thermal_margin_c.toFixed(1)}°C
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -369,15 +369,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Battery Violations */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Battery Violations Count</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Battery Violations Count</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.battery_violations_count}
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.battery_violations_count}
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.battery_violations_count}
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -393,15 +393,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Min Battery SoC */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Min Battery SoC (%)</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Min Battery SoC (%)</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.min_battery_soc_pct.toFixed(1)}%
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.min_battery_soc_pct.toFixed(1)}%
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.min_battery_soc_pct.toFixed(1)}%
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -416,15 +416,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Useful Science Tasks */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Useful Science Tasks</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Useful Science Tasks</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.useful_science_tasks}
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.useful_science_tasks}
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.useful_science_tasks}
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -439,15 +439,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Science Data Downlinked */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Science Downlinked (MB)</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Science Downlinked (MB)</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.science_data_downlinked_mb.toFixed(1)} MB
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.science_data_downlinked_mb.toFixed(1)} MB
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.science_data_downlinked_mb.toFixed(1)} MB
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -462,15 +462,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Data Dropped / Buffer Overflow */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Data Dropped (Overflow MB)</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Data Dropped (Overflow MB)</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.data_dropped_overflow_mb.toFixed(1)} MB
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.data_dropped_overflow_mb.toFixed(1)} MB
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.data_dropped_overflow_mb.toFixed(1)} MB
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -486,15 +486,15 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                   </tr>
 
                   {/* Spacecraft Health */}
-                  <tr className="hover:bg-slate-800/30">
-                    <td className="py-2.5 px-4 font-sans text-slate-300 font-medium">Spacecraft Health (%)</td>
+                  <tr className="hover:bg-raised/30">
+                    <td className="py-2.5 px-4 font-sans text-ink font-medium">Spacecraft Health (%)</td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.manual_pilot.metrics.final_spacecraft_health_pct.toFixed(1)}%
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {comparison.trials.reactive_autopilot.metrics.final_spacecraft_health_pct.toFixed(1)}%
                     </td>
-                    <td className="py-2.5 px-4 text-center font-bold text-blue-400">
+                    <td className="py-2.5 px-4 text-center font-bold text-accent">
                       {comparison.trials.lumenos_predictive.metrics.final_spacecraft_health_pct.toFixed(1)}%
                     </td>
                     <td className="py-2.5 px-4 text-center font-sans">
@@ -513,30 +513,30 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
           </div>
 
           {/* Plain-Language Narrative Summary */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
+          <div className="bg-panel border border-edge rounded-none p-5 shadow-lg">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-lg">📋</span>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              <h3 className="text-sm font-bold text-ink uppercase tracking-wider">
                 Benchmark Evaluation Summary
               </h3>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-sans whitespace-pre-line bg-slate-950/70 p-4 rounded-lg border border-slate-800">
+            <p className="text-xs text-ink leading-relaxed font-sans whitespace-pre-line bg-void/70 p-4 rounded-none border border-edge">
               {comparison.plain_language_summary}
             </p>
           </div>
 
           {/* Transparent Limitations & Trade-Offs Callout */}
-          <div className="bg-amber-950/30 border border-amber-700/50 rounded-xl p-5 shadow-lg">
+          <div className="bg-warn/10/30 border border-amber-700/50 rounded-none p-5 shadow-lg">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-lg">⚖️</span>
-              <h3 className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+              <h3 className="text-xs font-bold text-warn uppercase tracking-wider">
                 Benchmark Transparency & Limitations Disclaimer
               </h3>
             </div>
             <p className="text-xs text-amber-200/90 leading-relaxed font-sans mb-3">
               {comparison.limitations_disclaimer}
             </p>
-            <div className="text-[11px] text-amber-300/70 grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-amber-800/40 font-sans">
+            <div className="text-[11px] text-warn/70 grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-amber-800/40 font-sans">
               <div>
                 <strong>When Reactive Matches LumenOS:</strong> In low-stress scenarios or nominal quiescent orbits without acute thermal excursions, reactive threshold triggers operate with zero computational overhead and achieve identical outcomes.
               </div>
@@ -547,33 +547,33 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
           </div>
 
           {/* Toggleable Action Sequence Trace */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div className="bg-panel border border-edge rounded-none p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-semibold text-white">Execution Action Logs</h4>
-                <p className="text-[11px] text-slate-400">
+                <h4 className="text-xs font-semibold text-ink">Execution Action Logs</h4>
+                <p className="text-[11px] text-muted">
                   Inspect the step-by-step decisions made by each controller during the benchmark trial
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowActionLogs(!showActionLogs)}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs transition-colors"
+                className="px-3 py-1 bg-raised hover:bg-edge-strong text-ink rounded text-xs transition-colors"
               >
                 {showActionLogs ? "Hide Action Trace ▲" : "View Action Trace ▼"}
               </button>
             </div>
 
             {showActionLogs && (
-              <div className="mt-4 pt-4 border-t border-slate-800">
+              <div className="mt-4 pt-4 border-t border-edge">
                 <div className="flex items-center gap-2 mb-3">
                   <button
                     type="button"
                     onClick={() => setSelectedActionTab("lumenos_predictive")}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                       selectedActionTab === "lumenos_predictive"
-                        ? "bg-blue-600 text-white"
-                        : "bg-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-accent text-ink"
+                        : "bg-raised text-muted hover:text-ink"
                     }`}
                   >
                     LumenOS Predictive ({comparison.trials.lumenos_predictive.actions_count})
@@ -583,8 +583,8 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                     onClick={() => setSelectedActionTab("reactive_autopilot")}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                       selectedActionTab === "reactive_autopilot"
-                        ? "bg-cyan-600 text-white"
-                        : "bg-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-info text-ink"
+                        : "bg-raised text-muted hover:text-ink"
                     }`}
                   >
                     Reactive Autopilot ({comparison.trials.reactive_autopilot.actions_count})
@@ -594,26 +594,26 @@ export const BenchmarkComparisonView: React.FC<BenchmarkComparisonViewProps> = (
                     onClick={() => setSelectedActionTab("manual_pilot")}
                     className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                       selectedActionTab === "manual_pilot"
-                        ? "bg-slate-700 text-white"
-                        : "bg-slate-800 text-slate-400 hover:text-white"
+                        ? "bg-edge-strong text-ink"
+                        : "bg-raised text-muted hover:text-ink"
                     }`}
                   >
                     Manual Pilot ({comparison.trials.manual_pilot.actions_count})
                   </button>
                 </div>
 
-                <div className="max-h-60 overflow-y-auto bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300 divide-y divide-slate-800/40">
+                <div className="max-h-60 overflow-y-auto bg-void p-3 rounded-none border border-edge font-mono text-[11px] text-ink divide-y divide-edge/40">
                   {comparison.trials[selectedActionTab].actions_log.length === 0 ? (
-                    <div className="py-2 text-slate-500 italic">No discrete actions taken in this run.</div>
+                    <div className="py-2 text-ink0 italic">No discrete actions taken in this run.</div>
                   ) : (
                     comparison.trials[selectedActionTab].actions_log.map((action, idx) => (
                       <div key={idx} className="py-1.5 flex items-center justify-between">
                         <div>
-                          <span className="text-slate-500 mr-2">[Step {action.step}]</span>
-                          <span className="text-blue-400 font-semibold">{action.action_type}</span>
-                          <span className="text-slate-400 ml-2">by {action.actor}</span>
+                          <span className="text-ink0 mr-2">[Step {action.step}]</span>
+                          <span className="text-accent font-semibold">{action.action_type}</span>
+                          <span className="text-muted ml-2">by {action.actor}</span>
                         </div>
-                        <div className="text-slate-400 text-[10px] truncate max-w-xs">
+                        <div className="text-muted text-[10px] truncate max-w-xs">
                           {JSON.stringify(action.params)}
                         </div>
                       </div>
@@ -654,10 +654,10 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
 
   return (
     <div
-      className={`rounded-xl border p-5 flex flex-col justify-between transition-all ${
+      className={`rounded-none border p-5 flex flex-col justify-between transition-all ${
         isHighlight
-          ? "bg-blue-950/20 border-blue-600/80 shadow-lg shadow-blue-950/40 ring-1 ring-blue-500/30"
-          : "bg-slate-900 border-slate-800 shadow-md"
+          ? "bg-accent/10/20 border-accent/80 shadow-lg shadow-blue-950/40 ring-1 ring-accent/30"
+          : "bg-panel border-edge shadow-md"
       }`}
     >
       <div>
@@ -665,7 +665,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
         <div className="flex items-start justify-between gap-2 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-white">{title}</h3>
+              <h3 className="text-base font-bold text-ink">{title}</h3>
             </div>
             <span className={`inline-block text-[10px] uppercase font-mono px-2 py-0.5 rounded border mt-1 ${tagColor}`}>
               {tag}
@@ -673,7 +673,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
           </div>
 
           <div
-            className={`w-11 h-11 rounded-lg border flex flex-col items-center justify-center font-bold text-lg leading-none ${getGradeColor(
+            className={`w-11 h-11 rounded-none border flex flex-col items-center justify-center font-bold text-lg leading-none ${getGradeColor(
               m.grade
             )}`}
           >
@@ -686,30 +686,30 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
 
         {/* Primary Metrics Grid */}
         <div className="grid grid-cols-2 gap-2 my-4 text-xs font-mono">
-          <div className="bg-slate-950/70 p-2 rounded border border-slate-800">
-            <div className="text-[10px] font-sans text-slate-400">Health / Uptime</div>
-            <div className="font-semibold text-white">
+          <div className="bg-void/70 p-2 rounded border border-edge">
+            <div className="text-[10px] font-sans text-muted">Health / Uptime</div>
+            <div className="font-semibold text-ink">
               {m.final_spacecraft_health_pct.toFixed(0)}% / {(m.uptime_fraction * 100).toFixed(0)}%
             </div>
           </div>
 
-          <div className="bg-slate-950/70 p-2 rounded border border-slate-800">
-            <div className="text-[10px] font-sans text-slate-400">Thermal Margin</div>
-            <div className={`font-semibold ${m.min_thermal_margin_c < 2 ? "text-rose-400" : "text-emerald-400"}`}>
+          <div className="bg-void/70 p-2 rounded border border-edge">
+            <div className="text-[10px] font-sans text-muted">Thermal Margin</div>
+            <div className={`font-semibold ${m.min_thermal_margin_c < 2 ? "text-rose-400" : "text-ok"}`}>
               {m.min_thermal_margin_c.toFixed(1)}°C ({m.thermal_violations_count} viol)
             </div>
           </div>
 
-          <div className="bg-slate-950/70 p-2 rounded border border-slate-800">
-            <div className="text-[10px] font-sans text-slate-400">Min Battery SoC</div>
-            <div className={`font-semibold ${m.min_battery_soc_pct < 20 ? "text-rose-400" : "text-cyan-400"}`}>
+          <div className="bg-void/70 p-2 rounded border border-edge">
+            <div className="text-[10px] font-sans text-muted">Min Battery SoC</div>
+            <div className={`font-semibold ${m.min_battery_soc_pct < 20 ? "text-rose-400" : "text-info"}`}>
               {m.min_battery_soc_pct.toFixed(1)}% ({m.battery_violations_count} viol)
             </div>
           </div>
 
-          <div className="bg-slate-950/70 p-2 rounded border border-slate-800">
-            <div className="text-[10px] font-sans text-slate-400">Science Downlinked</div>
-            <div className="font-semibold text-blue-300">
+          <div className="bg-void/70 p-2 rounded border border-edge">
+            <div className="text-[10px] font-sans text-muted">Science Downlinked</div>
+            <div className="font-semibold text-accent-hi">
               {m.science_data_downlinked_mb.toFixed(1)} MB ({m.useful_science_tasks} tasks)
             </div>
           </div>
@@ -717,48 +717,48 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
 
         {/* Mode Distribution Mini Bar */}
         <div className="mb-4">
-          <div className="flex justify-between text-[10px] text-slate-400 mb-1 font-sans">
+          <div className="flex justify-between text-[10px] text-muted mb-1 font-sans">
             <span>Operating Profile Distribution</span>
             <span>
               {m.time_in_full_pct.toFixed(0)}% FULL | {m.time_in_eco_pct.toFixed(0)}% ECO |{" "}
               {m.time_in_safe_pct.toFixed(0)}% SAFE
             </span>
           </div>
-          <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden flex">
-            <div style={{ width: `${m.time_in_full_pct}%` }} className="bg-emerald-500 h-full" title="FULL" />
-            <div style={{ width: `${m.time_in_eco_pct}%` }} className="bg-cyan-500 h-full" title="ECO" />
-            <div style={{ width: `${m.time_in_safe_pct}%` }} className="bg-amber-500 h-full" title="SAFE" />
+          <div className="h-1.5 w-full bg-void rounded-full overflow-hidden flex">
+            <div style={{ width: `${m.time_in_full_pct}%` }} className="bg-ok h-full" title="FULL" />
+            <div style={{ width: `${m.time_in_eco_pct}%` }} className="bg-info h-full" title="ECO" />
+            <div style={{ width: `${m.time_in_safe_pct}%` }} className="bg-warn h-full" title="SAFE" />
           </div>
         </div>
 
         {/* Predictive Verification Stats (for LumenOS) */}
         {showForecastStats && (
-          <div className="p-2.5 rounded-lg bg-blue-950/40 border border-blue-800/40 text-[11px] font-mono mb-2">
-            <div className="text-[10px] font-sans uppercase tracking-wider text-blue-300 font-semibold mb-1">
+          <div className="p-2.5 rounded-none bg-accent/10/40 border border-blue-800/40 text-[11px] font-mono mb-2">
+            <div className="text-[10px] font-sans uppercase tracking-wider text-accent-hi font-semibold mb-1">
               Predictive Verification (ODE Model)
             </div>
-            <div className="grid grid-cols-2 gap-1 text-slate-300">
+            <div className="grid grid-cols-2 gap-1 text-ink">
               <div>
                 Temp MAE:{" "}
-                <span className="text-white font-semibold">
+                <span className="text-ink font-semibold">
                   {m.forecast_mae_temp_c != null ? `${m.forecast_mae_temp_c.toFixed(2)}°C` : "N/A"}
                 </span>
               </div>
               <div>
                 SoC MAE:{" "}
-                <span className="text-white font-semibold">
+                <span className="text-ink font-semibold">
                   {m.forecast_mae_soc_pct != null ? `${m.forecast_mae_soc_pct.toFixed(2)}%` : "N/A"}
                 </span>
               </div>
               <div>
                 Warning Precision:{" "}
-                <span className="text-white font-semibold">
+                <span className="text-ink font-semibold">
                   {m.warning_precision != null ? `${(m.warning_precision * 100).toFixed(0)}%` : "N/A"}
                 </span>
               </div>
               <div>
                 Avg Lead Time:{" "}
-                <span className="text-white font-semibold">
+                <span className="text-ink font-semibold">
                   {m.avg_warning_lead_time_s != null ? `${m.avg_warning_lead_time_s.toFixed(0)}s` : "N/A"}
                 </span>
               </div>
@@ -767,7 +767,7 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
         )}
       </div>
 
-      <div className="pt-2 border-t border-slate-800 text-[11px] text-slate-500 flex justify-between font-mono">
+      <div className="pt-2 border-t border-edge text-[11px] text-ink0 flex justify-between font-mono">
         <span>Actions Executed: {trial.actions_count}</span>
         <span>Version: {trial.controller_version}</span>
       </div>
@@ -776,22 +776,22 @@ const StrategyCard: React.FC<StrategyCardProps> = ({
 };
 
 const WinnerBadge: React.FC<{ winner?: string }> = ({ winner }) => {
-  if (!winner) return <span className="text-slate-500">—</span>;
+  if (!winner) return <span className="text-ink0">—</span>;
 
-  let color = "bg-slate-800 text-slate-300 border-slate-700";
+  let color = "bg-raised text-ink border-edge-strong";
   let label = "Manual";
 
   if (winner === "lumenos_predictive") {
-    color = "bg-blue-950 border-blue-700 text-blue-300 font-bold";
+    color = "bg-accent/10 border-blue-700 text-accent-hi font-bold";
     label = "LumenOS";
   } else if (winner === "reactive_autopilot") {
-    color = "bg-cyan-950 border-cyan-700 text-cyan-300 font-bold";
+    color = "bg-info/10 border-cyan-700 text-info font-bold";
     label = "Reactive";
   } else if (winner === "manual_pilot") {
-    color = "bg-slate-800 border-slate-600 text-slate-200";
+    color = "bg-raised border-edge-strong text-ink";
     label = "Manual";
   } else if (winner === "tie") {
-    return <span className="text-slate-400 font-mono text-[10px]">TIE</span>;
+    return <span className="text-muted font-mono text-[10px]">TIE</span>;
   }
 
   return (

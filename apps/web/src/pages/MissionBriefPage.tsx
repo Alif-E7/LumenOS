@@ -36,8 +36,8 @@ export function MissionBriefPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mx-auto mb-4" />
-        <p className="text-slate-400">Loading mission brief…</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent mx-auto mb-4" />
+        <p className="text-muted">Loading mission brief…</p>
       </div>
     );
   }
@@ -46,8 +46,8 @@ export function MissionBriefPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Card title="Mission Not Available" icon="⚠️">
-          <p className="text-red-400 text-sm">{error ?? "Unknown mission"}</p>
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-crit text-sm">{error ?? "Unknown mission"}</p>
+          <p className="text-sm text-ink0 mt-2">
             The API server may be offline — start it on port 8000 and reload.
           </p>
           <Button variant="secondary" className="mt-4" onClick={() => navigate("/missions")}>
@@ -63,8 +63,8 @@ export function MissionBriefPage() {
       <div className="flex items-center gap-3 mb-2">
         <span className="text-4xl" aria-hidden>{mission.icon}</span>
         <div>
-          <h1 className="text-3xl font-bold text-white">{mission.name}</h1>
-          <p className="text-slate-400">Operation “{mission.codename}” — Mission Brief</p>
+          <h1 className="text-3xl font-bold text-ink">{mission.name}</h1>
+          <p className="text-muted">Operation “{mission.codename}” — Mission Brief</p>
         </div>
       </div>
 

@@ -1,117 +1,154 @@
 import { Outlet, NavLink } from "react-router-dom";
 import { useState } from "react";
+import { Menu, X, Radio } from "lucide-react";
+import { loadMissionSession } from "../lib/mission";
+import { cn } from "../lib/utils";
+
+/** Orbital mark — satellite on an inclined orbit around a ground node. */
+function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <ellipse
+        cx="16"
+        cy="16"
+        rx="12.5"
+        ry="7.5"
+        transform="rotate(-24 16 16)"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity="0.35"
+        strokeWidth="1"
+      />
+      <circle cx="16" cy="16" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <circle cx="16" cy="16" r="1" fill="currentColor" />
+      <g transform="rotate(-24 16 16) translate(12.5 16)">
+        <rect x="-2.6" y="-1.5" width="5.2" height="3" fill="currentColor" />
+        <rect x="-4.6" y="-0.8" width="1.6" height="1.6" fill="currentColor" fillOpacity="0.6" />
+        <rect x="3" y="-0.8" width="1.6" height="1.6" fill="currentColor" fillOpacity="0.6" />
+      </g>
+    </svg>
+  );
+}
+
+const NAV_GROUPS: { label: string; links: { to: string; label: string; end?: boolean }[] }[] = [
+  {
+    label: "Mission",
+    links: [
+      { to: "/", label: "Home", end: true },
+      { to: "/missions", label: "Missions" },
+      { to: "/design", label: "Designer" },
+      { to: "/operate", label: "Control" },
+    ],
+  },
+  {
+    label: "Fleet",
+    links: [
+      { to: "/coop", label: "Co-op" },
+      { to: "/rewards", label: "Rewards" },
+      { to: "/benchmark", label: "Benchmark" },
+    ],
+  },
+  {
+    label: "System",
+    links: [
+      { to: "/sources", label: "Sources" },
+      { to: "/help", label: "Academy" },
+      { to: "/settings", label: "Settings" },
+    ],
+  },
+];
 
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const session = loadMissionSession();
+  const inFlight = Boolean(session?.sessionId);
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `px-3 py-1.5 rounded-lg text-xs md:text-sm font-medium transition-colors ${
+    cn(
+      "px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors",
       isActive
-        ? "bg-blue-600 text-white shadow-sm"
-        : "text-slate-300 hover:bg-slate-800 hover:text-white"
-    }`;
+        ? "bg-accent/10 text-accent"
+        : "text-muted hover:text-ink hover:bg-raised"
+    );
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-50">
-      {/* Navigation */}
-      <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <NavLink to="/" className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-lg shadow-md shadow-blue-500/20">
-                🛰️
-              </div>
-              <div>
-                <span className="text-xl font-bold tracking-tight text-white block leading-none">
-                  LumenOS
+    <div className="flex min-h-screen flex-col bg-void text-ink">
+      {/* Command bar */}
+      <header className="sticky top-0 z-50 border-b border-edge bg-void/90 backdrop-blur-md">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-14 items-center justify-between gap-6">
+            {/* Identity */}
+            <NavLink to="/" className="flex shrink-0 items-center gap-2.5 text-accent">
+              <LogoMark className="h-7 w-7" />
+              <span className="leading-none">
+                <span className="block font-mono text-sm font-bold tracking-[0.22em] text-ink">
+                  LUMENOS
                 </span>
-                <span className="text-[10px] text-blue-400 font-mono tracking-wider">
-                  MISSION ARCHITECT
+                <span className="mt-1 block font-mono text-[9px] tracking-[0.3em] text-accent">
+                  FLIGHT CONSOLE
                 </span>
-              </div>
+              </span>
             </NavLink>
 
-            {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-1">
-              <NavLink to="/" className={linkClass} end>
-                Home
-              </NavLink>
-              <NavLink to="/mode" className={linkClass}>
-                Mode Select
-              </NavLink>
-              <NavLink to="/missions" className={linkClass}>
-                Campaign
-              </NavLink>
-              <NavLink to="/design" className={linkClass}>
-                Designer
-              </NavLink>
-              <NavLink to="/operate" className={linkClass}>
-                Control
-              </NavLink>
-              <NavLink to="/benchmark" className={linkClass}>
-                Benchmark
-              </NavLink>
-              <NavLink to="/rewards" className={linkClass}>
-                Rewards
-              </NavLink>
-              <NavLink to="/sources" className={linkClass}>
-                Sources
-              </NavLink>
-              <NavLink to="/help" className={linkClass}>
-                Academy
-              </NavLink>
-              <NavLink to="/settings" className={linkClass}>
-                Settings
-              </NavLink>
+            {/* Desktop nav */}
+            <nav className="hidden items-center gap-5 lg:flex" aria-label="Primary">
+              {NAV_GROUPS.map((group) => (
+                <div key={group.label} className="flex items-center gap-1">
+                  <span className="micro-label mr-1 hidden text-faint xl:inline">
+                    {group.label}
+                  </span>
+                  {group.links.map((link) => (
+                    <NavLink key={link.to} to={link.to} end={link.end} className={linkClass}>
+                      {link.label}
+                    </NavLink>
+                  ))}
+                </div>
+              ))}
             </nav>
 
-            {/* Mobile menu toggle */}
-            <div className="flex items-center gap-2 lg:hidden">
+            {/* Live status + mobile toggle */}
+            <div className="flex items-center gap-3">
+              {inFlight && (
+                <NavLink
+                  to="/operate"
+                  className="hidden items-center gap-2 border border-accent/40 bg-accent/10 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-accent transition-colors hover:bg-accent/20 sm:inline-flex"
+                  title={`Mission in flight — ${session?.missionName ?? ""}`}
+                >
+                  <Radio className="h-3 w-3 animate-pulse-soft" aria-hidden />
+                  <span className="max-w-28 truncate">{session?.missionName ?? "In Flight"}</span>
+                </NavLink>
+              )}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white"
+                className="border border-edge-strong p-1.5 text-muted transition-colors hover:text-ink lg:hidden"
                 aria-label="Toggle navigation menu"
+                aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? "✕" : "☰"}
+                {mobileMenuOpen ? (
+                  <X className="h-4 w-4" aria-hidden />
+                ) : (
+                  <Menu className="h-4 w-4" aria-hidden />
+                )}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* Mobile dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-800 bg-slate-950 p-4 space-y-1">
-            <NavLink to="/" className={linkClass} end onClick={() => setMobileMenuOpen(false)}>
-              Home
-            </NavLink>
-            <NavLink to="/mode" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Mode Select
-            </NavLink>
-            <NavLink to="/missions" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Mission Campaign
-            </NavLink>
-            <NavLink to="/design" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Spacecraft Designer
-            </NavLink>
-            <NavLink to="/operate" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Mission Control
-            </NavLink>
-            <NavLink to="/benchmark" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Benchmark Harness
-            </NavLink>
-            <NavLink to="/rewards" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Rewards & Progression
-            </NavLink>
-            <NavLink to="/sources" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Data & Sources
-            </NavLink>
-            <NavLink to="/help" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Flight Academy
-            </NavLink>
-            <NavLink to="/settings" className={linkClass} onClick={() => setMobileMenuOpen(false)}>
-              Settings
-            </NavLink>
+          <div className="border-t border-edge bg-void p-4 lg:hidden" onClick={() => setMobileMenuOpen(false)}>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label} className="mb-3 last:mb-0">
+                <div className="micro-label mb-1.5 text-accent">{group.label}</div>
+                <div className="grid grid-cols-3 gap-1">
+                  {group.links.map((link) => (
+                    <NavLink key={link.to} to={link.to} end={link.end} className={linkClass}>
+                      {link.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </header>
@@ -121,20 +158,15 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800 py-6 text-center text-slate-500 text-sm bg-slate-950">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs">
-            LumenOS v0.1.0 — Educational Space Mission Strategy & Simulation
-          </p>
-          <p className="text-xs">
-            Telemetry is <span className="text-cyan-400 font-mono font-medium">[SIMULATED]</span> via J₂ orbital propagation & thermal equilibrium.
-          </p>
-          <div className="flex gap-4 text-xs text-slate-400">
-            <NavLink to="/sources" className="hover:text-white">Scientific Data</NavLink>
-            <NavLink to="/help" className="hover:text-white">Academy</NavLink>
-            <NavLink to="/settings" className="hover:text-white">Settings</NavLink>
-          </div>
+      {/* Baseline */}
+      <footer className="border-t border-edge py-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 font-mono text-[10px] tracking-[0.12em] text-faint sm:flex-row sm:px-6 lg:px-8">
+          <span>LUMENOS v0.1.0 · SIMULATED TELEMETRY</span>
+          <span className="flex gap-4">
+            <NavLink to="/sources" className="hover:text-muted">DATA</NavLink>
+            <NavLink to="/help" className="hover:text-muted">ACADEMY</NavLink>
+            <NavLink to="/settings" className="hover:text-muted">SETTINGS</NavLink>
+          </span>
         </div>
       </footer>
     </div>

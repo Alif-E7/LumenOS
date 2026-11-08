@@ -402,7 +402,7 @@ export function CesiumMissionViewer({
             <button
               type="button"
               onClick={() => setUseFallback(false)}
-              className="text-xs font-mono text-cyan-400 hover:text-cyan-300 underline"
+              className="text-xs font-mono text-info hover:text-info underline"
             >
               Switch to 3D Cesium View
             </button>
@@ -420,7 +420,7 @@ export function CesiumMissionViewer({
 
   return (
     <div
-      className={`relative w-full rounded-xl overflow-hidden border border-slate-800 bg-slate-950 ${className}`}
+      className={`relative w-full rounded-none overflow-hidden border border-edge bg-void ${className}`}
       style={{ height: "480px" }}
     >
       {/* 3D WebGL Canvas Container */}
@@ -428,7 +428,7 @@ export function CesiumMissionViewer({
 
       {/* Mission Control HUD Overlay */}
       <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-auto">
-        <span className="bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1 rounded-full text-xs font-mono text-cyan-400 flex items-center gap-1.5 shadow-md">
+        <span className="bg-void/80 backdrop-blur-md border border-edge px-3 py-1 rounded-full text-xs font-mono text-info flex items-center gap-1.5 shadow-md">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
           <span>CESIUM 3D ORBIT VIEW</span>
         </span>
@@ -436,7 +436,7 @@ export function CesiumMissionViewer({
           className={`px-2.5 py-1 rounded-full text-xs font-mono border backdrop-blur-md ${
             inEclipse
               ? "bg-indigo-950/80 border-indigo-500/30 text-indigo-300"
-              : "bg-amber-950/80 border-amber-500/30 text-amber-300"
+              : "bg-warn/10/80 border-warn/30 text-warn"
           }`}
         >
           {inEclipse ? "🌑 Umbra (Eclipse)" : "☀️ Sunlit"}
@@ -444,14 +444,14 @@ export function CesiumMissionViewer({
       </div>
 
       {/* Camera Mode Toolbar */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md p-1 rounded-lg border border-slate-800 shadow-md pointer-events-auto">
+      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-void/80 backdrop-blur-md p-1 rounded-none border border-edge shadow-md pointer-events-auto">
         <button
           type="button"
           onClick={() => handleCameraChange("follow")}
           className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
             cameraMode === "follow"
-              ? "bg-blue-600 text-white font-bold"
-              : "text-slate-400 hover:text-white"
+              ? "bg-accent text-ink font-bold"
+              : "text-muted hover:text-ink"
           }`}
           title="Lock camera to spacecraft in orbital frame"
         >
@@ -462,8 +462,8 @@ export function CesiumMissionViewer({
           onClick={() => handleCameraChange("nadir")}
           className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
             cameraMode === "nadir"
-              ? "bg-blue-600 text-white font-bold"
-              : "text-slate-400 hover:text-white"
+              ? "bg-accent text-ink font-bold"
+              : "text-muted hover:text-ink"
           }`}
           title="Direct top-down view of nadir ground swath"
         >
@@ -474,18 +474,18 @@ export function CesiumMissionViewer({
           onClick={() => handleCameraChange("free")}
           className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
             cameraMode === "free"
-              ? "bg-blue-600 text-white font-bold"
-              : "text-slate-400 hover:text-white"
+              ? "bg-accent text-ink font-bold"
+              : "text-muted hover:text-ink"
           }`}
           title="Free interactive 3D camera"
         >
           Free 3D
         </button>
-        <div className="h-4 w-px bg-slate-800 mx-0.5" />
+        <div className="h-4 w-px bg-raised mx-0.5" />
         <button
           type="button"
           onClick={() => setUseFallback(true)}
-          className="px-2 py-1 text-xs font-mono text-cyan-400 hover:text-cyan-300 hover:bg-slate-900 rounded"
+          className="px-2 py-1 text-xs font-mono text-info hover:text-info hover:bg-panel rounded"
           title="Switch to high-contrast 2D accessible map"
         >
           2D Map
@@ -493,29 +493,29 @@ export function CesiumMissionViewer({
       </div>
 
       {/* Bottom Coordinates & Comms HUD Bar */}
-      <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 bg-slate-950/85 backdrop-blur-md px-4 py-2 rounded-lg border border-slate-800/80 text-xs font-mono pointer-events-auto shadow-lg">
-        <div className="flex items-center gap-4 text-slate-300">
+      <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 bg-void/85 backdrop-blur-md px-4 py-2 rounded-none border border-edge/80 text-xs font-mono pointer-events-auto shadow-lg">
+        <div className="flex items-center gap-4 text-ink">
           <span>
-            LAT: <strong className="text-white">{satLat.toFixed(2)}°</strong>
+            LAT: <strong className="text-ink">{satLat.toFixed(2)}°</strong>
           </span>
           <span>
-            LON: <strong className="text-white">{satLon.toFixed(2)}°</strong>
+            LON: <strong className="text-ink">{satLon.toFixed(2)}°</strong>
           </span>
           <span>
-            ALT: <strong className="text-white">{satAltKm.toFixed(1)} km</strong>
+            ALT: <strong className="text-ink">{satAltKm.toFixed(1)} km</strong>
           </span>
           <span>
-            VEL: <strong className="text-white">{(orbital?.velocity_km_s ?? 7.6).toFixed(2)} km/s</strong>
+            VEL: <strong className="text-ink">{(orbital?.velocity_km_s ?? 7.6).toFixed(2)} km/s</strong>
           </span>
         </div>
         <div className="flex items-center gap-2">
           {comms?.in_contact ? (
-            <span className="flex items-center gap-1.5 text-cyan-300">
+            <span className="flex items-center gap-1.5 text-info">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
               <span>RF LINK: {comms.active_station} ({comms.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps)</span>
             </span>
           ) : (
-            <span className="text-slate-500">RF LINK: NO CONTACT</span>
+            <span className="text-ink0">RF LINK: NO CONTACT</span>
           )}
         </div>
       </div>

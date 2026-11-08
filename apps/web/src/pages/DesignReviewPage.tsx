@@ -50,7 +50,7 @@ export function DesignReviewPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Card title="No Mission Selected" icon="⚠️">
-          <p className="text-slate-400 text-sm">
+          <p className="text-muted text-sm">
             Start from the mission campaign so the review knows which contract
             this spacecraft must satisfy.
           </p>
@@ -64,23 +64,23 @@ export function DesignReviewPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-white mb-2">Design Review</h1>
-      <p className="text-slate-400 mb-8">
-        Mission: <span className="text-slate-200">{session.missionName}</span> —
+      <h1 className="text-3xl font-bold text-ink mb-2">Design Review</h1>
+      <p className="text-muted mb-8">
+        Mission: <span className="text-ink">{session.missionName}</span> —
         pick your spacecraft and run the pre-flight validation.
       </p>
 
-      {listLoading && <p className="text-slate-400">Loading saved configurations…</p>}
+      {listLoading && <p className="text-muted">Loading saved configurations…</p>}
       {listError && (
         <Card title="API Error" icon="⚠️">
-          <p className="text-red-400 text-sm">{listError}</p>
-          <p className="text-sm text-slate-500 mt-2">Start the API server on port 8000.</p>
+          <p className="text-crit text-sm">{listError}</p>
+          <p className="text-sm text-ink0 mt-2">Start the API server on port 8000.</p>
         </Card>
       )}
 
       {spacecraftList && spacecraftList.length === 0 && (
         <Card title="No Spacecraft Yet" icon="🛠️">
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-muted text-sm mb-4">
             You need at least one spacecraft configuration. Build one in the designer.
           </p>
           <Button onClick={() => navigate("/design")}>Open Spacecraft Designer</Button>
@@ -90,21 +90,21 @@ export function DesignReviewPage() {
       {spacecraftList && spacecraftList.length > 0 && (
         <>
           <fieldset className="mb-6">
-            <legend className="text-sm font-medium text-slate-300 mb-2">Spacecraft Configuration</legend>
+            <legend className="text-sm font-medium text-ink mb-2">Spacecraft Configuration</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {spacecraftList.map((sc) => (
                 <button
                   key={sc.id}
                   onClick={() => { setSelectedId(sc.id); setValidation(null); }}
                   aria-pressed={selectedId === sc.id}
-                  className={`rounded-xl border p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`rounded-none border p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
                     selectedId === sc.id
-                      ? "border-blue-500 bg-blue-950/30"
-                      : "border-slate-800 bg-slate-900/50 hover:border-slate-600"
+                      ? "border-accent bg-accent/10/30"
+                      : "border-edge bg-panel/50 hover:border-edge-strong"
                   }`}
                 >
-                  <p className="font-medium text-slate-100">🛰️ {sc.name}</p>
-                  <p className="text-xs text-slate-500 mt-1 font-mono">
+                  <p className="font-medium text-ink">🛰️ {sc.name}</p>
+                  <p className="text-xs text-ink0 mt-1 font-mono">
                     {sc.total_mass_kg.toFixed(0)} kg · {sc.power.solar_panel_area_m2} m² panels ·{" "}
                     {sc.thermal.radiator_area_m2} m² radiator
                   </p>
@@ -137,16 +137,16 @@ export function DesignReviewPage() {
               </div>
               {validation.errors.length > 0 && (
                 <div className="mb-3">
-                  <h4 className="text-sm font-semibold text-red-400 mb-1">Errors</h4>
-                  <ul className="text-sm text-red-300 list-disc list-inside">
+                  <h4 className="text-sm font-semibold text-crit mb-1">Errors</h4>
+                  <ul className="text-sm text-crit list-disc list-inside">
                     {validation.errors.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
                 </div>
               )}
               {validation.warnings.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-amber-400 mb-1">Warnings</h4>
-                  <ul className="text-sm text-amber-300 list-disc list-inside">
+                  <h4 className="text-sm font-semibold text-warn mb-1">Warnings</h4>
+                  <ul className="text-sm text-warn list-disc list-inside">
                     {validation.warnings.map((w, i) => <li key={i}>{w}</li>)}
                   </ul>
                 </div>
@@ -156,7 +156,7 @@ export function DesignReviewPage() {
 
           {validateError && (
             <Card title="Validation Failed to Run" icon="⚠️" className="mb-8">
-              <p className="text-red-400 text-sm">{validateError}</p>
+              <p className="text-crit text-sm">{validateError}</p>
             </Card>
           )}
 

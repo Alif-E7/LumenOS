@@ -50,13 +50,13 @@ export const STATION_ORDER: StationId[] = [
 export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAction, enabled, className }: StationProps) {
   return (
     <div className={`space-y-4 ${className ?? ""}`}>
-      <p className="text-sm text-slate-400">{ROLES.mission_director.description}</p>
+      <p className="text-sm text-muted">{ROLES.mission_director.description}</p>
 
       <BudgetMeter remaining={budgetRemaining} total={budgetTotal} />
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
-        <h4 className="text-sm font-semibold text-slate-200 mb-2">Objective Priority</h4>
-        <p className="text-xs text-slate-400 mb-3">
+      <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm">
+        <h4 className="text-sm font-semibold text-ink mb-2">Objective Priority</h4>
+        <p className="text-xs text-muted mb-3">
           Rank what the crew optimizes for. Re-ranking is logged with the mission director.
         </p>
         <Selector
@@ -73,14 +73,14 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
         />
       </div>
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold text-slate-200">AI Consultation</h4>
+          <h4 className="text-sm font-semibold text-ink">AI Consultation</h4>
           <Tooltip content="The AI consultation advisory module is scheduled for future deployment.">
-            <span className="text-slate-500 cursor-help" aria-label="AI consultation unavailable">ⓘ</span>
+            <span className="text-ink0 cursor-help" aria-label="AI consultation unavailable">ⓘ</span>
           </Tooltip>
         </div>
-        <p className="text-xs text-slate-400 mb-3">
+        <p className="text-xs text-muted mb-3">
           Request predictive flight risk forecast from LumenOS AI module (costs 100 cr).
         </p>
         <Button
@@ -94,8 +94,8 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
       </div>
 
       {telemetry && (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm">
-          <h4 className="text-sm font-semibold text-slate-200 mb-3">Director's Overview</h4>
+        <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm">
+          <h4 className="text-sm font-semibold text-ink mb-3">Director's Overview</h4>
           <div className="space-y-3">
             <ResourceMeter label="Spacecraft health" value={telemetry.spacecraft_health_pct} max={100} unit="%" />
             <ResourceMeter label="Data collected" value={telemetry.comms.data_collected_mb} max={Math.max(500, telemetry.comms.data_collected_mb)} unit="MB" decimals={1} />
@@ -120,17 +120,17 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
 
   return (
     <div className={`space-y-5 ${className ?? ""}`}>
-      <p className="text-sm text-slate-400">{ROLES.systems_engineer.description}</p>
+      <p className="text-sm text-muted">{ROLES.systems_engineer.description}</p>
 
       {/* ── Subsystem Quick Telemetry Bar ── */}
       {telemetry ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="rounded-xl border border-emerald-950/60 bg-emerald-950/20 p-3">
+          <div className="rounded-none border border-emerald-950/60 bg-ok/10/20 p-3">
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-emerald-400">Battery SoC</span>
-              <span className="text-xs font-mono font-semibold text-emerald-300">{power?.battery_soc_pct.toFixed(1)}%</span>
+              <span className="text-[11px] font-medium uppercase tracking-wider text-ok">Battery SoC</span>
+              <span className="text-xs font-mono font-semibold text-ok">{power?.battery_soc_pct.toFixed(1)}%</span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full bg-raised rounded-full h-1.5 overflow-hidden">
               <div
                 className={`h-full transition-all duration-300 ${
                   (power?.battery_soc_pct ?? 100) < 20 ? "bg-rose-500" : (power?.battery_soc_pct ?? 100) < 35 ? "bg-amber-400" : "bg-emerald-400"
@@ -138,78 +138,78 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
                 style={{ width: `${Math.min(100, Math.max(0, power?.battery_soc_pct ?? 0))}%` }}
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">DoD: {power?.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
+            <p className="text-[10px] text-muted mt-1">DoD: {power?.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
           </div>
 
-          <div className="rounded-xl border border-rose-950/60 bg-rose-950/20 p-3">
+          <div className="rounded-none border border-rose-950/60 bg-rose-950/20 p-3">
             <div className="flex justify-between items-baseline mb-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-rose-400">Bus Temp</span>
               <span className="text-xs font-mono font-semibold text-rose-300">{thermal?.temperature_c.toFixed(1)} °C</span>
             </div>
-            <p className="text-[10px] text-slate-400">Net Heat: {(thermal?.net_heat_w ?? 0) > 0 ? "+" : ""}{thermal?.net_heat_w?.toFixed(1) ?? "0.0"} W</p>
+            <p className="text-[10px] text-muted">Net Heat: {(thermal?.net_heat_w ?? 0) > 0 ? "+" : ""}{thermal?.net_heat_w?.toFixed(1) ?? "0.0"} W</p>
           </div>
 
-          <div className="rounded-xl border border-amber-950/60 bg-amber-950/20 p-3">
+          <div className="rounded-none border border-amber-950/60 bg-warn/10/20 p-3">
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-amber-400">Solar Gen</span>
-              <span className="text-xs font-mono font-semibold text-amber-300">{power?.solar_output_w.toFixed(0)} W</span>
+              <span className="text-[11px] font-medium uppercase tracking-wider text-warn">Solar Gen</span>
+              <span className="text-xs font-mono font-semibold text-warn">{power?.solar_output_w.toFixed(0)} W</span>
             </div>
-            <p className="text-[10px] text-slate-400">{power?.in_eclipse ? "In Earth Shadow" : "Sunlit Arrays"}</p>
+            <p className="text-[10px] text-muted">{power?.in_eclipse ? "In Earth Shadow" : "Sunlit Arrays"}</p>
           </div>
 
-          <div className="rounded-xl border border-blue-950/60 bg-blue-950/20 p-3">
+          <div className="rounded-none border border-blue-950/60 bg-accent/10/20 p-3">
             <div className="flex justify-between items-baseline mb-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-blue-400">CPU Workload</span>
-              <span className="text-xs font-mono font-semibold text-blue-300">{workload?.cpu_usage_pct.toFixed(0)}%</span>
+              <span className="text-[11px] font-medium uppercase tracking-wider text-accent">CPU Workload</span>
+              <span className="text-xs font-mono font-semibold text-accent-hi">{workload?.cpu_usage_pct.toFixed(0)}%</span>
             </div>
-            <p className="text-[10px] text-slate-400">Profile: <span className="font-semibold text-blue-300">{currentProfile}</span></p>
+            <p className="text-[10px] text-muted">Profile: <span className="font-semibold text-accent-hi">{currentProfile}</span></p>
           </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">Telemetry available after the first simulation step.</p>
+        <p className="text-sm text-ink0">Telemetry available after the first simulation step.</p>
       )}
 
       {/* ── Power & Physical Battery Accounting ── */}
-      <div className="rounded-xl border border-amber-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+      <div className="rounded-none border border-warn/20 bg-panel/60 p-4 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
             <h4 className="text-sm font-semibold text-amber-200">Electrical Power & Battery Accounting</h4>
           </div>
-          <span className="text-[11px] font-mono text-slate-400">
+          <span className="text-[11px] font-mono text-muted">
             Net: {(power?.net_power_w ?? 0) >= 0 ? "+" : ""}{power?.net_power_w?.toFixed(1) ?? "0.0"} W
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">SoC Energy</span>
-            <span className="text-slate-200 font-semibold">{power?.battery_soc_wh?.toFixed(0) ?? "2000"} Wh</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">SoC Energy</span>
+            <span className="text-ink font-semibold">{power?.battery_soc_wh?.toFixed(0) ?? "2000"} Wh</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Usable Reserve</span>
-            <span className="text-slate-200 font-semibold">{power?.battery_usable_capacity_wh?.toFixed(0) ?? "1800"} Wh</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Usable Reserve</span>
+            <span className="text-ink font-semibold">{power?.battery_usable_capacity_wh?.toFixed(0) ?? "1800"} Wh</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
             <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-500 block uppercase">Equiv Full Cycles</span>
+              <span className="text-[10px] text-ink0 block uppercase">Equiv Full Cycles</span>
               <Tooltip content="Equivalent Full Cycles (EFC) tracks cumulative discharge throughput / capacity. Does not count each orbit as 1 full cycle.">
-                <span className="text-[10px] text-slate-400 cursor-help">ⓘ</span>
+                <span className="text-[10px] text-muted cursor-help">ⓘ</span>
               </Tooltip>
             </div>
-            <span className="text-emerald-400 font-semibold">{power?.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</span>
+            <span className="text-ok font-semibold">{power?.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Battery SOH</span>
-            <span className="text-emerald-400 font-semibold">{power?.battery_soh_pct?.toFixed(2) ?? "100.00"}%</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Battery SOH</span>
+            <span className="text-ok font-semibold">{power?.battery_soh_pct?.toFixed(2) ?? "100.00"}%</span>
           </div>
         </div>
 
         {/* Power Mode & Operational Profile Controls */}
         <div className="pt-2">
           <div className="flex items-center justify-between mb-1.5">
-            <h5 className="text-xs font-medium text-slate-300">Power Mode</h5>
-            <span className="text-[10px] text-slate-500 italic">User-facing profile, not an ML precision alias</span>
+            <h5 className="text-xs font-medium text-ink">Power Mode</h5>
+            <span className="text-[10px] text-ink0 italic">User-facing profile, not an ML precision alias</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -224,14 +224,14 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
                   type="button"
                   disabled={!enabled}
                   onClick={() => onAction("set_power_mode", { mode: p.mode }, `Power mode: ${p.label}`)}
-                  className={`p-2.5 rounded-lg border text-left transition-all ${
+                  className={`p-2.5 rounded-none border text-left transition-all ${
                     active
-                      ? "border-blue-500 bg-blue-950/40 text-blue-200 ring-1 ring-blue-500/50"
-                      : "border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                      ? "border-accent bg-accent/10/40 text-blue-200 ring-1 ring-accent/50"
+                      : "border-edge bg-void/40 text-muted hover:border-edge-strong hover:text-ink"
                   }`}
                 >
                   <p className="font-semibold text-xs">{p.label}</p>
-                  <p className="text-[10px] text-slate-500">{p.desc}</p>
+                  <p className="text-[10px] text-ink0">{p.desc}</p>
                 </button>
               );
             })}
@@ -239,10 +239,10 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
         </div>
 
         {/* Payload Power Toggle */}
-        <div className="pt-1 flex items-center justify-between bg-slate-950/40 p-2.5 rounded-lg border border-slate-800">
+        <div className="pt-1 flex items-center justify-between bg-void/40 p-2.5 rounded-none border border-edge">
           <div>
-            <span className="text-xs font-medium text-slate-200">Payload Instrument Power</span>
-            <p className="text-[10px] text-slate-500">Toggle primary sensor draw (80 W) to conserve battery during eclipse</p>
+            <span className="text-xs font-medium text-ink">Payload Instrument Power</span>
+            <p className="text-[10px] text-ink0">Toggle primary sensor draw (80 W) to conserve battery during eclipse</p>
           </div>
           <div className="flex gap-1.5">
             <Button
@@ -266,7 +266,7 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
       </div>
 
       {/* ── Lumped Thermal Subsystem ── */}
-      <div className="rounded-xl border border-rose-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+      <div className="rounded-none border border-rose-500/20 bg-panel/60 p-4 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse" />
@@ -278,21 +278,21 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Internal Heat</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Internal Heat</span>
             <span className="text-rose-300 font-semibold">{thermal?.internal_dissipation_w?.toFixed(1) ?? "0.0"} W</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Solar + Albedo</span>
-            <span className="text-amber-300 font-semibold">{((thermal?.solar_absorbed_w ?? 0) + (thermal?.albedo_absorbed_w ?? 0)).toFixed(1)} W</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Solar + Albedo</span>
+            <span className="text-warn font-semibold">{((thermal?.solar_absorbed_w ?? 0) + (thermal?.albedo_absorbed_w ?? 0)).toFixed(1)} W</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Radiated Out</span>
-            <span className="text-cyan-300 font-semibold">{thermal?.heat_rejected_w?.toFixed(1) ?? "0.0"} W</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Radiated Out</span>
+            <span className="text-info font-semibold">{thermal?.heat_rejected_w?.toFixed(1) ?? "0.0"} W</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800/80">
-            <span className="text-[10px] text-slate-500 block uppercase">Heater State</span>
-            <span className={`font-semibold ${thermal?.heater_active ? "text-amber-400" : "text-slate-400"}`}>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge/80">
+            <span className="text-[10px] text-ink0 block uppercase">Heater State</span>
+            <span className={`font-semibold ${thermal?.heater_active ? "text-warn" : "text-muted"}`}>
               {thermal?.heater_active ? "Active (Firing)" : "Standby (Off)"}
             </span>
           </div>
@@ -301,8 +301,8 @@ export function SystemsStation({ telemetry, budgetRemaining, onAction, enabled, 
         {/* Radiator Adjustment Slider */}
         <div className="pt-2">
           <div className="flex items-center justify-between mb-1">
-            <h5 className="text-xs font-medium text-slate-300">Radiator Trim (Rejection Capacity)</h5>
-            <span className="text-[10px] text-slate-400">Costs 50 cr per trim</span>
+            <h5 className="text-xs font-medium text-ink">Radiator Trim (Rejection Capacity)</h5>
+            <span className="text-[10px] text-muted">Costs 50 cr per trim</span>
           </div>
           <Slider
             label="Radiator delta"
@@ -349,22 +349,22 @@ export function ScienceStation({ telemetry, onAction, enabled, className }: Stat
 
   return (
     <div className={`space-y-5 ${className ?? ""}`}>
-      <p className="text-sm text-slate-400">{ROLES.science_officer.description}</p>
+      <p className="text-sm text-muted">{ROLES.science_officer.description}</p>
 
       {/* ── Multi-Queue Storage Breakdown Card ── */}
-      <div className="rounded-xl border border-violet-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+      <div className="rounded-none border border-violet-500/20 bg-panel/60 p-4 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse" />
             <h4 className="text-sm font-semibold text-violet-200">Onboard Solid-State Storage (SSDR)</h4>
           </div>
-          <span className="text-xs font-mono text-slate-400">
+          <span className="text-xs font-mono text-muted">
             {storage?.used_mb.toFixed(1) ?? "0.0"} / {totalMb.toFixed(0)} MB ({storage?.used_pct.toFixed(1) ?? "0.0"}%)
           </span>
         </div>
 
         {/* Visual Segmented Storage Bar */}
-        <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden flex shadow-inner">
+        <div className="w-full h-3 rounded-full bg-raised overflow-hidden flex shadow-inner">
           <div
             title={`Priority Alerts: ${alertMb.toFixed(1)} MB`}
             style={{ width: `${alertPct}%` }}
@@ -384,42 +384,42 @@ export function ScienceStation({ telemetry, onAction, enabled, className }: Stat
 
         {/* Legend & Queue Meters */}
         <div className="grid grid-cols-3 gap-2 text-xs font-mono">
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-rose-950/40">
+          <div className="bg-void/50 p-2.5 rounded-none border border-rose-950/40">
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
               <span className="text-[10px] uppercase text-rose-300">Priority Alerts</span>
             </div>
-            <span className="font-semibold text-slate-200">{alertMb.toFixed(1)} MB</span>
+            <span className="font-semibold text-ink">{alertMb.toFixed(1)} MB</span>
           </div>
 
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-violet-950/40">
+          <div className="bg-void/50 p-2.5 rounded-none border border-violet-950/40">
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-2 h-2 rounded-full bg-violet-500 inline-block" />
               <span className="text-[10px] uppercase text-violet-300">Processed Science</span>
             </div>
-            <span className="font-semibold text-slate-200">{procMb.toFixed(1)} MB</span>
+            <span className="font-semibold text-ink">{procMb.toFixed(1)} MB</span>
           </div>
 
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-amber-950/40">
+          <div className="bg-void/50 p-2.5 rounded-none border border-amber-950/40">
             <div className="flex items-center gap-1.5 mb-1">
               <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-              <span className="text-[10px] uppercase text-amber-300">Raw Sensor Data</span>
+              <span className="text-[10px] uppercase text-warn">Raw Sensor Data</span>
             </div>
-            <span className="font-semibold text-slate-200">{rawMb.toFixed(1)} MB</span>
+            <span className="font-semibold text-ink">{rawMb.toFixed(1)} MB</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+        <div className="flex items-center justify-between text-xs text-muted pt-1">
           <span>Compression Ratio: <strong className="text-violet-300 font-mono">{storage?.compression_ratio?.toFixed(1) ?? "2.5"}:1</strong></span>
-          <span>Overflow Risk: <strong className={`font-mono ${(storage?.overflow_risk_pct ?? 0) > 25 ? "text-rose-400" : "text-emerald-400"}`}>{storage?.overflow_risk_pct?.toFixed(1) ?? "0.0"}%</strong></span>
+          <span>Overflow Risk: <strong className={`font-mono ${(storage?.overflow_risk_pct ?? 0) > 25 ? "text-rose-400" : "text-ok"}`}>{storage?.overflow_risk_pct?.toFixed(1) ?? "0.0"}%</strong></span>
         </div>
       </div>
 
       {/* ── Ground Station RF Link & Priority Downlink Card ── */}
-      <div className="rounded-xl border border-cyan-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+      <div className="rounded-none border border-info/20 bg-panel/60 p-4 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className={`inline-block w-2.5 h-2.5 rounded-full ${comms?.in_contact ? "bg-cyan-400 animate-ping" : "bg-slate-600"}`} />
+            <span className={`inline-block w-2.5 h-2.5 rounded-full ${comms?.in_contact ? "bg-cyan-400 animate-ping" : "bg-edge-strong"}`} />
             <h4 className="text-sm font-semibold text-cyan-200">Ground Contact & RF Downlink</h4>
           </div>
           <StatusBadge
@@ -429,27 +429,27 @@ export function ScienceStation({ telemetry, onAction, enabled, className }: Stat
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Elevation</span>
-            <span className="text-cyan-300 font-semibold">{comms?.elevation_deg?.toFixed(1) ?? "--"}°</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Elevation</span>
+            <span className="text-info font-semibold">{comms?.elevation_deg?.toFixed(1) ?? "--"}°</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Slant Range</span>
-            <span className="text-cyan-300 font-semibold">{comms?.slant_range_km?.toFixed(0) ?? "--"} km</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Slant Range</span>
+            <span className="text-info font-semibold">{comms?.slant_range_km?.toFixed(0) ?? "--"} km</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Data Rate</span>
-            <span className="text-cyan-300 font-semibold">{comms?.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Data Rate</span>
+            <span className="text-info font-semibold">{comms?.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Downlinked</span>
-            <span className="text-emerald-300 font-semibold">{comms?.data_downlinked_mb?.toFixed(1) ?? "0.0"} MB</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Downlinked</span>
+            <span className="text-ok font-semibold">{comms?.data_downlinked_mb?.toFixed(1) ?? "0.0"} MB</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between pt-2">
-          <div className="text-xs text-slate-400">
-            Priority Queue: <span className="text-cyan-300 font-semibold">Alerts ➔ Processed Products ➔ Raw</span>
+          <div className="text-xs text-muted">
+            Priority Queue: <span className="text-info font-semibold">Alerts ➔ Processed Products ➔ Raw</span>
           </div>
           <Button
             size="sm"
@@ -473,26 +473,26 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
 
   return (
     <div className={`space-y-5 ${className ?? ""}`}>
-      <p className="text-sm text-slate-400">{ROLES.flight_controller.description}</p>
+      <p className="text-sm text-muted">{ROLES.flight_controller.description}</p>
 
       {/* Orbital Ephemeris HUD */}
       {orbital && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-sm">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
-            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Altitude</p>
-            <p className="text-slate-100 font-semibold">{orbital.altitude_km.toFixed(1)} km</p>
+          <div className="rounded-none border border-edge bg-panel/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-ink0 tracking-wider">Altitude</p>
+            <p className="text-ink font-semibold">{orbital.altitude_km.toFixed(1)} km</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
-            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Velocity</p>
-            <p className="text-slate-100 font-semibold">{orbital.velocity_km_s.toFixed(2)} km/s</p>
+          <div className="rounded-none border border-edge bg-panel/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-ink0 tracking-wider">Velocity</p>
+            <p className="text-ink font-semibold">{orbital.velocity_km_s.toFixed(2)} km/s</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
-            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Sub-Sat Lat/Lon</p>
-            <p className="text-slate-100 font-semibold">{orbital.latitude_deg.toFixed(1)}°, {orbital.longitude_deg.toFixed(1)}°</p>
+          <div className="rounded-none border border-edge bg-panel/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-ink0 tracking-wider">Sub-Sat Lat/Lon</p>
+            <p className="text-ink font-semibold">{orbital.latitude_deg.toFixed(1)}°, {orbital.longitude_deg.toFixed(1)}°</p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 backdrop-blur-sm">
-            <p className="text-[10px] uppercase text-slate-500 tracking-wider">Illumination</p>
-            <p className={`font-semibold ${orbital.in_eclipse ? "text-cyan-400" : "text-amber-300"}`}>
+          <div className="rounded-none border border-edge bg-panel/60 p-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase text-ink0 tracking-wider">Illumination</p>
+            <p className={`font-semibold ${orbital.in_eclipse ? "text-info" : "text-warn"}`}>
               {orbital.in_eclipse ? "Eclipse (Umbra)" : "Sunlit"}
             </p>
           </div>
@@ -500,7 +500,7 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
       )}
 
       {/* ── Radiation & Orbital Debris Environmental Accounting ── */}
-      <div className="rounded-xl border border-yellow-500/20 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
+      <div className="rounded-none border border-yellow-500/20 bg-panel/60 p-4 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-yellow-400" />
@@ -513,7 +513,7 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
               </span>
             )}
             {radDebris?.in_auroral_horn && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-950/80 text-purple-300 border border-purple-800">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-raised/80 text-muted border border-purple-800">
                 Auroral Horn
               </span>
             )}
@@ -521,33 +521,33 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Total Ionizing Dose</span>
-            <span className="text-slate-200 font-semibold">{radDebris?.total_ionizing_dose_rad.toFixed(2) ?? "0.00"} rad</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Total Ionizing Dose</span>
+            <span className="text-ink font-semibold">{radDebris?.total_ionizing_dose_rad.toFixed(2) ?? "0.00"} rad</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">TID Tolerance Used</span>
-            <span className="text-slate-200 font-semibold">{radDebris?.tid_pct_of_limit.toFixed(2) ?? "0.00"}%</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">TID Tolerance Used</span>
+            <span className="text-ink font-semibold">{radDebris?.tid_pct_of_limit.toFixed(2) ?? "0.00"}%</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">SEU Rate</span>
-            <span className="text-slate-200 font-semibold">{radDebris?.seu_rate_per_day.toFixed(3) ?? "0.015"}/day</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">SEU Rate</span>
+            <span className="text-ink font-semibold">{radDebris?.seu_rate_per_day.toFixed(3) ?? "0.015"}/day</span>
           </div>
-          <div className="bg-slate-950/50 p-2.5 rounded-lg border border-slate-800">
-            <span className="text-[10px] text-slate-500 block uppercase">Debris Risk Index</span>
-            <span className="text-amber-400 font-semibold">{radDebris?.debris_collision_risk_index.toFixed(1) ?? "12.5"} / 100</span>
+          <div className="bg-void/50 p-2.5 rounded-none border border-edge">
+            <span className="text-[10px] text-ink0 block uppercase">Debris Risk Index</span>
+            <span className="text-warn font-semibold">{radDebris?.debris_collision_risk_index.toFixed(1) ?? "12.5"} / 100</span>
           </div>
         </div>
 
-        <p className="text-[10px] text-slate-500 italic">
+        <p className="text-[10px] text-ink0 italic">
           Educational abstraction incorporating altitude shell flux, inclination crossing angles, and Whipple bumper shielding.
         </p>
       </div>
 
       {/* Thruster Burn Controls */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
-        <h4 className="text-sm font-semibold text-slate-200">Thruster Burn</h4>
-        <p className="text-xs text-slate-400">
+      <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm space-y-3">
+        <h4 className="text-sm font-semibold text-ink">Thruster Burn</h4>
+        <p className="text-xs text-muted">
           Prograde burn raises orbit altitude; retrograde lowers it. Costs 200 cr per burn.
         </p>
         <Slider label="Delta-v" value={deltaV} min={0.5} max={10} step={0.5} unit="m/s" onChange={setDeltaV} disabled={!enabled} />
@@ -570,9 +570,9 @@ export function FlightStation({ telemetry, budgetRemaining, onAction, enabled, c
       </div>
 
       {/* Attitude Modes */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 backdrop-blur-sm space-y-3">
-        <h4 className="text-sm font-semibold text-slate-200">Attitude Pointing Mode</h4>
-        <p className="text-xs text-slate-400">Re-orient spacecraft body via reaction wheels.</p>
+      <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm space-y-3">
+        <h4 className="text-sm font-semibold text-ink">Attitude Pointing Mode</h4>
+        <p className="text-xs text-muted">Re-orient spacecraft body via reaction wheels.</p>
         <div className="grid grid-cols-3 gap-2">
           {["Sun-facing", "Nadir (Earth)", "Radiator-safe"].map((mode) => (
             <Button

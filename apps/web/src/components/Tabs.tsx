@@ -3,12 +3,12 @@
  */
 
 import { useState, type ReactNode, type KeyboardEvent, useRef } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 interface Tab {
   id: string;
   label: string;
-  icon?: string;
+  icon?: ReactNode;
   disabled?: boolean;
   badge?: string | number;
 }
@@ -64,22 +64,22 @@ export function Tabs({
 
   const tabStyles = {
     default: {
-      list: "border-b border-slate-800",
-      tab: "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
-      active: "border-blue-500 text-blue-400",
-      inactive: "border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600",
+      list: "border-b border-edge",
+      tab: "px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors border-b-2 -mb-px",
+      active: "border-accent text-accent",
+      inactive: "border-transparent text-muted hover:text-ink hover:border-edge-strong",
     },
     pills: {
-      list: "bg-slate-900/50 rounded-lg p-1 gap-1",
-      tab: "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-      active: "bg-blue-600 text-white shadow-sm",
-      inactive: "text-slate-400 hover:text-white hover:bg-slate-800",
+      list: "bg-panel border border-edge p-1 gap-1",
+      tab: "px-4 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors",
+      active: "bg-accent/15 text-accent",
+      inactive: "text-muted hover:text-ink hover:bg-raised",
     },
     underline: {
       list: "",
-      tab: "px-3 py-2 text-sm font-medium transition-colors border-b-2",
-      active: "border-blue-500 text-white",
-      inactive: "border-transparent text-slate-500 hover:text-slate-300",
+      tab: "px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors border-b-2",
+      active: "border-accent text-ink",
+      inactive: "border-transparent text-faint hover:text-muted",
     },
   };
 
@@ -111,10 +111,10 @@ export function Tabs({
             )}
           >
             <span className="flex items-center gap-2">
-              {tab.icon && <span>{tab.icon}</span>}
+              {tab.icon && <span aria-hidden>{tab.icon}</span>}
               {tab.label}
               {tab.badge != null && (
-                <span className="px-1.5 py-0.5 text-xs rounded-full bg-slate-700 text-slate-300">
+                <span className="border border-edge-strong bg-raised px-1.5 py-0.5 text-[10px] text-muted">
                   {tab.badge}
                 </span>
               )}
@@ -128,4 +128,3 @@ export function Tabs({
     </div>
   );
 }
-

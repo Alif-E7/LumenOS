@@ -59,7 +59,7 @@ export function LaunchPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="Launch Blocked" icon="⛔">
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-muted text-sm mb-4">
             No mission contract accepted yet. Pick a mission first.
           </p>
           <Button onClick={() => navigate("/missions")}>Go to Mission Campaign</Button>
@@ -72,8 +72,8 @@ export function LaunchPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-white mb-2">Launch — {session.missionName}</h1>
-      <p className="text-slate-400 mb-8">
+      <h1 className="text-3xl font-bold text-ink mb-2">Launch — {session.missionName}</h1>
+      <p className="text-muted mb-8">
         Pre-flight checklist running. Mode:{" "}
         <StatusBadge label={session.mode === "solo" ? "SOLO — ALL STATIONS" : "CO-OP CREW"} variant="info" />
       </p>
@@ -85,14 +85,14 @@ export function LaunchPage() {
               <span
                 className={`inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs ${
                   i < step
-                    ? "border-green-500 bg-green-500/20 text-green-400"
-                    : "border-slate-700 text-slate-600"
+                    ? "border-ok bg-ok/20 text-ok"
+                    : "border-edge-strong text-faint"
                 }`}
                 aria-hidden
               >
                 {i < step ? "✓" : "·"}
               </span>
-              <span className={i < step ? "text-slate-200" : "text-slate-500"}>{item}</span>
+              <span className={i < step ? "text-ink" : "text-ink0"}>{item}</span>
             </li>
           ))}
         </ul>
@@ -100,8 +100,8 @@ export function LaunchPage() {
 
       {error && (
         <Card title="Launch Failed" icon="⚠️" className="mb-6">
-          <p className="text-red-400 text-sm">{error}</p>
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-crit text-sm">{error}</p>
+          <p className="text-sm text-ink0 mt-2">
             Make sure the API server is running on port 8000.
           </p>
         </Card>

@@ -34,12 +34,12 @@ export function ApprovalPanel({
 
   return (
     <section
-      className={cn("rounded-xl border border-slate-700 bg-slate-900/70 p-5", className)}
+      className={cn("rounded-none border border-edge-strong bg-panel/70 p-5", className)}
       aria-label={requestLabel}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-200">{requestLabel}</h3>
-        <span className="text-xs font-mono text-slate-400">
+        <h3 className="text-sm font-semibold text-ink">{requestLabel}</h3>
+        <span className="text-xs font-mono text-muted">
           {approved}/{total} approved
         </span>
       </div>
@@ -47,10 +47,10 @@ export function ApprovalPanel({
         {participants.map((p) => (
           <div key={p.player_id} className="flex items-center gap-2 text-sm">
             <span aria-hidden>{p.ready ? "✅" : "⏳"}</span>
-            <span className="text-slate-300">
+            <span className="text-ink">
               {p.display_name}
               {p.player_id === requesterId && (
-                <span className="text-slate-500 text-xs"> — requested</span>
+                <span className="text-ink0 text-xs"> — requested</span>
               )}
             </span>
           </div>
@@ -60,13 +60,13 @@ export function ApprovalPanel({
         <div className="flex gap-2">
           <button
             onClick={onApprove}
-            className="flex-1 rounded-lg bg-green-600/80 hover:bg-green-600 text-white text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="flex-1 rounded-none bg-ok/80 hover:bg-ok text-ink text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             Approve
           </button>
           <button
             onClick={onDeny}
-            className="flex-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-500"
+            className="flex-1 rounded-none bg-edge-strong hover:bg-edge-strong text-ink text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
           >
             Hold
           </button>

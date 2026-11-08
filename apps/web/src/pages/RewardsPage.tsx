@@ -87,22 +87,22 @@ export function RewardsPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold text-white">Rewards & Career Progression</h1>
-        <span className="text-xs px-2.5 py-1 rounded bg-blue-950/80 border border-blue-800 text-blue-300 font-mono">
+        <h1 className="text-3xl font-bold text-ink">Rewards & Career Progression</h1>
+        <span className="text-xs px-2.5 py-1 rounded bg-accent/10/80 border border-blue-800 text-accent-hi font-mono">
           PROFILE ID: {profile?.player_id ?? "pilot-local"}
         </span>
       </div>
-      <p className="text-slate-400 mb-8">
+      <p className="text-muted mb-8">
         Earn XP and Engineering Credits by completing NASA data-driven orbital contracts.
         Credits unlock specialized hardware modules in the Spacecraft Architect.
       </p>
 
       {feedbackMessage && (
         <div
-          className={`mb-6 p-3 rounded-lg border text-sm ${
+          className={`mb-6 p-3 rounded-none border text-sm ${
             feedbackMessage.error
               ? "bg-rose-950/50 border-rose-800 text-rose-200"
-              : "bg-emerald-950/50 border-emerald-800 text-emerald-200"
+              : "bg-ok/10/50 border-emerald-800 text-emerald-200"
           }`}
         >
           {feedbackMessage.text}
@@ -121,13 +121,13 @@ export function RewardsPage() {
 
       {/* Engineering Credits Unlocks Catalog */}
       <Card title="Engineering Credits Catalog (Hardware Unlocks)" icon="🔓" className="mb-8">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800 text-xs text-slate-400">
-          <span>Available Balance: <strong className="text-amber-400 font-mono font-semibold">{credits.toLocaleString()} Credits</strong></span>
-          <span>Pilot Clearance: <strong className="text-cyan-400 font-mono font-semibold">Level {profile?.level ?? 1}</strong></span>
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-edge text-xs text-muted">
+          <span>Available Balance: <strong className="text-warn font-mono font-semibold">{credits.toLocaleString()} Credits</strong></span>
+          <span>Pilot Clearance: <strong className="text-info font-mono font-semibold">Level {profile?.level ?? 1}</strong></span>
         </div>
 
         {loading ? (
-          <p className="text-xs text-slate-400">Loading catalog…</p>
+          <p className="text-xs text-muted">Loading catalog…</p>
         ) : profile?.unlocks && profile.unlocks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {profile.unlocks.map((u) => {
@@ -136,29 +136,29 @@ export function RewardsPage() {
               return (
                 <div
                   key={u.id}
-                  className={`p-4 rounded-lg border flex flex-col justify-between ${
+                  className={`p-4 rounded-none border flex flex-col justify-between ${
                     u.unlocked
-                      ? "border-emerald-700/50 bg-emerald-950/20"
-                      : "border-slate-800 bg-slate-900/50"
+                      ? "border-emerald-700/50 bg-ok/10/20"
+                      : "border-edge bg-panel/50"
                   }`}
                 >
                   <div className="flex items-start gap-3 mb-3">
                     <span className="text-2xl">{u.icon}</span>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-semibold text-white">{u.name}</h4>
+                        <h4 className="text-sm font-semibold text-ink">{u.name}</h4>
                         {u.unlocked && (
-                          <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          <span className="text-3xs font-mono px-1.5 py-0.5 rounded bg-ok/20 text-ok border border-ok/30">
                             UNLOCKED
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">{u.description}</p>
+                      <p className="text-xs text-muted mt-1">{u.description}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-                    <span className="text-slate-500 font-mono">
+                  <div className="flex items-center justify-between pt-2 border-t border-edge/80 text-xs">
+                    <span className="text-ink0 font-mono">
                       Req: Lvl {u.required_level} • Cost: {u.credit_cost} cr
                     </span>
                     {!u.unlocked ? (
@@ -171,7 +171,7 @@ export function RewardsPage() {
                         {purchasing === u.id ? "Unlocking…" : !meetsLevel ? `Lvl ${u.required_level} Required` : !canAfford ? "Insufficient Credits" : `Unlock (${u.credit_cost} cr)`}
                       </Button>
                     ) : (
-                      <span className="text-xs text-emerald-400 font-medium">Ready in Designer</span>
+                      <span className="text-xs text-ok font-medium">Ready in Designer</span>
                     )}
                   </div>
                 </div>
@@ -179,12 +179,12 @@ export function RewardsPage() {
             })}
           </div>
         ) : (
-          <p className="text-xs text-slate-500">No hardware modules listed.</p>
+          <p className="text-xs text-ink0">No hardware modules listed.</p>
         )}
       </Card>
 
       <Card title="How Engineering Progression Works" icon="ℹ️" className="mb-8">
-        <ul className="text-sm text-slate-400 space-y-1.5 list-disc list-inside">
+        <ul className="text-sm text-muted space-y-1.5 list-disc list-inside">
           <li><strong>Mission Budget</strong> is specific to each contract and resets between missions.</li>
           <li><strong>Engineering Credits</strong> are persistent career currency earned from high mission scores and objective completion.</li>
           <li><strong>Career XP</strong> increases your operator rank and unlocks advanced campaign scenarios (Wildfire → Flood → Solar Storm → Volcano).</li>

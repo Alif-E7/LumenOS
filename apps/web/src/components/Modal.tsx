@@ -71,7 +71,7 @@ export function Modal({
     <dialog
       ref={dialogRef}
       className={cn(
-        "w-full rounded-xl border border-slate-700 bg-slate-900 p-0 text-slate-50 shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm",
+        "w-full rounded-none border border-edge-strong bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm",
         sizeClasses[size]
       )}
       onKeyDown={handleKeyDown}
@@ -81,11 +81,11 @@ export function Modal({
       <div className="p-6" onClick={(e) => e.stopPropagation()}>
         {title && (
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">{title}</h2>
+            <h2 className="text-xl font-bold text-ink">{title}</h2>
             {!persistent && (
               <button
                 onClick={onClose}
-                className="rounded-lg p-1 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="rounded-none p-1 text-muted hover:text-ink hover:bg-raised transition-colors"
                 aria-label="Close dialog"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

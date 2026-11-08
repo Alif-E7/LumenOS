@@ -104,8 +104,8 @@ export function ResultsPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500 mx-auto mb-4" />
-        <p className="text-slate-400">Computing mission debrief & telemetry economics…</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent mx-auto mb-4" />
+        <p className="text-muted">Computing mission debrief & telemetry economics…</p>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export function ResultsPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="No Mission Results" icon="📉">
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-muted text-sm mb-4">
             Results appear after you fly a mission. Launch one from the campaign.
           </p>
           <Button onClick={() => navigate("/missions")}>Go to Mission Campaign</Button>
@@ -127,8 +127,8 @@ export function ResultsPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="Results Unavailable" icon="⚠️">
-          <p className="text-red-400 text-sm mb-2">{error}</p>
-          <p className="text-slate-500 text-sm mb-4">
+          <p className="text-crit text-sm mb-2">{error}</p>
+          <p className="text-ink0 text-sm mb-4">
             The game session may have expired (sessions live in server memory).
           </p>
           <Button variant="secondary" onClick={() => navigate("/")}>Back to Home</Button>
@@ -157,10 +157,10 @@ export function ResultsPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="text-6xl mb-3" aria-hidden>{won ? "🎉" : "🛠️"}</div>
-        <h1 className="text-3xl font-bold text-white mb-2">
+        <h1 className="text-3xl font-bold text-ink mb-2">
           {won ? "Mission Success" : outcome === "partial" ? "Mission Partially Successful" : "Mission Debrief"}
         </h1>
-        <p className="text-slate-400">
+        <p className="text-muted">
           {session.missionName} —{" "}
           <StatusBadge
             label={outcome ?? "in progress"}
@@ -171,7 +171,7 @@ export function ResultsPage() {
 
       {state && state.status === "running" && (
         <Card title="Mission Still Running" icon="⏱️" className="mb-6">
-          <p className="text-slate-400 text-sm mb-3">
+          <p className="text-muted text-sm mb-3">
             The session hasn't ended yet — the score below is a live operational snapshot.
           </p>
           <Button variant="secondary" onClick={() => navigate("/operate")}>Back to Mission Control</Button>
@@ -180,34 +180,34 @@ export function ResultsPage() {
 
       {/* Primary & Optional Objectives Progress Banner */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+        <div className="p-4 rounded-none bg-panel/70 border border-edge">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-blue-400">Primary Objectives</span>
-            <span className="text-sm font-mono text-white">{primaryDone} / {primaryTotal} Complete</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-accent">Primary Objectives</span>
+            <span className="text-sm font-mono text-ink">{primaryDone} / {primaryTotal} Complete</span>
           </div>
-          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-raised h-2 rounded-full overflow-hidden">
             <div
-              className="bg-blue-500 h-full rounded-full transition-all"
+              className="bg-accent h-full rounded-full transition-all"
               style={{ width: `${Math.min(100, (primaryDone / Math.max(primaryTotal, 1)) * 100)}%` }}
             />
           </div>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-muted mt-2">
             Mandatory contract deliverables required for baseline flight qualification.
           </p>
         </div>
 
-        <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800">
+        <div className="p-4 rounded-none bg-panel/70 border border-edge">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-purple-400">Secondary / Optional Objectives</span>
-            <span className="text-sm font-mono text-white">{optionalDone} / {optionalTotal} Complete</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted">Secondary / Optional Objectives</span>
+            <span className="text-sm font-mono text-ink">{optionalDone} / {optionalTotal} Complete</span>
           </div>
-          <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-raised h-2 rounded-full overflow-hidden">
             <div
-              className="bg-purple-500 h-full rounded-full transition-all"
+              className="bg-edge-strong h-full rounded-full transition-all"
               style={{ width: `${Math.min(100, (optionalDone / Math.max(optionalTotal, 1)) * 100)}%` }}
             />
           </div>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-muted mt-2">
             Scientific bonus tasks and telemetry endurance targets contributing to higher ratings.
           </p>
         </div>
@@ -226,46 +226,46 @@ export function ResultsPage() {
       {/* Co-op Crew Contribution Summary (if multiplayer or team summary available) */}
       {teamSummary && teamSummary.participants && teamSummary.participants.length > 1 && (
         <Card title="Co-op Crew Contribution & Station Coordination" icon="🤝" className="mb-8">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800 text-xs">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-edge text-xs">
             <div>
-              <span className="text-slate-400">Team Coordination Rating: </span>
-              <span className="text-emerald-400 font-bold text-sm">
+              <span className="text-muted">Team Coordination Rating: </span>
+              <span className="text-ok font-bold text-sm">
                 {Math.round(teamSummary.coordination_index * 100)}%
               </span>
             </div>
-            <div className="text-slate-400">
+            <div className="text-muted">
               <span>Directives Assisted: </span>
-              <span className="text-slate-200 font-mono">{teamSummary.cross_role_assistance_count}</span>
+              <span className="text-ink font-mono">{teamSummary.cross_role_assistance_count}</span>
             </div>
           </div>
 
-          <p className="text-xs text-slate-300 italic mb-4">{teamSummary.summary_narrative}</p>
+          <p className="text-xs text-ink italic mb-4">{teamSummary.summary_narrative}</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {teamSummary.participants.map((member) => (
-              <div key={member.player_id} className="p-4 rounded-lg bg-slate-950/60 border border-slate-800">
+              <div key={member.player_id} className="p-4 rounded-none bg-void/60 border border-edge">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <span className="font-semibold text-sm text-white">{member.display_name}</span>
-                    <span className="text-xs text-blue-400 block">{member.roles.join(", ")}</span>
+                    <span className="font-semibold text-sm text-ink">{member.display_name}</span>
+                    <span className="text-xs text-accent block">{member.roles.join(", ")}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-bold text-emerald-400">{member.contribution_percentage}%</span>
-                    <span className="text-2xs text-slate-500 block">crew share</span>
+                    <span className="text-lg font-bold text-ok">{member.contribution_percentage}%</span>
+                    <span className="text-2xs text-ink0 block">crew share</span>
                   </div>
                 </div>
 
-                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-3">
+                <div className="w-full bg-raised h-1.5 rounded-full overflow-hidden mb-3">
                   <div
-                    className="bg-emerald-500 h-full rounded-full"
+                    className="bg-ok h-full rounded-full"
                     style={{ width: `${Math.min(100, member.contribution_percentage)}%` }}
                   />
                 </div>
 
-                <ul className="text-xs text-slate-400 space-y-1">
+                <ul className="text-xs text-muted space-y-1">
                   {member.role_highlights.map((h, i) => (
                     <li key={i} className="flex items-start gap-1.5">
-                      <span className="text-emerald-400 text-2xs mt-0.5">▸</span>
+                      <span className="text-ok text-2xs mt-0.5">▸</span>
                       <span>{h}</span>
                     </li>
                   ))}
@@ -280,59 +280,59 @@ export function ResultsPage() {
       {costModel && (
         <Card title='Educational Economics: "Is It Worth It?" (Cost Per Useful Result)' icon="💡" className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-xs text-slate-400 block mb-1">Amortized Mission Cost</span>
-              <span className="text-2xl font-bold text-white font-mono">
+            <div className="p-4 rounded-none bg-void/60 border border-edge">
+              <span className="text-xs text-muted block mb-1">Amortized Mission Cost</span>
+              <span className="text-2xl font-bold text-ink font-mono">
                 ${costModel.total_amortized_mission_cost_usd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className="text-2xs text-slate-500 block mt-1">
+              <span className="text-2xs text-ink0 block mt-1">
                 CapEx (${costModel.amortized_mission_capex_usd.toFixed(0)}) + OpEx (${costModel.mission_operational_spent_usd.toFixed(0)})
               </span>
             </div>
 
-            <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-xs text-slate-400 block mb-1">Cost Per Useful Science MB</span>
-              <span className="text-2xl font-bold text-cyan-400 font-mono">
+            <div className="p-4 rounded-none bg-void/60 border border-edge">
+              <span className="text-xs text-muted block mb-1">Cost Per Useful Science MB</span>
+              <span className="text-2xl font-bold text-info font-mono">
                 ${costModel.cost_per_mb_usd.toFixed(2)}
-                <span className="text-xs font-normal text-slate-400"> / MB</span>
+                <span className="text-xs font-normal text-muted"> / MB</span>
               </span>
-              <span className="text-2xs text-slate-500 block mt-1">
+              <span className="text-2xs text-ink0 block mt-1">
                 {costModel.data_downlinked_mb.toFixed(0)} MB useful science downlinked
               </span>
             </div>
 
-            <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800">
-              <span className="text-xs text-slate-400 block mb-1">Cost Per Anomaly Alert</span>
-              <span className="text-2xl font-bold text-amber-400 font-mono">
+            <div className="p-4 rounded-none bg-void/60 border border-edge">
+              <span className="text-xs text-muted block mb-1">Cost Per Anomaly Alert</span>
+              <span className="text-2xl font-bold text-warn font-mono">
                 ${costModel.cost_per_alert_usd.toFixed(2)}
-                <span className="text-xs font-normal text-slate-400"> / Alert</span>
+                <span className="text-xs font-normal text-muted"> / Alert</span>
               </span>
-              <span className="text-2xs text-slate-500 block mt-1">
+              <span className="text-2xs text-ink0 block mt-1">
                 {costModel.alerts_delivered} high-priority alerts delivered
               </span>
             </div>
           </div>
 
-          <div className="p-4 rounded-lg bg-blue-950/30 border border-blue-900/40 text-xs mb-4">
+          <div className="p-4 rounded-none bg-accent/10/30 border border-blue-900/40 text-xs mb-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-semibold text-blue-300">Edge Processing Cost-Efficiency vs Monolithic Satellite:</span>
-              <span className="text-emerald-400 font-bold font-mono text-sm">{costModel.cost_efficiency_multiplier}x More Cost-Efficient</span>
+              <span className="font-semibold text-accent-hi">Edge Processing Cost-Efficiency vs Monolithic Satellite:</span>
+              <span className="text-ok font-bold font-mono text-sm">{costModel.cost_efficiency_multiplier}x More Cost-Efficient</span>
             </div>
-            <p className="text-slate-300">
-              Traditional flagship monolithic satellites average ~${costModel.benchmark_flagship_cost_per_mb_usd}/MB due to massive bus launch mass and uncompressed raw downlinks. LumenOS onboard edge compression delivered an estimated <strong className="text-emerald-400">{costModel.cost_efficiency_gain_pct}%</strong> cost reduction.
+            <p className="text-ink">
+              Traditional flagship monolithic satellites average ~${costModel.benchmark_flagship_cost_per_mb_usd}/MB due to massive bus launch mass and uncompressed raw downlinks. LumenOS onboard edge compression delivered an estimated <strong className="text-ok">{costModel.cost_efficiency_gain_pct}%</strong> cost reduction.
             </p>
           </div>
 
-          <div className="border-t border-slate-800 pt-3">
+          <div className="border-t border-edge pt-3">
             <button
               onClick={() => setShowCostAssumptions(!showCostAssumptions)}
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1"
+              className="text-xs text-accent hover:text-accent-hi font-medium flex items-center gap-1"
             >
               <span>{showCostAssumptions ? "Hide" : "Show"} Documented Educational Assumptions</span>
               <span>{showCostAssumptions ? "▲" : "▼"}</span>
             </button>
             {showCostAssumptions && (
-              <ul className="mt-3 text-xs text-slate-400 space-y-1.5 list-disc list-inside bg-slate-950/40 p-3 rounded">
+              <ul className="mt-3 text-xs text-muted space-y-1.5 list-disc list-inside bg-void/40 p-3 rounded">
                 {costModel.educational_assumptions.map((asm, idx) => (
                   <li key={idx} className="leading-relaxed">{asm}</li>
                 ))}
@@ -353,7 +353,7 @@ export function ResultsPage() {
 
       {/* Navigation CTAs */}
       <div className="flex flex-wrap gap-4 justify-center">
-        <Button onClick={() => navigate("/replay")} className="bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20">
+        <Button onClick={() => navigate("/replay")} className="bg-accent hover:bg-accent shadow-lg shadow-accent/20">
           Launch Replay & What-If Studio →
         </Button>
         <Button variant="secondary" onClick={() => navigate("/missions")}>

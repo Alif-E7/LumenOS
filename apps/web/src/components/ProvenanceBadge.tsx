@@ -11,15 +11,14 @@ interface ProvenanceBadgeProps {
 interface ProvenanceInfo {
   label: string;
   description: string;
-  badgeColor: string;
+  Icon: (typeof DATA_PROVENANCE)["MODEL_PREDICTION"]["Icon"];
   className: string;
   disclaimer: string;
 }
 
 /**
- * Standard visual honesty badge that clearly indicates whether data is
- * Real NASA Reference, Simulated Spacecraft Observation, Simulated Environment,
- * or Model/AI Prediction.
+ * Visual honesty badge indicating whether data is Real NASA Reference,
+ * Simulated Spacecraft Observation, Simulated Environment, or Model/AI Prediction.
  */
 export function ProvenanceBadge({
   provenance,
@@ -33,34 +32,23 @@ export function ProvenanceBadge({
     : {
         label: provenance,
         description: "Data provenance indicator",
-        badgeColor: "slate",
-        className: "text-slate-400 border-slate-700 bg-slate-800/40",
+        Icon: DATA_PROVENANCE.SIMULATED.Icon,
+        className: "text-muted border-edge-strong bg-raised",
         disclaimer: "",
       };
 
-  const icons: Record<string, string> = {
-    REAL_NASA_REFERENCE: "🛰️",
-    REFERENCE: "🛰️",
-    SIMULATED_SPACECRAFT: "📡",
-    SIMULATED: "📡",
-    SIMULATED_ENVIRONMENT: "🌍",
-    GROUND_TRUTH: "🌍",
-    MODEL_PREDICTION: "🤖",
-    AI_PREDICTION: "🤖",
-  };
-
-  const icon = icons[provenance] || "◈";
+  const { Icon } = info;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-semibold uppercase tracking-wide",
+        "inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em]",
         info.className,
         className
       )}
       title={info.disclaimer || info.description}
     >
-      {showIcon && <span aria-hidden>{icon}</span>}
+      {showIcon && <Icon aria-hidden className="h-3 w-3" />}
       <span>{customLabel || info.label}</span>
     </span>
   );

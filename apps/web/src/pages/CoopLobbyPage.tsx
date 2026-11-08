@@ -146,8 +146,8 @@ export function CoopLobbyPage() {
       {mode !== "in_room" && (
         <>
           <div className="text-center mb-10">
-            <h1 className="text-3xl font-bold text-white mb-2">Cooperative Mission Room</h1>
-            <p className="text-slate-400">
+            <h1 className="text-3xl font-bold text-ink mb-2">Cooperative Mission Room</h1>
+            <p className="text-muted">
               Share one live spacecraft simulation with 2–4 players. No account required.
             </p>
           </div>
@@ -168,8 +168,8 @@ export function CoopLobbyPage() {
           </div>
 
           {apiError && (
-            <Card title="Error" icon="⚠️" className="mb-6 border-red-500/40">
-              <p className="text-sm text-red-400">{apiError}</p>
+            <Card title="Error" icon="⚠️" className="mb-6 border-crit/40">
+              <p className="text-sm text-crit">{apiError}</p>
             </Card>
           )}
 
@@ -177,7 +177,7 @@ export function CoopLobbyPage() {
             <Card title="Create Room (Host)" icon="👑" className="max-w-xl mx-auto">
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-ink mb-1">
                     Your Host Display Name
                   </label>
                   <input
@@ -185,8 +185,8 @@ export function CoopLobbyPage() {
                     value={hostName}
                     onChange={(e) => setHostName(e.target.value)}
                     placeholder="Enter callsign or name..."
-                    className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700
-                               text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-4 py-2 rounded-none bg-raised border border-edge-strong
+                               text-ink focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                     maxLength={30}
                   />
                 </div>
@@ -218,7 +218,7 @@ export function CoopLobbyPage() {
             <Card title="Join Room" icon="🔑" className="max-w-xl mx-auto">
               <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-ink mb-1">
                     6-Character Room Code
                   </label>
                   <input
@@ -226,14 +226,14 @@ export function CoopLobbyPage() {
                     value={roomCodeInput}
                     onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
                     placeholder="e.g. A3F1B2"
-                    className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700
-                               text-white font-mono text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+                    className="w-full px-4 py-2 rounded-none bg-raised border border-edge-strong
+                               text-ink font-mono text-center tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-accent uppercase"
                     maxLength={6}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                  <label className="block text-sm font-medium text-ink mb-1">
                     Your Guest Display Name
                   </label>
                   <input
@@ -241,8 +241,8 @@ export function CoopLobbyPage() {
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter callsign or name..."
-                    className="w-full px-4 py-2 rounded-lg bg-slate-800 border border-slate-700
-                               text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-4 py-2 rounded-none bg-raised border border-edge-strong
+                               text-ink focus:outline-none focus:ring-2 focus:ring-accent text-sm"
                     maxLength={30}
                   />
                 </div>
@@ -270,7 +270,7 @@ export function CoopLobbyPage() {
           <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold text-white">Mission Briefing Room</h1>
+                <h1 className="text-3xl font-bold text-ink">Mission Briefing Room</h1>
                 <StatusBadge
                   label={
                     room.status === "open"
@@ -282,14 +282,14 @@ export function CoopLobbyPage() {
                   variant={room.status === "open" ? "success" : "warning"}
                 />
               </div>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted text-sm mt-1">
                 Room participants will share one live spacecraft simulation state.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-4 py-2 rounded-lg">
-              <span className="text-xs text-slate-400">ROOM CODE:</span>
-              <span className="font-mono text-xl font-bold text-blue-400">{roomCode}</span>
+            <div className="flex items-center gap-2 bg-panel border border-edge-strong px-4 py-2 rounded-none">
+              <span className="text-xs text-muted">ROOM CODE:</span>
+              <span className="font-mono text-xl font-bold text-accent">{roomCode}</span>
               <Button size="sm" variant="ghost" onClick={handleCopyCode}>
                 {copied ? "Copied!" : "📋 Copy"}
               </Button>
@@ -297,8 +297,8 @@ export function CoopLobbyPage() {
           </div>
 
           {room.lastError && (
-            <Card title="Room Alert" icon="⚠️" className="mb-6 border-red-500/40">
-              <p className="text-sm text-red-400">{room.lastError}</p>
+            <Card title="Room Alert" icon="⚠️" className="mb-6 border-crit/40">
+              <p className="text-sm text-crit">{room.lastError}</p>
             </Card>
           )}
 
@@ -307,32 +307,32 @@ export function CoopLobbyPage() {
             <Card title={`Crew Roster (${room.participants.length}/4)`} icon="👥" className="md:col-span-2">
               <div className="space-y-3">
                 {room.participants.length === 0 ? (
-                  <p className="text-sm text-slate-500">Connecting to room...</p>
+                  <p className="text-sm text-ink0">Connecting to room...</p>
                 ) : (
                   room.participants.map((p) => {
                     const isMe = p.player_id === playerId;
                     return (
                       <div
                         key={p.player_id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                        className={`flex items-center justify-between p-3 rounded-none border ${
                           isMe
-                            ? "border-blue-500/50 bg-blue-950/20"
-                            : "border-slate-800 bg-slate-900/40"
+                            ? "border-accent/50 bg-accent/10/20"
+                            : "border-edge bg-panel/40"
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-xl">{p.is_host ? "👑" : "🧑🚀"}</span>
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-white">{p.display_name}</span>
-                              {isMe && <span className="text-xs text-blue-400">(You)</span>}
+                              <span className="font-medium text-ink">{p.display_name}</span>
+                              {isMe && <span className="text-xs text-accent">(You)</span>}
                               {p.is_host && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-warn/20 text-warn border border-warn/30">
                                   HOST
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-ink0">
                               {p.connected ? "Connected" : "Disconnected (reconnecting...)"}
                             </p>
                           </div>
@@ -353,7 +353,7 @@ export function CoopLobbyPage() {
 
             {/* Role Bundling Preview */}
             <Card title="Station Role Assignment" icon="🎖️">
-              <p className="text-xs text-slate-400 mb-3">
+              <p className="text-xs text-muted mb-3">
                 Server-authoritative role distribution:
               </p>
               {room.participants.length > 0 && Object.keys(room.roles).length > 0 ? (
@@ -363,9 +363,9 @@ export function CoopLobbyPage() {
                     return (
                       <div
                         key={p.player_id}
-                        className="p-2 rounded bg-slate-800/60 border border-slate-700/50 flex items-center justify-between gap-2"
+                        className="p-2 rounded bg-raised/60 border border-edge-strong/50 flex items-center justify-between gap-2"
                       >
-                        <span className="text-xs font-semibold text-slate-200">
+                        <span className="text-xs font-semibold text-ink">
                           {p.display_name} {p.is_host && "(Host)"}:
                         </span>
                         <div className="flex gap-1 flex-wrap">
@@ -380,22 +380,22 @@ export function CoopLobbyPage() {
               ) : null}
 
               <div className="space-y-2 text-xs">
-                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
-                  <span className="font-semibold text-slate-200">4 Players:</span> 1 role each (Director, Systems, Science, Flight)
+                <div className="p-2 rounded bg-raised/40 border border-edge-strong/40">
+                  <span className="font-semibold text-ink">4 Players:</span> 1 role each (Director, Systems, Science, Flight)
                 </div>
-                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
-                  <span className="font-semibold text-slate-200">3 Players:</span> Director + Science bundle, Flight, Systems
+                <div className="p-2 rounded bg-raised/40 border border-edge-strong/40">
+                  <span className="font-semibold text-ink">3 Players:</span> Director + Science bundle, Flight, Systems
                 </div>
-                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
-                  <span className="font-semibold text-slate-200">2 Players:</span> 2 roles per player (Director+Science, Flight+Systems)
+                <div className="p-2 rounded bg-raised/40 border border-edge-strong/40">
+                  <span className="font-semibold text-ink">2 Players:</span> 2 roles per player (Director+Science, Flight+Systems)
                 </div>
-                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
-                  <span className="font-semibold text-slate-200">1 Player:</span> All Stations
+                <div className="p-2 rounded bg-raised/40 border border-edge-strong/40">
+                  <span className="font-semibold text-ink">1 Player:</span> All Stations
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800">
-                <p className="text-[11px] text-slate-500">
+              <div className="mt-4 pt-3 border-t border-edge">
+                <p className="text-[11px] text-ink0">
                   Stations have role-specific controls enforced by server permissions. Host can reassign roles dynamically.
                 </p>
               </div>
@@ -411,7 +411,7 @@ export function CoopLobbyPage() {
               >
                 {myReady ? "Cancel Ready" : "✓ Mark as Ready"}
               </Button>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-muted">
                 {allReady
                   ? "All crew members ready for ignition!"
                   : "Waiting for all crew members to ready up..."}
@@ -428,7 +428,7 @@ export function CoopLobbyPage() {
                   🚀 Launch Mission for Crew
                 </Button>
               ) : (
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-ink0">
                   Waiting for host to launch the mission...
                 </span>
               )}

@@ -15,14 +15,14 @@ export function HomePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Active Session Resume Banner */}
       {session && session.sessionId && (
-        <div className="mb-8 p-4 rounded-xl border border-blue-500/50 bg-blue-950/40 flex flex-wrap items-center justify-between gap-4">
+        <div className="mb-8 p-4 rounded-none border border-accent/50 bg-accent/10/40 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl animate-pulse">🛰️</span>
             <div>
-              <h3 className="font-semibold text-white">
+              <h3 className="font-semibold text-ink">
                 Active Mission in Flight: {session.missionName}
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted">
                 Mode: {session.mode === "solo" ? "Solo (All Stations)" : `Co-op (Room ${session.roomCode})`}
               </p>
             </div>
@@ -37,13 +37,13 @@ export function HomePage() {
 
       {/* Hero */}
       <section className="text-center mb-16">
-        <h1 className="text-5xl font-bold text-white mb-4">
+        <h1 className="text-5xl font-bold text-ink mb-4">
           LumenOS
-          <span className="block text-2xl text-blue-400 font-light mt-2">
+          <span className="block text-2xl text-accent font-light mt-2">
             Orbital Mission Architect
           </span>
         </h1>
-        <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-8">
+        <p className="text-lg text-muted max-w-2xl mx-auto mb-8">
           An educational interactive space mission design & simulation platform.
           Fly solo with full command of all four stations, or team up in real-time co-op with friends.
         </p>
@@ -65,7 +65,7 @@ export function HomePage() {
       {/* Mission Cards */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">Mission Scenarios</h2>
+          <h2 className="text-2xl font-bold text-ink">Mission Scenarios</h2>
           <Button variant="ghost" size="sm" onClick={() => navigate("/missions")}>
             View All Scenarios →
           </Button>
@@ -111,15 +111,15 @@ export function HomePage() {
               title={m.title}
               subtitle={m.codename}
               onClick={() => navigate(`/missions/${m.id}/brief`)}
-              className="hover:shadow-lg hover:shadow-blue-500/5 cursor-pointer"
+              className="hover:shadow-lg hover:shadow-accent/5 cursor-pointer"
             >
-              <p className="text-sm text-slate-400 mb-3">{m.desc}</p>
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
-                <span className="text-xs text-slate-500">
+              <p className="text-sm text-muted mb-3">{m.desc}</p>
+              <div className="flex items-center justify-between pt-2 border-t border-edge/80">
+                <span className="text-xs text-ink0">
                   {"⭐".repeat(m.difficulty)}
                   {"☆".repeat(5 - m.difficulty)}
                 </span>
-                <span className="text-xs text-blue-400 font-medium">Briefing →</span>
+                <span className="text-xs text-accent font-medium">Briefing →</span>
               </div>
             </Card>
           ))}
@@ -128,7 +128,7 @@ export function HomePage() {
 
       {/* Product Loop */}
       <section className="mb-16">
-        <h2 className="text-2xl font-bold text-white mb-6">The Mission Loop</h2>
+        <h2 className="text-2xl font-bold text-ink mb-6">The Mission Loop</h2>
         <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
           {[
             "Design", "Configure", "Validate", "Launch", "Simulate",
@@ -136,10 +136,10 @@ export function HomePage() {
             "Analyze", "Replay", "Improve", "Try Again",
           ].map((step, i, arr) => (
             <span key={step} className="flex items-center gap-2">
-              <span className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="px-3 py-1.5 rounded-none bg-raised text-ink border border-edge-strong">
                 {step}
               </span>
-              {i < arr.length - 1 && <span className="text-slate-600">→</span>}
+              {i < arr.length - 1 && <span className="text-faint">→</span>}
             </span>
           ))}
         </div>

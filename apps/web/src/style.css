@@ -1,23 +1,213 @@
+@import "@fontsource/space-grotesk/400.css";
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/600.css";
+@import "@fontsource/space-grotesk/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
 @import "tailwindcss";
 
-/* LumenOS Design System - Base Layer */
+/* ── LumenOS Ops Console — Design Tokens ────────────────────────────────
+   Deep-space void, signal-amber telemetry, hairline tactical frames.
+   Fonts: Space Grotesk (voice) + IBM Plex Mono (data).                    */
+@theme {
+  /* Surfaces */
+  --color-void: #05070c;
+  --color-panel: #0a0e16;
+  --color-raised: #10151f;
+  --color-edge: #1c2331;
+  --color-edge-strong: #2a3448;
+
+  /* Signal amber — primary accent */
+  --color-accent: #ffb000;
+  --color-accent-hi: #ffc944;
+  --color-accent-dim: #8a6200;
+  --color-accent-faint: #ffb00014;
+
+  /* Ink */
+  --color-ink: #e8ecf3;
+  --color-muted: #98a1b3;
+  --color-faint: #5b6375;
+
+  /* Status */
+  --color-ok: #3ecf8e;
+  --color-warn: #f5a524;
+  --color-crit: #ff5252;
+  --color-info: #4cc3ff;
+
+  /* Role tints */
+  --color-role-director: #ffb000;
+  --color-role-systems: #4cc3ff;
+  --color-role-science: #3ecf8e;
+  --color-role-flight: #ff7a5c;
+
+  /* Typography */
+  --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* Motion */
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-sweep: sweep 2.8s linear infinite;
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-flicker: flicker 0.7s ease-out both;
+  --animate-spin-slow: spin 14s linear infinite;
+
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  @keyframes sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(220%); }
+  }
+  @keyframes rise {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes flicker {
+    0% { opacity: 0; }
+    20% { opacity: 1; }
+    35% { opacity: 0.4; }
+    55% { opacity: 1; }
+    70% { opacity: 0.7; }
+    100% { opacity: 1; }
+  }
+}
+
 @layer base {
-  :root {
-    --color-primary: #3b82f6;
-    --color-primary-dark: #1d4ed8;
-    --color-surface: #0f172a;
-    --color-surface-light: #1e293b;
-    --color-surface-lighter: #334155;
-    --color-text: #f8fafc;
-    --color-text-muted: #94a3b8;
-    --color-success: #22c55e;
-    --color-warning: #f59e0b;
-    --color-danger: #ef4444;
-    --color-info: #06b6d4;
+  html {
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-slate-950 text-slate-50 antialiased;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    @apply bg-void text-ink font-display antialiased;
+    background-image:
+      radial-gradient(1px 1px at 12% 22%, rgba(232, 236, 243, 0.28) 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 8%, rgba(232, 236, 243, 0.20) 50%, transparent 51%),
+      radial-gradient(1px 1px at 42% 64%, rgba(232, 236, 243, 0.16) 50%, transparent 51%),
+      radial-gradient(1px 1px at 88% 48%, rgba(232, 236, 243, 0.22) 50%, transparent 51%),
+      radial-gradient(1px 1px at 24% 84%, rgba(232, 236, 243, 0.14) 50%, transparent 51%),
+      radial-gradient(1px 1px at 62% 34%, rgba(232, 236, 243, 0.18) 50%, transparent 51%);
+    background-attachment: fixed;
   }
+
+  ::selection {
+    background: rgba(255, 176, 0, 0.28);
+    color: #fff;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-edge);
+    border-radius: 0;
+    border: 2px solid var(--color-void);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-accent-dim);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* ── Tactical primitives ──────────────────────────────────────────────── */
+
+/* Diagonal corner brackets (top-left + bottom-right) */
+@utility tactical-frame {
+  position: relative;
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+  }
+  &::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid var(--color-accent);
+    border-left: 1px solid var(--color-accent);
+  }
+  &::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1px solid var(--color-accent);
+    border-right: 1px solid var(--color-accent);
+  }
+}
+
+/* Neutral (edge-colored) corner brackets */
+@utility tactical-frame-soft {
+  position: relative;
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    pointer-events: none;
+  }
+  &::before {
+    top: -1px;
+    left: -1px;
+    border-top: 1px solid var(--color-edge-strong);
+    border-left: 1px solid var(--color-edge-strong);
+  }
+  &::after {
+    bottom: -1px;
+    right: -1px;
+    border-bottom: 1px solid var(--color-edge-strong);
+    border-right: 1px solid var(--color-edge-strong);
+  }
+}
+
+/* Amber glow for live indicators */
+@utility glow-accent {
+  box-shadow: 0 0 8px rgba(255, 176, 0, 0.45), 0 0 2px rgba(255, 176, 0, 0.8);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 12px rgba(255, 176, 0, 0.4);
+}
+
+/* Faint engineering grid for hero/empty areas */
+@utility grid-bg {
+  background-image:
+    linear-gradient(rgba(28, 35, 49, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 35, 49, 0.5) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Mono data readout: tabular digits, tight tracking */
+@utility data-readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Uppercase micro-label used across the console */
+@utility micro-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }

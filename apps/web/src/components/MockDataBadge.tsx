@@ -14,13 +14,13 @@ export function MockDataBadge({ reason, className }: MockDataBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-purple-500/40 bg-purple-500/10",
-        "px-2 py-0.5 text-[11px] font-medium text-purple-300",
+        "inline-flex items-center gap-1 border border-edge-strong bg-raised px-2 py-0.5",
+        "font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted",
         className
       )}
       title={reason}
     >
-      <span aria-hidden>◈</span> MOCK DATA — {reason}
+      <span aria-hidden className="text-accent">◈</span> MOCK — {reason}
     </span>
   );
 }

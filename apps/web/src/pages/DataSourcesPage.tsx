@@ -94,16 +94,16 @@ export function DataSourcesPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Authoritative Data & Scientific Sources</h1>
-        <p className="text-slate-400">
+        <h1 className="text-3xl font-bold text-ink mb-2">Authoritative Data & Scientific Sources</h1>
+        <p className="text-muted">
           LumenOS is committed to absolute scientific integrity, verifiable data provenance, and transparent simulation calibration.
         </p>
       </div>
 
       {/* Mandatory Provenance Framework */}
       <section className="mb-12">
-        <h2 className="text-xl font-bold text-white mb-4">Semantic Data Provenance Framework</h2>
-        <p className="text-sm text-slate-400 mb-6">
+        <h2 className="text-xl font-bold text-ink mb-4">Semantic Data Provenance Framework</h2>
+        <p className="text-sm text-muted mb-6">
           Every telemetry field, observation target, and AI advisory in LumenOS carries an immutable provenance category tag to ensure players and students always know whether data originates from real empirical NASA archives, in-flight simulated spacecraft instruments, or predictive model forecasts.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -114,8 +114,8 @@ export function DataSourcesPage() {
                 <div className="mb-3">
                   <ProvenanceBadge provenance={key} />
                 </div>
-                <p className="text-sm text-slate-300 mb-2">{item.description}</p>
-                <p className="text-xs text-slate-400 border-t border-slate-800/80 pt-2 font-mono">
+                <p className="text-sm text-ink mb-2">{item.description}</p>
+                <p className="text-xs text-muted border-t border-edge/80 pt-2 font-mono">
                   {item.disclaimer}
                 </p>
               </Card>
@@ -125,15 +125,15 @@ export function DataSourcesPage() {
       </section>
 
       {/* Crucial NASA FIRMS Educational Notice */}
-      <div className="mb-12 rounded-xl border border-blue-500/40 bg-blue-950/30 p-6">
+      <div className="mb-12 rounded-none border border-accent/40 bg-accent/10/30 p-6">
         <div className="flex items-start gap-4">
           <span className="text-2xl" aria-hidden>🛰️</span>
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-bold text-blue-300">NASA FIRMS Operational Ground Truth Disclaimer</h3>
+              <h3 className="text-lg font-bold text-accent-hi">NASA FIRMS Operational Ground Truth Disclaimer</h3>
               <ProvenanceBadge provenance="REAL_NASA_REFERENCE" />
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed mb-3">
+            <p className="text-sm text-ink leading-relaxed mb-3">
               NASA FIRMS active fire detections are real-world empirical measurements acquired by the Visible Infrared Imaging Radiometer Suite (VIIRS) on the Suomi NPP and NOAA-20 polar-orbiting satellites.
             </p>
             <p className="text-sm text-blue-200 font-medium">
@@ -146,14 +146,14 @@ export function DataSourcesPage() {
       {/* Authoritative Data & Sources Register Table */}
       <section className="mb-12">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-white">Authoritative Data & Sources Register</h2>
-          <span className="text-xs font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-1 rounded-full">
+          <h2 className="text-xl font-bold text-ink">Authoritative Data & Sources Register</h2>
+          <span className="text-xs font-mono text-info bg-info/10/60 border border-info/30 px-2.5 py-1 rounded-full">
             7 Verified Products
           </span>
         </div>
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/40">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-800/80 text-xs uppercase text-slate-400 font-mono">
+        <div className="overflow-x-auto rounded-none border border-edge bg-panel/40">
+          <table className="w-full text-left text-sm text-ink">
+            <thead className="bg-raised/80 text-xs uppercase text-muted font-mono">
               <tr>
                 <th className="px-4 py-3">Dataset / Product</th>
                 <th className="px-4 py-3">Agency / Provider</th>
@@ -163,22 +163,22 @@ export function DataSourcesPage() {
                 <th className="px-4 py-3">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 text-xs">
+            <tbody className="divide-y divide-edge text-xs">
               {dataSources.map((s) => (
-                <tr key={s.sourceId} className="hover:bg-slate-800/30 transition-colors">
-                  <td className="px-4 py-3 font-medium text-white">
+                <tr key={s.sourceId} className="hover:bg-raised/30 transition-colors">
+                  <td className="px-4 py-3 font-medium text-ink">
                     <div>{s.name}</div>
-                    <div className="text-[11px] font-mono text-cyan-400">{s.code}</div>
+                    <div className="text-[11px] font-mono text-info">{s.code}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-400">{s.agency}</td>
+                  <td className="px-4 py-3 text-muted">{s.agency}</td>
                   <td className="px-4 py-3">
-                    <div className="text-slate-300">{s.coverage}</div>
-                    <div className="font-mono text-slate-400 mt-0.5">{s.units}</div>
+                    <div className="text-ink">{s.coverage}</div>
+                    <div className="font-mono text-muted mt-0.5">{s.units}</div>
                   </td>
-                  <td className="px-4 py-3 text-amber-300 font-medium">{s.scenario}</td>
-                  <td className="px-4 py-3 text-slate-400">{s.license}</td>
+                  <td className="px-4 py-3 text-warn font-medium">{s.scenario}</td>
+                  <td className="px-4 py-3 text-muted">{s.license}</td>
                   <td className="px-4 py-3">
-                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold bg-ok/10 text-ok border border-ok/30">
                       {s.status}
                     </span>
                   </td>
@@ -191,22 +191,22 @@ export function DataSourcesPage() {
 
       {/* Offline First & Zero Key Guarantee */}
       <section className="mb-12">
-        <h2 className="text-xl font-bold text-white mb-4">Offline-First Architecture & Non-Fabrication</h2>
+        <h2 className="text-xl font-bold text-ink mb-4">Offline-First Architecture & Non-Fabrication</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card title="Zero API Credential Requirement" icon="🛡️">
-            <p className="text-sm text-slate-300 leading-relaxed mb-2">
-              LumenOS bundles versioned offline sample datasets for all 7 reference sources in <code className="text-cyan-400 font-mono">data/offline/</code>.
+            <p className="text-sm text-ink leading-relaxed mb-2">
+              LumenOS bundles versioned offline sample datasets for all 7 reference sources in <code className="text-info font-mono">data/offline/</code>.
             </p>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted">
               The application runs completely offline in classroom, air-gapped, or test settings without needing external internet access or third-party API keys.
             </p>
           </Card>
           <Card title="No Fabricated Tokens or Responses" icon="⚖️">
-            <p className="text-sm text-slate-300 leading-relaxed mb-2">
+            <p className="text-sm text-ink leading-relaxed mb-2">
               LumenOS never fabricates API keys, mock telemetry pretending to be NASA live servers, or fake authentication responses.
             </p>
-            <p className="text-sm text-slate-400">
-              When live API keys are not supplied in the environment, the backend honestly reports <span className="font-mono text-amber-400">offline_fallback_active</span> and uses the verified local offline bundle.
+            <p className="text-sm text-muted">
+              When live API keys are not supplied in the environment, the backend honestly reports <span className="font-mono text-warn">offline_fallback_active</span> and uses the verified local offline bundle.
             </p>
           </Card>
         </div>
@@ -214,30 +214,30 @@ export function DataSourcesPage() {
 
       {/* Physics Models */}
       <section className="mb-12">
-        <h2 className="text-xl font-bold text-white mb-4">Simulation Physics Engine Calibration</h2>
+        <h2 className="text-xl font-bold text-ink mb-4">Simulation Physics Engine Calibration</h2>
         <div className="space-y-4">
           <Card title="Orbital Mechanics (J2 Perturbation & Keplerian Motion)" icon="🪐">
-            <p className="text-sm text-slate-300 mb-2">
+            <p className="text-sm text-ink mb-2">
               Propagates Keplerian two-body motion with Earth oblateness (J₂ = 1.08263 × 10⁻³).
               Accurately models regression of the nodes (RAAN drift) for sun-synchronous orbits, validated against real NORAD TLEs for Terra, Aqua, and Suomi NPP.
             </p>
-            <div className="bg-slate-950 p-3 rounded font-mono text-xs text-slate-400">
+            <div className="bg-void p-3 rounded font-mono text-xs text-muted">
               dΩ/dt = -1.5 × J₂ × (R_earth / p)² × n × cos(i)
             </div>
           </Card>
 
           <Card title="Thermal Radiation Balance (CERES & TSIS-1 Calibrated)" icon="🌡️">
-            <p className="text-sm text-slate-300 mb-2">
+            <p className="text-sm text-ink mb-2">
               Single-node heat balance equation balancing direct solar flux (TSIS-1: S₀ = 1361.0 W/m²), Earth albedo (CERES: a = 0.30), Earth infrared emission (CERES: q_ir = 237.0 W/m²),
               internal dissipation, and radiator rejection into space via Stefan-Boltzmann law (σ = 5.670374 × 10⁻⁸ W/m²·K⁴).
             </p>
-            <div className="bg-slate-950 p-3 rounded font-mono text-xs text-slate-400">
+            <div className="bg-void p-3 rounded font-mono text-xs text-muted">
               Q_rejected = ε × σ × A_rad × (T⁴ - T_sink⁴)
             </div>
           </Card>
 
           <Card title="Comms Link Budget & Ground Network" icon="📡">
-            <p className="text-sm text-slate-300 mb-2">
+            <p className="text-sm text-ink mb-2">
               Calculates line-of-sight slant range and antenna elevation angles across 5 real ground stations:
               Svalbard (78.2°N), Goldstone (35.4°N), Madrid (40.4°N), Canberra (35.4°S), and Troll (72.0°S).
             </p>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ClockState } from "../types";
 import { Button } from "./Button";
+import { Play, Pause, Save, RotateCcw, FastForward } from "lucide-react";
 
 export interface MissionClockBarProps {
   clock?: ClockState | null;
@@ -68,42 +69,47 @@ export function MissionClockBar({
 
   return (
     <div
-      className={`rounded-xl border border-slate-800 bg-slate-900/80 backdrop-blur-md p-3 flex flex-wrap items-center justify-between gap-4 ${className}`}
+      className={`relative overflow-hidden border border-edge bg-panel p-3 flex flex-wrap items-center justify-between gap-4 ${className}`}
       role="region"
       aria-label="Simulation Mission Clock Controls"
     >
-      {/* Clock Display & Status */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-3 h-3 rounded-full ${
-              isRunning ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-            }`}
-            aria-hidden="true"
-          />
-          <span className="text-xl font-mono font-bold text-white tracking-wider">
-            {formatMET(elapsed)}
-          </span>
-        </div>
+      {/* Running sweep */}
+      {isRunning && !disabled && (
         <span
-          className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase border ${
-            isRunning
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-              : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 w-1/4 animate-sweep bg-gradient-to-r from-transparent via-accent/[0.05] to-transparent"
+        />
+      )}
+
+      {/* Clock display */}
+      <div className="flex items-center gap-3">
+        <span
+          className={`h-2 w-2 ${isRunning ? "bg-ok glow-accent animate-pulse-soft" : "bg-warn"}`}
+          aria-hidden="true"
+        />
+        <span
+          className={`data-readout text-xl font-semibold tracking-wide ${
+            isRunning ? "text-ink text-glow" : "text-muted"
+          }`}
+        >
+          {formatMET(elapsed)}
+        </span>
+        <span
+          className={`border px-2 py-0.5 micro-label ${
+            isRunning ? "border-ok/30 bg-ok/10 text-ok" : "border-warn/30 bg-warn/10 text-warn"
           }`}
         >
           {clock?.status ?? "RUNNING"}
         </span>
         {isCoop && (
-          <span className="text-[11px] font-mono text-cyan-400 bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded-full">
-            SHARED CO-OP CLOCK
+          <span className="border border-info/30 bg-info/10 px-2 py-0.5 micro-label text-info">
+            SHARED CLOCK
           </span>
         )}
       </div>
 
-      {/* Playback Controls & Speed Multipliers */}
+      {/* Transport controls */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Play / Pause */}
         <Button
           size="sm"
           variant={isRunning ? "secondary" : "primary"}
@@ -111,42 +117,36 @@ export function MissionClockBar({
           disabled={disabled}
           title="Toggle Simulation Play/Pause (Shortcut: Space)"
         >
-          {isRunning ? "❚❚ Pause" : "▶ Resume"}
+          {isRunning ? (
+            <>
+              <Pause className="h-3.5 w-3.5" aria-hidden /> Pause
+            </>
+          ) : (
+            <>
+              <Play className="h-3.5 w-3.5" aria-hidden /> Resume
+            </>
+          )}
         </Button>
 
-        {/* Step Forward Buttons */}
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onStep?.(1)}
-          disabled={disabled}
-          title="Advance simulation by 1 step (60s)"
-        >
+        <Button size="sm" variant="secondary" onClick={() => onStep?.(1)} disabled={disabled} title="Advance simulation by 1 step (60s)">
           +1m
         </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => onStep?.(5)}
-          disabled={disabled}
-          title="Advance simulation by 5 steps (5m)"
-        >
+        <Button size="sm" variant="secondary" onClick={() => onStep?.(5)} disabled={disabled} title="Advance simulation by 5 steps (5m)">
           +5m
         </Button>
 
-        {/* Speed Buttons */}
-        <div className="flex items-center rounded-lg border border-slate-800 bg-slate-950 p-0.5">
+        {/* Speed multipliers */}
+        <div className="flex items-center border border-edge bg-void p-0.5" role="group" aria-label="Time compression">
           {speeds.map((s) => (
             <button
               key={s}
               type="button"
               disabled={disabled}
               onClick={() => onSetSpeed?.(s)}
-              className={`px-2 py-1 text-xs font-mono font-semibold rounded transition-colors ${
-                speed === s
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-400 hover:text-white"
+              className={`px-2 py-1 data-readout text-[11px] font-medium transition-colors ${
+                speed === s ? "bg-accent/15 text-accent" : "text-faint hover:text-ink"
               }`}
+              aria-pressed={speed === s}
             >
               {s}x
             </button>
@@ -154,15 +154,14 @@ export function MissionClockBar({
         </div>
       </div>
 
-      {/* Event Jump & Checkpoints */}
+      {/* Event jump & checkpoints */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Event Jump Dropdown */}
         <div className="flex items-center gap-1.5">
           <select
             value={selectedJump}
             onChange={(e) => setSelectedJump(e.target.value)}
             disabled={disabled}
-            className="text-xs font-mono bg-slate-950 border border-slate-800 text-slate-300 rounded px-2 py-1.5 focus:border-blue-500 focus:outline-none"
+            className="border border-edge bg-void px-2 py-1.5 font-mono text-xs text-ink focus:border-accent focus:outline-none"
             aria-label="Select orbital event to jump to"
           >
             <option value="SUNSET">Next Sunset (Umbra Ingress)</option>
@@ -170,36 +169,17 @@ export function MissionClockBar({
             <option value="GROUND_STATION_AOS">Next Station AOS (Comms)</option>
             <option value="OBSERVATION_OPPORTUNITY_AOS">Next Target Pass</option>
           </select>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={handleJumpExecute}
-            disabled={disabled}
-            title="Fast forward simulation to next occurrence of selected event"
-          >
-            Jump ⏭
+          <Button size="sm" variant="secondary" onClick={handleJumpExecute} disabled={disabled} title="Fast forward simulation to next occurrence of selected event">
+            <FastForward className="h-3.5 w-3.5" aria-hidden /> Jump
           </Button>
         </div>
 
-        {/* Checkpoint Buttons */}
         <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onSaveCheckpoint}
-            disabled={disabled}
-            title="Save current simulation snapshot to browser checkpoint storage"
-          >
-            💾 Save
+          <Button size="sm" variant="ghost" onClick={onSaveCheckpoint} disabled={disabled} title="Save current simulation snapshot to browser checkpoint storage">
+            <Save className="h-3.5 w-3.5" aria-hidden /> Save
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onRestoreCheckpoint}
-            disabled={disabled}
-            title="Restore last saved checkpoint snapshot"
-          >
-            ↺ Restore
+          <Button size="sm" variant="ghost" onClick={onRestoreCheckpoint} disabled={disabled} title="Restore last saved checkpoint snapshot">
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Restore
           </Button>
         </div>
       </div>

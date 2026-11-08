@@ -17,14 +17,14 @@ export function BenchmarkPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
               Control Strategy Benchmark
             </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-medium bg-blue-900/60 border border-blue-600 text-blue-300">
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-medium bg-accent/10/60 border border-accent text-accent-hi">
               PROMPT 13
             </span>
           </div>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted">
             Head-to-head empirical evaluation of Manual, Reactive, and Predictive satellite flight controllers under identical physical conditions.
           </p>
         </div>

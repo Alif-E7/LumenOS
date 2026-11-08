@@ -1,4 +1,5 @@
 import { cn } from "../lib/utils";
+import { ShieldCheck, TriangleAlert, OctagonX, Info } from "lucide-react";
 
 export interface Warning {
   id: string;
@@ -13,9 +14,9 @@ interface WarningPanelProps {
 }
 
 const levelStyles = {
-  critical: { row: "text-red-300", dot: "bg-red-500", icon: "⛔", label: "CRITICAL" },
-  warning: { row: "text-amber-300", dot: "bg-amber-500", icon: "⚠️", label: "CAUTION" },
-  info: { row: "text-cyan-300", dot: "bg-cyan-500", icon: "ℹ️", label: "INFO" },
+  critical: { row: "text-crit", dot: "bg-crit", Icon: OctagonX, label: "CRITICAL" },
+  warning: { row: "text-warn", dot: "bg-warn", Icon: TriangleAlert, label: "CAUTION" },
+  info: { row: "text-info", dot: "bg-info", Icon: Info, label: "INFO" },
 } as const;
 
 /**
@@ -26,31 +27,41 @@ const levelStyles = {
 export function WarningPanel({ warnings, title = "System Warnings", className }: WarningPanelProps) {
   if (warnings.length === 0) {
     return (
-      <div className={cn("rounded-xl border border-green-500/30 bg-green-950/20 px-4 py-3 text-sm text-green-400 flex items-center gap-2", className)} role="status">
-        <span aria-hidden="true">✓</span> All systems nominal — no active warnings.
+      <div
+        className={cn(
+          "flex items-center gap-2 border border-ok/30 bg-ok/[0.06] px-4 py-3 text-sm text-ok",
+          className
+        )}
+        role="status"
+      >
+        <ShieldCheck aria-hidden className="h-4 w-4" />
+        All systems nominal — no active warnings.
       </div>
     );
   }
 
   return (
     <section
-      className={cn("rounded-xl border border-red-500/40 bg-red-950/20 p-4", className)}
+      className={cn("border border-crit/40 bg-crit/[0.06] p-4", className)}
       role="alert"
       aria-label={title}
     >
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-red-400 mb-2 flex items-center gap-2">
-        <span aria-hidden="true">⚠️</span>
-        <span>{title} ({warnings.length})</span>
+      <h3 className="micro-label mb-2.5 flex items-center gap-2 text-crit">
+        <TriangleAlert aria-hidden className="h-3.5 w-3.5" />
+        <span>
+          {title} ({warnings.length})
+        </span>
       </h3>
-      <ul className="space-y-1.5">
+      <ul className="space-y-2">
         {warnings.map((w) => {
           const s = levelStyles[w.level];
+          const Icon = s.Icon;
           return (
             <li key={w.id} className={cn("flex items-center gap-2 text-sm", s.row)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", s.dot)} aria-hidden="true" />
-              <span aria-hidden="true" className="text-xs">{s.icon}</span>
-              <span className="text-[10px] font-mono font-bold tracking-wider opacity-90">[{s.label}]</span>
-              <span>{w.message}</span>
+              <span className={cn("h-1.5 w-1.5 animate-pulse-soft", s.dot)} aria-hidden="true" />
+              <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+              <span className="micro-label opacity-90">[{s.label}]</span>
+              <span className="min-w-0 text-ink">{w.message}</span>
             </li>
           );
         })}

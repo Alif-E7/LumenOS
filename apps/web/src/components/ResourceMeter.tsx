@@ -28,21 +28,28 @@ export function ResourceMeter({
   const pct = max > 0 ? Math.min(100, Math.max(0, (value / max) * 100)) : 0;
   const good = invert ? pct <= 60 : pct >= 25;
   const warn = invert ? pct <= 85 : pct >= 60;
-  const color = !good ? "bg-red-500" : !warn ? "bg-amber-500" : "bg-cyan-500";
-  const text = !good ? "text-red-400" : !warn ? "text-amber-400" : "text-cyan-300";
+  const color = !good ? "bg-crit" : !warn ? "bg-warn" : "bg-ok";
+  const text = !good ? "text-crit" : !warn ? "text-warn" : "text-ok";
 
   return (
-    <div className={className} role="meter" aria-label={label} aria-valuenow={Number(value.toFixed(decimals))} aria-valuemin={0} aria-valuemax={max}>
-      <div className="flex items-baseline justify-between text-xs mb-1">
-        <span className="text-slate-400">{label}</span>
-        <span className={cn("font-mono", text)}>
+    <div
+      className={className}
+      role="meter"
+      aria-label={label}
+      aria-valuenow={Number(value.toFixed(decimals))}
+      aria-valuemin={0}
+      aria-valuemax={max}
+    >
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <span className="micro-label text-faint">{label}</span>
+        <span className={cn("data-readout text-xs", text)}>
           {value.toFixed(decimals)}
           {unit && ` ${unit}`}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+      <div className="h-1 bg-edge overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all duration-500", color)}
+          className={cn("h-full transition-all duration-500", color)}
           style={{ width: `${pct}%` }}
         />
       </div>

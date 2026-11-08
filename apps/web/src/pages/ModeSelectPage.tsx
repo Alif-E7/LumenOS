@@ -15,8 +15,8 @@ export function ModeSelectPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-white mb-2">Choose Your Mission Mode</h1>
-      <p className="text-slate-400 mb-10">
+      <h1 className="text-3xl font-bold text-ink mb-2">Choose Your Mission Mode</h1>
+      <p className="text-muted mb-10">
         Fly alone with full station access, or crew up with up to 3 friends —
         each running a different station.
       </p>
@@ -24,8 +24,8 @@ export function ModeSelectPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card className="flex flex-col">
           <div className="text-4xl mb-3" aria-hidden>🧑‍🚀</div>
-          <h2 className="text-xl font-bold text-white mb-2">Solo Mission</h2>
-          <p className="text-sm text-slate-400 mb-4 flex-1">
+          <h2 className="text-xl font-bold text-ink mb-2">Solo Mission</h2>
+          <p className="text-sm text-muted mb-4 flex-1">
             Run the entire flight deck yourself. You hold all four crew roles
             and switch between stations freely — the full mission-control
             experience at your own pace.
@@ -42,13 +42,13 @@ export function ModeSelectPage() {
 
         <Card className="flex flex-col">
           <div className="text-4xl mb-3" aria-hidden>👥</div>
-          <h2 className="text-xl font-bold text-white mb-2">Cooperative Crew</h2>
-          <p className="text-sm text-slate-400 mb-4 flex-1">
+          <h2 className="text-xl font-bold text-ink mb-2">Cooperative Crew</h2>
+          <p className="text-sm text-muted mb-4 flex-1">
             Create a private room or join with a 6-character code. Roles are
             assigned by crew size — decisions, telemetry and events are shared
             live through the room.
           </p>
-          <ul className="text-sm text-slate-400 space-y-1 mb-4 list-disc list-inside">
+          <ul className="text-sm text-muted space-y-1 mb-4 list-disc list-inside">
             <li>1–4 players, no account needed</li>
             <li>Host starts the mission from the lobby</li>
             <li>Everyone sees the shared mission view</li>

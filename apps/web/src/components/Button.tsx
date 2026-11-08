@@ -1,4 +1,5 @@
 import type { ReactNode, ButtonHTMLAttributes } from "react";
+import { cn } from "../lib/utils";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "ghost";
@@ -7,32 +8,40 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20",
-  secondary: "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700",
-  danger: "bg-red-600 hover:bg-red-700 text-white",
-  ghost: "hover:bg-slate-800 text-slate-300",
+  primary:
+    "bg-accent text-void font-semibold hover:bg-accent-hi active:bg-accent-dim shadow-[0_0_16px_rgba(255,176,0,0.18)]",
+  secondary:
+    "bg-raised text-ink border border-edge-strong hover:border-accent hover:text-accent",
+  danger:
+    "bg-crit/15 text-crit border border-crit/40 hover:bg-crit/25",
+  ghost:
+    "text-muted hover:text-ink hover:bg-raised border border-transparent",
 };
 
 const sizeStyles = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "px-3 py-1.5 text-[11px] tracking-[0.08em]",
+  md: "px-4 py-2 text-xs tracking-[0.08em]",
+  lg: "px-6 py-3 text-sm tracking-[0.1em]",
 };
 
 export function Button({
   variant = "primary",
   size = "md",
   children,
-  className = "",
+  className,
   disabled,
   ...props
 }: ButtonProps) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-lg font-medium transition-colors
-        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-950
-        disabled:opacity-50 disabled:cursor-not-allowed
-        ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
+      className={cn(
+        "inline-flex items-center justify-center gap-2 font-mono uppercase transition-all duration-150",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+        "disabled:opacity-40 disabled:pointer-events-none",
+        variantStyles[variant],
+        sizeStyles[size],
+        className
+      )}
       disabled={disabled}
       {...props}
     >
@@ -40,4 +49,3 @@ export function Button({
     </button>
   );
 }
-

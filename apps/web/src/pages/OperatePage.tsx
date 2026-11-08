@@ -483,7 +483,7 @@ export function OperatePage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="No Active Mission" icon="🛰️">
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-muted text-sm mb-4">
             Mission Control needs an accepted contract. Start from the campaign.
           </p>
           <div className="flex gap-2">
@@ -501,7 +501,7 @@ export function OperatePage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="Not in a Room" icon="👥">
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-muted text-sm mb-4">
             This is a co-op session but no room is connected. Create or join a room first.
           </p>
           <div className="flex gap-2">
@@ -517,8 +517,8 @@ export function OperatePage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <Card title="Waiting in Lobby…" icon="⏳">
-          <p className="text-slate-400 text-sm mb-4">
-            Room <span className="font-mono text-slate-200">{session.roomCode}</span> — the
+          <p className="text-muted text-sm mb-4">
+            Room <span className="font-mono text-ink">{session.roomCode}</span> — the
             host hasn't launched yet. Return to the lobby for status.
           </p>
           <Button onClick={() => navigate("/coop/lobby")}>Open Lobby</Button>
@@ -529,11 +529,14 @@ export function OperatePage() {
 
   const missionHours = 24;
 
-  const stationTabs = myRoles.map((roleId) => ({
-    id: roleId,
-    label: ROLES[roleId].label,
-    icon: ROLES[roleId].icon,
-  }));
+  const stationTabs = myRoles.map((roleId) => {
+    const RoleIcon = ROLES[roleId].Icon;
+    return {
+      id: roleId,
+      label: ROLES[roleId].label,
+      icon: <RoleIcon className="h-4 w-4" />,
+    };
+  });
 
   const stationProps: StationProps = {
     telemetry: activeTelemetry,
@@ -546,19 +549,19 @@ export function OperatePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* ── Top Header & Mission Identity ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-4">
         <div className="flex items-center gap-3">
           <span className="text-3xl" aria-hidden="true">🛰️</span>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl font-bold text-ink tracking-tight">
                 {session.missionName}
               </h1>
               <ProvenanceBadge provenance="SIMULATED_SPACECRAFT" />
             </div>
-            <p className="text-xs text-slate-400">
-              Contract Ref: <span className="font-mono text-cyan-400">{session.missionId}</span> ·
-              Orbiter: <span className="font-mono text-slate-200">LUMEN-1</span>
+            <p className="text-xs text-muted">
+              Contract Ref: <span className="font-mono text-info">{session.missionId}</span> ·
+              Orbiter: <span className="font-mono text-ink">LUMEN-1</span>
             </p>
           </div>
         </div>
@@ -587,7 +590,7 @@ export function OperatePage() {
           <button
             type="button"
             onClick={() => setForce2DMap(!force2DMap)}
-            className="px-3 py-1 text-xs font-mono rounded-lg border border-slate-700 bg-slate-900 text-slate-300 hover:text-white"
+            className="px-3 py-1 text-xs font-mono rounded-none border border-edge-strong bg-panel text-ink hover:text-ink"
             title="Toggle between 3D Cesium View and 2D Accessible Map"
           >
             {force2DMap ? "Switch to 3D Cesium View" : "Accessible 2D Map"}
@@ -611,7 +614,7 @@ export function OperatePage() {
 
       {/* Status or Success Notifications */}
       {statusMessage && (
-        <div className="p-3 bg-blue-950/60 border border-blue-500/40 rounded-lg text-xs font-mono text-blue-200 flex items-center gap-2 animate-fade-in">
+        <div className="p-3 bg-accent/10/60 border border-accent/40 rounded-none text-xs font-mono text-blue-200 flex items-center gap-2 animate-fade-in">
           <span>ℹ️</span> {statusMessage}
         </div>
       )}
@@ -641,18 +644,18 @@ export function OperatePage() {
             timeLabel={fmtClock(activeGameState?.elapsed_seconds ?? 0, missionHours)}
           />
           {forecastEvents.length > 0 && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 space-y-2">
-              <h4 className="text-xs font-semibold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+            <div className="rounded-none border border-edge bg-panel/60 p-3 space-y-2">
+              <h4 className="text-xs font-semibold text-info uppercase tracking-wider flex items-center gap-1.5">
                 <span>🛰️</span> Upcoming Orbital Pass Forecast
               </h4>
               <ul className="space-y-1 text-xs font-mono">
                 {forecastEvents.slice(0, 3).map((ev) => (
                   <li
                     key={ev.event_id}
-                    className="flex items-center justify-between text-slate-300 border-b border-slate-800/40 pb-1"
+                    className="flex items-center justify-between text-ink border-b border-edge/40 pb-1"
                   >
-                    <span className="text-white truncate max-w-[160px]">{ev.label}</span>
-                    <span className="text-cyan-400">T+{Math.floor(ev.timestamp_seconds / 60)}m</span>
+                    <span className="text-ink truncate max-w-[160px]">{ev.label}</span>
+                    <span className="text-info">T+{Math.floor(ev.timestamp_seconds / 60)}m</span>
                   </li>
                 ))}
               </ul>
@@ -664,7 +667,7 @@ export function OperatePage() {
       {/* Co-op Reconnecting Banner */}
       {isCoop && room.status === "connecting" && (
         <div
-          className="rounded-xl border border-amber-500/40 bg-amber-950/20 px-4 py-2.5 text-sm text-amber-300 flex items-center justify-between"
+          className="rounded-none border border-warn/40 bg-warn/10/20 px-4 py-2.5 text-sm text-warn flex items-center justify-between"
           role="status"
           aria-live="polite"
         >
@@ -672,7 +675,7 @@ export function OperatePage() {
             <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" aria-hidden="true" />
             <span>Reconnecting to mission network... holding your station slot and telemetry sync.</span>
           </div>
-          <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">
+          <span className="text-xs font-mono font-bold text-warn bg-warn/10/60 px-2 py-0.5 rounded border border-warn/30">
             [RECONNECTING]
           </span>
         </div>
@@ -776,13 +779,13 @@ export function OperatePage() {
 
             {/* Engineer Mode Subsystem Assumptions */}
             {engineerMode && (
-              <details className="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-4" open>
-                <summary className="text-sm font-medium text-cyan-400 cursor-pointer">
+              <details className="mt-4 rounded-none border border-edge bg-void/60 p-4" open>
+                <summary className="text-sm font-medium text-info cursor-pointer">
                   Engineer Mode — Deep Physics Telemetry & Rate Calculations
                 </summary>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 font-mono text-xs text-slate-400">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 font-mono text-xs text-muted">
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">POWER ACCOUNTING</p>
+                    <p className="text-ink font-semibold mb-1">POWER ACCOUNTING</p>
                     <p>Solar Gen: {activeTelemetry.power.solar_output_w.toFixed(0)} W</p>
                     <p>Bus Load: {activeTelemetry.power.total_load_w.toFixed(0)} W</p>
                     <p>Net Power: {activeTelemetry.power.net_power_w.toFixed(0)} W</p>
@@ -790,21 +793,21 @@ export function OperatePage() {
                     <p>EFC: {activeTelemetry.power.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">THERMAL BALANCE</p>
+                    <p className="text-ink font-semibold mb-1">THERMAL BALANCE</p>
                     <p>Solar+Albedo: {((activeTelemetry.thermal.solar_absorbed_w ?? 0) + (activeTelemetry.thermal.albedo_absorbed_w ?? 0)).toFixed(0)} W</p>
                     <p>Internal Heat: {activeTelemetry.thermal.internal_dissipation_w?.toFixed(0) ?? "0"} W</p>
                     <p>Rejected: {activeTelemetry.thermal.heat_rejected_w.toFixed(0)} W</p>
                     <p>T Bus: {activeTelemetry.thermal.temperature_c.toFixed(1)} °C</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">COMMS & STORAGE</p>
+                    <p className="text-ink font-semibold mb-1">COMMS & STORAGE</p>
                     <p>Data Buffer: {activeTelemetry.comms.data_buffer_mb.toFixed(1)} MB</p>
                     <p>RF Link: {activeTelemetry.comms.in_contact ? "ACTIVE" : "NO CONTACT"}</p>
                     <p>Ground Stn: {activeTelemetry.comms.active_station || "None"}</p>
                     <p>Downlinked: {activeTelemetry.comms.data_downlinked_mb.toFixed(1)} MB</p>
                   </div>
                   <div>
-                    <p className="text-slate-300 font-semibold mb-1">ORBIT & ENVIRONMENT</p>
+                    <p className="text-ink font-semibold mb-1">ORBIT & ENVIRONMENT</p>
                     <p>Altitude: {activeTelemetry.orbital.altitude_km.toFixed(1)} km</p>
                     <p>Velocity: {activeTelemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
                     <p>True Anomaly: {activeTelemetry.orbital.true_anomaly_deg.toFixed(1)}°</p>
@@ -815,7 +818,7 @@ export function OperatePage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink0">
             Waiting for simulation telemetry... {isCoop ? "Advance the mission to start the flow." : "Press Step or Resume."}
           </p>
         )}
@@ -824,15 +827,15 @@ export function OperatePage() {
       {/* ── Co-op Team Desk vs Solo Workstations ── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white">
+          <h2 className="text-lg font-bold text-ink">
             {isCoop ? "Role-Specific Control Station" : "All Flight Deck Stations"}
           </h2>
-          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-muted cursor-pointer">
             <input
               type="checkbox"
               checked={engineerMode}
               onChange={(e) => setEngineerMode(e.target.checked)}
-              className="accent-blue-500"
+              className="accent-accent"
             />
             Engineer Mode
           </label>
@@ -843,12 +846,12 @@ export function OperatePage() {
           <Card title="Crew Network & Command Operations" icon="👥" className="mb-4">
             {/* Host Operational Controls Bar */}
             {isHost && (
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-3 rounded-lg bg-slate-950 border border-amber-500/30">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-3 rounded-none bg-void border border-warn/30">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-semibold">
+                  <span className="text-xs px-2 py-0.5 rounded bg-warn/20 text-warn font-mono font-semibold">
                     HOST CONTROLS
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted">
                     Live simulation controls & session authority
                   </span>
                 </div>
@@ -924,18 +927,19 @@ export function OperatePage() {
           tabs={stationTabs.length > 0 ? stationTabs : [{ id: "none", label: "No Station Assigned" }]}
         >
           {stationTabs.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink0">
               No station assigned yet. Contact room host.
             </p>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {myRoles.map((roleId) => {
                 const Station = STATION_COMPONENTS[roleId];
+                const RoleIcon = ROLES[roleId].Icon;
                 return (
                   <Card
                     key={roleId}
                     title={ROLES[roleId].label}
-                    icon={ROLES[roleId].icon}
+                    icon={<RoleIcon className="h-4 w-4" />}
                     subtitle={`Flight Station — ${ROLES[roleId].label}`}
                   >
                     <Station {...stationProps} />
@@ -965,13 +969,13 @@ export function OperatePage() {
               ▸▸ 5 Steps (5m)
             </Button>
             {!isCoop && (
-              <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer ml-2">
+              <label className="flex items-center gap-2 text-sm text-muted cursor-pointer ml-2">
                 <input
                   type="checkbox"
                   checked={autoRun}
                   onChange={(e) => setAutoRun(e.target.checked)}
                   disabled={isFinished(activeGameState)}
-                  className="accent-blue-500"
+                  className="accent-accent"
                 />
                 Auto-run
               </label>

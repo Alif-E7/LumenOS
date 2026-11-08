@@ -40,20 +40,20 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
   return (
     <div
       data-testid="predictive-advisory-panel"
-      className="bg-slate-900 border border-slate-700 rounded-lg p-4 shadow-xl text-slate-100 flex flex-col gap-4"
+      className="bg-panel border border-edge-strong rounded-none p-4 shadow-xl text-ink flex flex-col gap-4"
     >
       {/* Header with Semantic Provenance Badge & Autopilot Toggle */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-edge pb-3">
         <div className="flex items-center gap-3">
           <div className="text-xl">⚡</div>
           <div>
-            <h2 className="text-base font-semibold text-white tracking-wide flex items-center gap-2">
+            <h2 className="text-base font-semibold text-ink tracking-wide flex items-center gap-2">
               LumenOS Predictive Advisory
-              <span className="text-xs px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800 text-cyan-400 font-mono">
+              <span className="text-xs px-2 py-0.5 rounded bg-info/10 border border-cyan-800 text-info font-mono">
                 5-MIN HORIZON
               </span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted">
               Interpretable physics/model-based forecasting with epistemic uncertainty
             </p>
           </div>
@@ -70,13 +70,13 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
             onClick={() => onToggleAutomation(!autoPilotEnabled)}
             className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center gap-1.5 border ${
               autoPilotEnabled
-                ? "bg-amber-950/80 border-amber-600 text-amber-300 shadow-[0_0_10px_rgba(217,119,6,0.2)]"
-                : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                ? "bg-warn/10/80 border-amber-600 text-warn shadow-[0_0_10px_rgba(217,119,6,0.2)]"
+                : "bg-raised border-edge-strong text-muted hover:text-ink"
             }`}
           >
             <span
               className={`inline-block w-2 h-2 rounded-full ${
-                autoPilotEnabled ? "bg-amber-400 animate-pulse" : "bg-slate-500"
+                autoPilotEnabled ? "bg-amber-400 animate-pulse" : "bg-edge-strong"
               }`}
             />
             Autopilot: {autoPilotEnabled ? "ACTIVE" : "STANDBY"}
@@ -86,7 +86,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
             type="button"
             data-testid="view-scorecard-btn"
             onClick={() => setShowScorecard(!showScorecard)}
-            className="px-2.5 py-1.5 rounded text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300"
+            className="px-2.5 py-1.5 rounded text-xs bg-raised hover:bg-edge-strong border border-edge-strong text-ink"
           >
             {showScorecard ? "Hide Scorecard" : "Verification Scorecard"}
           </button>
@@ -97,55 +97,55 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
       {showScorecard && metrics && (
         <div
           data-testid="advisory-scorecard-tray"
-          className="bg-slate-950/90 border border-cyan-900/60 rounded-md p-3 text-xs flex flex-col gap-2.5"
+          className="bg-void/90 border border-cyan-900/60 rounded-none p-3 text-xs flex flex-col gap-2.5"
         >
-          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
-            <span className="font-semibold text-cyan-300 flex items-center gap-1.5">
+          <div className="flex items-center justify-between border-b border-edge pb-1.5">
+            <span className="font-semibold text-info flex items-center gap-1.5">
               📊 Verification & Accuracy Scorecard
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-muted">
               Evaluations: {metrics.evaluated_predictions_count || metrics.evaluation_records_count || 0}
             </span>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
-              <span className="text-slate-400 block text-[10px] uppercase">Temp Forecast Error</span>
-              <span className="text-white font-mono text-sm">
+            <div className="bg-panel/80 p-2 rounded border border-edge">
+              <span className="text-muted block text-[10px] uppercase">Temp Forecast Error</span>
+              <span className="text-ink font-mono text-sm">
                 MAE: {metrics.continuous_forecast_mae_temp_c ?? metrics.temperature_mae_c ?? 0}°C
               </span>
-              <span className="text-slate-400 block text-[10px]">
+              <span className="text-muted block text-[10px]">
                 RMSE: {metrics.continuous_forecast_rmse_temp_c ?? metrics.temperature_rmse_c ?? 0}°C
               </span>
             </div>
 
-            <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
-              <span className="text-slate-400 block text-[10px] uppercase">Battery SoC Error</span>
-              <span className="text-white font-mono text-sm">
+            <div className="bg-panel/80 p-2 rounded border border-edge">
+              <span className="text-muted block text-[10px] uppercase">Battery SoC Error</span>
+              <span className="text-ink font-mono text-sm">
                 MAE: {metrics.continuous_forecast_mae_soc_pct ?? metrics.battery_mae_pct ?? 0}%
               </span>
-              <span className="text-slate-400 block text-[10px]">
+              <span className="text-muted block text-[10px]">
                 RMSE: {metrics.continuous_forecast_rmse_soc_pct ?? metrics.battery_rmse_pct ?? 0}%
               </span>
             </div>
 
-            <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
-              <span className="text-slate-400 block text-[10px] uppercase">Warning Precision / Recall</span>
-              <span className="text-emerald-400 font-mono text-sm">
+            <div className="bg-panel/80 p-2 rounded border border-edge">
+              <span className="text-muted block text-[10px] uppercase">Warning Precision / Recall</span>
+              <span className="text-ok font-mono text-sm">
                 {Math.round((metrics.warning_precision ?? metrics.precision ?? 1) * 100)}% /{" "}
                 {Math.round((metrics.warning_recall ?? metrics.recall ?? 1) * 100)}%
               </span>
-              <span className="text-slate-400 block text-[10px]">
+              <span className="text-muted block text-[10px]">
                 FP: {metrics.false_positives ?? 0} | FN: {metrics.missed_warnings ?? metrics.false_negatives ?? 0}
               </span>
             </div>
 
-            <div className="bg-slate-900/80 p-2 rounded border border-slate-800">
-              <span className="text-slate-400 block text-[10px] uppercase">Mission Benefits</span>
-              <span className="text-cyan-400 font-mono text-sm">
+            <div className="bg-panel/80 p-2 rounded border border-edge">
+              <span className="text-muted block text-[10px] uppercase">Mission Benefits</span>
+              <span className="text-info font-mono text-sm">
                 {metrics.critical_threshold_violations_avoided ?? 0} Avoided
               </span>
-              <span className="text-slate-400 block text-[10px]">
+              <span className="text-muted block text-[10px]">
                 Lead Time: ~{metrics.avg_warning_lead_time_seconds ?? metrics.average_lead_time_seconds ?? 0}s
               </span>
             </div>
@@ -154,7 +154,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
       )}
 
       {/* 5-Minute Forecast Trajectory Chart */}
-      <div className="bg-slate-950/60 border border-slate-800 rounded-md p-3">
+      <div className="bg-void/60 border border-edge rounded-none p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex gap-2 text-xs">
             <button
@@ -164,7 +164,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
               className={`px-2.5 py-1 rounded transition-colors font-medium ${
                 activeTab === "thermal"
                   ? "bg-rose-950 border border-rose-700 text-rose-300"
-                  : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                  : "bg-raised/60 text-muted hover:text-ink"
               }`}
             >
               Thermal Trend (°C)
@@ -175,8 +175,8 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
               onClick={() => setActiveTab("power")}
               className={`px-2.5 py-1 rounded transition-colors font-medium ${
                 activeTab === "power"
-                  ? "bg-amber-950 border border-amber-700 text-amber-300"
-                  : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                  ? "bg-warn/10 border border-amber-700 text-warn"
+                  : "bg-raised/60 text-muted hover:text-ink"
               }`}
             >
               Battery SoC & Net Power
@@ -187,15 +187,15 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
               onClick={() => setActiveTab("storage")}
               className={`px-2.5 py-1 rounded transition-colors font-medium ${
                 activeTab === "storage"
-                  ? "bg-blue-950 border border-blue-700 text-blue-300"
-                  : "bg-slate-800/60 text-slate-400 hover:text-slate-200"
+                  ? "bg-accent/10 border border-blue-700 text-accent-hi"
+                  : "bg-raised/60 text-muted hover:text-ink"
               }`}
             >
               Storage & CPU Load
             </button>
           </div>
 
-          <span className="text-[11px] text-slate-500 font-mono">
+          <span className="text-[11px] text-ink0 font-mono">
             Origin Step: {forecast?.origin_step ?? forecast?.current_step ?? 0}
           </span>
         </div>
@@ -216,10 +216,10 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                 className={`p-2 rounded border flex flex-col justify-between ${
                   isHazard
                     ? "bg-rose-950/40 border-rose-600/70 shadow-[0_0_10px_rgba(225,29,72,0.15)]"
-                    : "bg-slate-900 border-slate-800"
+                    : "bg-panel border-edge"
                 }`}
               >
-                <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mb-1">
+                <div className="flex items-center justify-between text-[11px] text-muted font-mono mb-1">
                   <span>+{stepNum}m</span>
                   {isHazard && (
                     <span className="text-rose-400 font-bold" title="Predicted hazard crossing!">
@@ -230,10 +230,10 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
 
                 {activeTab === "thermal" && (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold font-mono text-white">
+                    <span className="text-sm font-semibold font-mono text-ink">
                       {step.temperature_c.toFixed(1)}°C
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-muted font-mono">
                       ±{(step.uncertainty_temperature_c || step.uncertainty_temp_c || 0.5).toFixed(1)}°
                     </span>
                   </div>
@@ -241,10 +241,10 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
 
                 {activeTab === "power" && (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold font-mono text-amber-300">
+                    <span className="text-sm font-semibold font-mono text-warn">
                       {(step.battery_soc || step.battery_soc_pct || 100).toFixed(0)}%
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-muted font-mono">
                       Net: {(step.net_power_w || step.power_net_w || 0) > 0 ? "+" : ""}
                       {(step.net_power_w || step.power_net_w || 0).toFixed(0)}W
                     </span>
@@ -253,10 +253,10 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
 
                 {activeTab === "storage" && (
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-semibold font-mono text-cyan-300">
+                    <span className="text-sm font-semibold font-mono text-info">
                       {step.cpu_usage_pct.toFixed(0)}% CPU
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-muted font-mono">
                       {step.storage_used_mb.toFixed(0)} MB
                     </span>
                   </div>
@@ -269,7 +269,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
 
       {/* Active Recommendations Feed */}
       <div>
-        <h3 className="text-xs font-semibold uppercase text-slate-400 tracking-wider mb-2 flex items-center justify-between">
+        <h3 className="text-xs font-semibold uppercase text-muted tracking-wider mb-2 flex items-center justify-between">
           <span>Active Recommendations ({pendingRecs.length})</span>
           {pendingRecs.length > 0 && (
             <span className="text-rose-400 lowercase font-normal">action required</span>
@@ -279,9 +279,9 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
         {pendingRecs.length === 0 ? (
           <div
             data-testid="no-advisories-msg"
-            className="p-3 rounded border border-slate-800 bg-slate-950/40 text-xs text-slate-400 flex items-center gap-2"
+            className="p-3 rounded border border-edge bg-void/40 text-xs text-muted flex items-center gap-2"
           >
-            <span className="text-emerald-400 font-bold">✓</span>
+            <span className="text-ok font-bold">✓</span>
             All subsystems nominal — No critical safety violations projected in 5-minute horizon.
           </div>
         ) : (
@@ -293,7 +293,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                 <div
                   key={rec.recommendation_id}
                   data-testid={`recommendation-card-${rec.recommendation_id}`}
-                  className="bg-slate-950 border border-slate-700 hover:border-slate-600 rounded-lg p-3 transition-colors flex flex-col gap-2"
+                  className="bg-void border border-edge-strong hover:border-edge-strong rounded-none p-3 transition-colors flex flex-col gap-2"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -301,45 +301,45 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                         className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                           rec.severity === "critical"
                             ? "bg-rose-950 border border-rose-600 text-rose-300 animate-pulse"
-                            : "bg-amber-950 border border-amber-600 text-amber-300"
+                            : "bg-warn/10 border border-amber-600 text-warn"
                         }`}
                       >
                         {rec.severity}
                       </span>
-                      <h4 className="text-sm font-semibold text-white">
+                      <h4 className="text-sm font-semibold text-ink">
                         {rec.title || rec.action_type}
                       </h4>
                     </div>
 
-                    <span className="text-xs font-mono text-cyan-400">
+                    <span className="text-xs font-mono text-info">
                       Lead Time: ~{Math.round(rec.lead_time_seconds || rec.horizon_seconds || 180)}s
                     </span>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-ink leading-relaxed">
                     {rec.plain_language_explanation || rec.explanation}
                   </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] bg-slate-900/70 p-2 rounded border border-slate-800/80">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] bg-panel/70 p-2 rounded border border-edge/80">
                     <div>
-                      <span className="text-emerald-400 font-medium">Expected Benefit: </span>
-                      <span className="text-slate-300">{rec.expected_benefit}</span>
+                      <span className="text-ok font-medium">Expected Benefit: </span>
+                      <span className="text-ink">{rec.expected_benefit}</span>
                     </div>
                     <div>
-                      <span className="text-amber-400 font-medium">Trade-off / Cost: </span>
-                      <span className="text-slate-300">
+                      <span className="text-warn font-medium">Trade-off / Cost: </span>
+                      <span className="text-ink">
                         {rec.possible_cost_tradeoff || rec.cost_tradeoff}
                       </span>
                     </div>
                   </div>
 
                   {rec.influencing_variables && rec.influencing_variables.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400">
+                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-muted">
                       <span>Influenced by:</span>
                       {rec.influencing_variables.map((varName) => (
                         <span
                           key={varName}
-                          className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono"
+                          className="px-1.5 py-0.5 rounded bg-raised text-ink font-mono"
                         >
                           {varName}
                         </span>
@@ -351,13 +351,13 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                   {isModifying && (
                     <div
                       data-testid={`modifier-tray-${rec.recommendation_id}`}
-                      className="bg-slate-900 border border-cyan-800 rounded p-2.5 mt-1 flex flex-col gap-2"
+                      className="bg-panel border border-cyan-800 rounded p-2.5 mt-1 flex flex-col gap-2"
                     >
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-cyan-300 font-medium">
+                        <span className="text-info font-medium">
                           Tune Parameter (Target CPU Usage):
                         </span>
-                        <span className="font-mono text-white">{modifiedCpuPct}%</span>
+                        <span className="font-mono text-ink">{modifiedCpuPct}%</span>
                       </div>
                       <input
                         type="range"
@@ -372,7 +372,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                         <button
                           type="button"
                           onClick={() => setModifyingRecId(null)}
-                          className="px-2 py-1 text-xs text-slate-400 hover:text-white"
+                          className="px-2 py-1 text-xs text-muted hover:text-ink"
                         >
                           Cancel
                         </button>
@@ -385,7 +385,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                             });
                             setModifyingRecId(null);
                           }}
-                          className="px-3 py-1 text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded"
+                          className="px-3 py-1 text-xs font-semibold bg-info hover:bg-info text-ink rounded"
                         >
                           Apply & Dispatch
                         </button>
@@ -400,7 +400,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                         type="button"
                         data-testid={`reject-rec-btn-${rec.recommendation_id}`}
                         onClick={() => onRespond(rec.recommendation_id, "reject")}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-raised hover:bg-edge-strong text-ink border border-edge-strong"
                       >
                         Reject
                       </button>
@@ -414,7 +414,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                             rec.parameters?.target_cpu_pct || rec.params?.target_cpu_pct || 30
                           );
                         }}
-                        className="px-3 py-1.5 text-xs font-medium rounded bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-700"
+                        className="px-3 py-1.5 text-xs font-medium rounded bg-info/10 hover:bg-cyan-900 text-info border border-cyan-700"
                       >
                         Modify...
                       </button>
@@ -423,7 +423,7 @@ export const PredictiveAdvisoryPanel: React.FC<PredictiveAdvisoryPanelProps> = (
                         type="button"
                         data-testid={`accept-rec-btn-${rec.recommendation_id}`}
                         onClick={() => onRespond(rec.recommendation_id, "accept")}
-                        className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm"
+                        className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-ok text-ink shadow-sm"
                       >
                         Accept Recommendation
                       </button>
