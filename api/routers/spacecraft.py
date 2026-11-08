@@ -93,22 +93,31 @@ async def create_spacecraft(body: SpacecraftCreate,
                             session: AsyncSession = Depends(get_session)):
     """Create a new spacecraft configuration."""
     now = datetime.now(timezone.utc)
+    structure = body.structure or StructureSubsystem()
+    power = body.power or PowerSubsystem()
+    thermal = body.thermal or ThermalSubsystem()
+    comms = body.comms or CommsSubsystem()
+    propulsion = body.propulsion or PropulsionSubsystem()
+    payload = body.payload or PayloadSubsystem()
+
+    payload_val = payload.payload_type.value if hasattr(payload.payload_type, "value") else str(payload.payload_type)
+
     row = SpacecraftConfigRow(
         id=str(uuid4()),
         name=body.name,
-        description=body.description,
-        dry_mass_kg=body.structure.dry_mass_kg,
-        fuel_mass_kg=body.structure.fuel_mass_kg,
-        solar_panel_area_m2=body.power.solar_panel_area_m2,
-        battery_capacity_wh=body.power.battery_capacity_wh,
-        radiator_area_m2=body.thermal.radiator_area_m2,
-        antenna_gain_dbi=body.comms.antenna_gain_dbi,
-        transmit_power_w=body.comms.transmit_power_w,
-        isp_s=body.propulsion.isp_s,
-        thrust_n=body.propulsion.thrust_n,
-        payload_type=body.payload.payload_type.value,
-        payload_mass_kg=body.payload.mass_kg,
-        payload_power_w=body.payload.power_w,
+        description=body.description or "",
+        dry_mass_kg=structure.dry_mass_kg,
+        fuel_mass_kg=structure.fuel_mass_kg,
+        solar_panel_area_m2=power.solar_panel_area_m2,
+        battery_capacity_wh=power.battery_capacity_wh,
+        radiator_area_m2=thermal.radiator_area_m2,
+        antenna_gain_dbi=comms.antenna_gain_dbi,
+        transmit_power_w=comms.transmit_power_w,
+        isp_s=propulsion.isp_s,
+        thrust_n=propulsion.thrust_n,
+        payload_type=payload_val,
+        payload_mass_kg=payload.mass_kg,
+        payload_power_w=payload.power_w,
         created_at=now,
         updated_at=now,
     )

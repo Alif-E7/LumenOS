@@ -77,42 +77,102 @@ export const getHealth = () => fetchJSON<HealthResponse>("/health");
 
 // ── Spacecraft ──────────────────────────────────────────────────────────────
 
-export const listSpacecraft = async (): Promise<SpacecraftResponse[]> => {
+const LOCAL_STORAGE_SPACECRAFT_KEY = "lumenos_saved_spacecraft";
+
+function getLocalSpacecraft(): SpacecraftResponse[] {
   try {
-    return await fetchJSON<SpacecraftResponse[]>("/spacecraft");
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(LOCAL_STORAGE_SPACECRAFT_KEY) : null;
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalSpacecraft(sc: SpacecraftResponse) {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const list = getLocalSpacecraft().filter((item) => item.id !== sc.id);
+    list.unshift(sc);
+    localStorage.setItem(LOCAL_STORAGE_SPACECRAFT_KEY, JSON.stringify(list));
   } catch (err) {
-    console.warn("Backend /spacecraft unreachable; using baseline spacecraft fallback:", err);
-    return [
-      {
-        id: "baseline-orbiter",
-        name: "Standard LEO Research Bus",
-        description: "Versatile modular smallsat bus configured for multi-spectral Earth observation.",
-        structure: { dry_mass_kg: 500.0, fuel_mass_kg: 50.0 },
-        power: { solar_panel_area_m2: 6.0, battery_capacity_wh: 2000.0 },
-        thermal: { radiator_area_m2: 2.0 },
-        comms: { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
-        propulsion: { isp_s: 220.0, thrust_n: 1.0 },
-        payload: { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
-        total_mass_kg: 600.0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+    console.warn("Failed to persist spacecraft locally:", err);
+  }
+}
+
+export const listSpacecraft = async (): Promise<SpacecraftResponse[]> => {
+  const localItems = getLocalSpacecraft();
+  try {
+    const remote = await fetchJSON<SpacecraftResponse[]>("/spacecraft");
+    const map = new Map<string, SpacecraftResponse>();
+    for (const item of remote) {
+      map.set(item.id, item);
+    }
+    for (const item of localItems) {
+      if (!map.has(item.id)) {
+        map.set(item.id, item);
+      }
+    }
+    const combined = Array.from(map.values());
+    if (combined.length > 0) return combined;
+  } catch (err) {
+    console.warn("Backend /spacecraft unreachable; using local spacecraft fallback:", err);
+  }
+
+  if (localItems.length > 0) {
+    return localItems;
+  }
+
+  return [
+    {
+      id: "baseline-orbiter",
+      name: "Standard LEO Research Bus",
+      description: "Versatile modular smallsat bus configured for multi-spectral Earth observation.",
+      structure: { dry_mass_kg: 500.0, fuel_mass_kg: 50.0 },
+      power: { solar_panel_area_m2: 6.0, battery_capacity_wh: 2000.0 },
+      thermal: { radiator_area_m2: 2.0 },
+      comms: { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
+      propulsion: { isp_s: 220.0, thrust_n: 1.0 },
+      payload: { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
+      total_mass_kg: 600.0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+};
+
+export const getSpacecraft = async (id: string): Promise<SpacecraftResponse> => {
+  try {
+    return await fetchJSON<SpacecraftResponse>(`/spacecraft/${id}`);
+  } catch (err) {
+    const local = getLocalSpacecraft().find((s) => s.id === id);
+    if (local) return local;
+    return {
+      id,
+      name: "Standard LEO Research Bus",
+      description: "Versatile modular smallsat bus configured for multi-spectral Earth observation.",
+      structure: { dry_mass_kg: 500.0, fuel_mass_kg: 50.0 },
+      power: { solar_panel_area_m2: 6.0, battery_capacity_wh: 2000.0 },
+      thermal: { radiator_area_m2: 2.0 },
+      comms: { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
+      propulsion: { isp_s: 220.0, thrust_n: 1.0 },
+      payload: { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
+      total_mass_kg: 600.0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
   }
 };
 
-export const getSpacecraft = (id: string) =>
-  fetchJSON<SpacecraftResponse>(`/spacecraft/${id}`);
-
 export const createSpacecraft = async (body: SpacecraftCreate): Promise<SpacecraftResponse> => {
+  let created: SpacecraftResponse;
   try {
-    return await fetchJSON<SpacecraftResponse>("/spacecraft", {
+    created = await fetchJSON<SpacecraftResponse>("/spacecraft", {
       method: "POST",
       body: JSON.stringify(body),
     });
   } catch (err) {
-    console.warn("Backend /spacecraft POST unreachable; using local spacecraft fallback:", err);
-    return {
+    console.warn("Backend /spacecraft POST unreachable or rejected; using local spacecraft fallback:", err);
+    created = {
       id: `sc_${Date.now()}`,
       name: body.name,
       description: body.description || "Custom Spacecraft Build",
@@ -122,11 +182,13 @@ export const createSpacecraft = async (body: SpacecraftCreate): Promise<Spacecra
       comms: body.comms || { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
       propulsion: body.propulsion || { isp_s: 220.0, thrust_n: 1.0 },
       payload: body.payload || { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
-      total_mass_kg: 550.0,
+      total_mass_kg: (body.structure?.dry_mass_kg ?? 500.0) + (body.structure?.fuel_mass_kg ?? 50.0) + (body.payload?.mass_kg ?? 50.0),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
   }
+  saveLocalSpacecraft(created);
+  return created;
 };
 
 export const updateSpacecraft = (id: string, body: Partial<SpacecraftCreate>) =>

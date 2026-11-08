@@ -12,11 +12,21 @@ import type { SpacecraftResponse } from "../types";
 export function DesignPage() {
   const navigate = useNavigate();
   const session = loadMissionSession();
-  const { data: spacecraft, loading, error, refetch } = useApi(listSpacecraft);
+  const { data: remoteSpacecraft, loading, error, refetch } = useApi(listSpacecraft);
   
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(session?.spacecraftId ?? null);
+  const [localSpacecraft, setLocalSpacecraft] = useState<SpacecraftResponse[]>([]);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  // Combined spacecraft list guaranteeing that saved configurations appear immediately
+  const spacecraft = [
+    ...localSpacecraft,
+    ...(remoteSpacecraft || []).filter(
+      (r) => !localSpacecraft.some((l) => l.id === r.id)
+    ),
+  ];
 
   // Subsystem configuration states
   const [solarArea, setSolarArea] = useState(4.0);
@@ -27,11 +37,13 @@ export function DesignPage() {
   const [payloadType, setPayloadType] = useState("thermal_infrared");
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    const trimmedName = newName.trim();
+    if (!trimmedName) return;
     setCreating(true);
+    setSuccessNotice(null);
     try {
       const created = await createSpacecraft({
-        name: newName.trim(),
+        name: trimmedName,
         power: {
           solar_panel_area_m2: solarArea,
           battery_capacity_wh: batteryWh,
@@ -49,8 +61,11 @@ export function DesignPage() {
           power_w: 120.0,
         },
       });
-      setNewName("");
+      // Immediately reflect created spacecraft in UI and select it
+      setLocalSpacecraft((prev) => [created, ...prev.filter((p) => p.id !== created.id)]);
       setSelectedId(created.id);
+      setNewName("");
+      setSuccessNotice(`Spacecraft "${created.name}" successfully configured and saved!`);
       if (session) {
         saveMissionSession({ ...session, spacecraftId: created.id });
       }
@@ -186,6 +201,22 @@ export function DesignPage() {
         <Card title="Error" icon="⚠️">
           <p className="text-red-400">Failed to load spacecraft: {error}</p>
         </Card>
+      )}
+
+      {/* Success Notification */}
+      {successNotice && (
+        <div className="mb-6 p-4 rounded-xl border border-emerald-500/40 bg-emerald-950/20 text-sm text-emerald-300 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>✨</span>
+            <span>{successNotice}</span>
+          </div>
+          <button
+            onClick={() => setSuccessNotice(null)}
+            className="text-xs text-emerald-400 hover:text-emerald-200"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Spacecraft list */}

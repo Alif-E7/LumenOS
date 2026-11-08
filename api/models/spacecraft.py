@@ -20,8 +20,10 @@ class PayloadType(str, Enum):
     """Supported payload sensor types."""
     MULTISPECTRAL_IMAGER = "multispectral_imager"
     THERMAL_IMAGER = "thermal_imager"
+    THERMAL_INFRARED = "thermal_infrared"
     SAR = "synthetic_aperture_radar"
     UV_SPECTROMETER = "uv_spectrometer"
+    UV_CORONAGRAPH = "uv_coronagraph"
     MAGNETOMETER = "magnetometer"
     OPTICAL_CAMERA = "optical_camera"
 
