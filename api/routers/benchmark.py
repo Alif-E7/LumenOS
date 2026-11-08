@@ -97,3 +97,4 @@ def get_latest_benchmark() -> dict[str, Any]:
         comparison = benchmark_harness.run_comparison(scenario_id="wildfire", seed=42, max_steps=50)
         _latest_benchmark_result = comparison.model_dump()
     return _latest_benchmark_result
+

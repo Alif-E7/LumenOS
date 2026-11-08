@@ -199,3 +199,23 @@ def assign_roles(player_ids: list[str]) -> RoleAssignment:
         assignment[player_ids[0]] = list(_ALL_ROLES)
 
     return RoleAssignment(player_roles=assignment)
+
+
+def assign_custom_roles(role_map: dict[str, list[str | RoleName]]) -> RoleAssignment:
+    """
+    Assign custom roles to players.
+    Ensures that all 4 crew roles are covered across the team.
+    """
+    assignment: dict[str, list[RoleName]] = {}
+    all_assigned = set()
+    for pid, roles in role_map.items():
+        converted = [r if isinstance(r, RoleName) else RoleName(r) for r in roles]
+        assignment[pid] = converted
+        all_assigned.update(converted)
+
+    missing = set(_ALL_ROLES) - all_assigned
+    if missing:
+        missing_names = [m.value for m in missing]
+        raise ValueError(f"All 4 roles must be assigned. Missing: {missing_names}")
+
+    return RoleAssignment(player_roles=assignment)

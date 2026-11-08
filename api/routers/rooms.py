@@ -1,9 +1,9 @@
 """
 Co-op Room REST + WebSocket endpoints.
 
-Provides HTTP endpoints for room creation / joining and a WebSocket
-endpoint that delegates all live game commands to the Room.handle_command()
-method from the room management service.
+Provides HTTP endpoints for room creation, joining, role reassignment, and
+lifecycle controls, plus a WebSocket endpoint routing real-time commands,
+action requests, approvals, and state snapshots through Room.handle_command().
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ class ParticipantInfo(BaseModel):
     is_host: bool
     ready: bool
     connected: bool
+    roles: list[str] = Field(default_factory=list)
 
 
 class JoinRoomResponse(BaseModel):
@@ -59,8 +60,16 @@ class RoomInfoResponse(BaseModel):
     """Summary of room state."""
     room_code: str
     phase: str
+    is_paused: bool = False
     participant_count: int
     participants: list[ParticipantInfo]
+    pending_requests_count: int = 0
+
+
+class ReassignRolesRequest(BaseModel):
+    """Request body for host role reassignment."""
+    host_id: str
+    role_assignments: dict[str, list[str]]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -101,9 +110,6 @@ async def join_room(room_code: str, body: JoinRoomRequest):
 
     player_id = f"player_{uuid4().hex[:8]}"
 
-    # NOTE: The participant is registered in the room on WebSocket connect,
-    # not here.  This endpoint validates the room exists and returns a player_id
-    # the client uses when connecting via WebSocket.
     participants = [
         ParticipantInfo(**p)
         for p in room._participant_list()
@@ -123,19 +129,34 @@ async def get_room_info(room_code: str):
     return RoomInfoResponse(
         room_code=room.room_code,
         phase=room.phase,
+        is_paused=room.is_paused,
         participant_count=room.participant_count,
         participants=participants,
+        pending_requests_count=len(room._pending_requests),
     )
 
 
+@router.post("/{room_code}/reassign_roles")
+async def reassign_roles_endpoint(room_code: str, body: ReassignRolesRequest):
+    """REST endpoint for host role reassignment."""
+    room = _get_room_or_404(room_code)
+    result = await room.reassign_roles(body.host_id, body.role_assignments)
+    if not result.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.get("error", "Failed to reassign roles"),
+        )
+    return result
+
+
+@router.post("/cleanup")
+async def cleanup_stale_rooms_endpoint(max_idle_seconds: float = 1800.0):
+    """Prune stale abandoned rooms."""
+    count = room_manager.cleanup_stale_rooms(max_idle_seconds=max_idle_seconds)
+    return {"pruned_count": count}
+
+
 # ── WebSocket Endpoint ──────────────────────────────────────────────────────
-# NOTE: When deploying behind nginx/Caddy, proxy /ws/* paths with:
-#   location /ws/ {
-#       proxy_pass http://backend;
-#       proxy_http_version 1.1;
-#       proxy_set_header Upgrade $http_upgrade;
-#       proxy_set_header Connection "upgrade";
-#   }
 
 
 @router.websocket("/ws/{room_code}/{player_id}")
@@ -150,10 +171,7 @@ async def room_websocket(
 
     Validates room existence and player membership, then routes all
     incoming messages to Room.handle_command(). Handles disconnects
-    gracefully.
-
-    An optional ``display_name`` query parameter names the participant;
-    the host falls back to the name they registered when creating the room.
+    and reconnects gracefully.
     """
     room = room_manager.get_room(room_code)
     if room is None:
@@ -192,7 +210,6 @@ async def room_websocket(
             await room.handle_command(player_id, command)
 
     except WebSocketDisconnect:
-        # Mark participant as disconnected but keep in room for reconnect
-        participant = room.get_participant(player_id)
-        if participant is not None:
-            participant.connected = False
+        await room.handle_disconnect(player_id)
+    except Exception:
+        await room.handle_disconnect(player_id)

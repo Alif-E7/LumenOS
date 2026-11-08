@@ -312,3 +312,4 @@ def test_api_benchmark_suite_endpoint(client):
     data = resp.json()
     assert data["total_runs"] == 2
     assert "summary_statistics" in data
+

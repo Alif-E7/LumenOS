@@ -447,6 +447,11 @@ export function OperatePage() {
     return assigned as RoleId[];
   }, [session, isCoop, room.roles]);
 
+  const isHost = useMemo(() => {
+    if (!isCoop || !session) return false;
+    return Boolean(room.participants.find((p) => p.player_id === session.playerId)?.is_host);
+  }, [isCoop, session, room.participants]);
+
   const warnings = useMemo<Warning[]>(() => {
     if (!activeTelemetry) return [];
     const w: Warning[] = [];
@@ -819,19 +824,79 @@ export function OperatePage() {
         {/* In Co-op: Display Crew Roster & Command Feed */}
         {isCoop && (
           <Card title="Crew Network & Command Operations" icon="👥" className="mb-4">
+            {/* Host Operational Controls Bar */}
+            {isHost && (
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-3 rounded-lg bg-slate-950 border border-amber-500/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-semibold">
+                    HOST CONTROLS
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    Live simulation controls & session authority
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      if (room.isPaused) room.resume();
+                      else room.pause();
+                    }}
+                  >
+                    {room.isPaused ? "▶ Resume" : "⏸ Pause"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      if (window.confirm("Restart mission from ignition step 0?")) {
+                        room.restart();
+                      }
+                    }}
+                  >
+                    🔄 Restart
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => {
+                      if (window.confirm("End mission and calculate final score?")) {
+                        room.end();
+                      }
+                    }}
+                  >
+                    ⏹ End Mission
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <ParticipantList
               participants={room.participants}
               selfId={session.playerId}
               roles={room.roles}
-              pendingRequests={pendingRequests}
+              pendingRequests={room.pendingRequests.length > 0 ? room.pendingRequests : pendingRequests}
               recentActions={recentActions}
-              canApprove={myRoles.includes("mission_director")}
+              feed={room.feed}
+              userRoles={myRoles}
+              canApprove={myRoles.includes("mission_director") || isHost}
+              onSendTacticalPing={(pingType, msg) => {
+                room.sendTacticalPing(pingType, msg);
+                setStatusMessage(`Broadcasted tactical ping: ${pingType}`);
+                setTimeout(() => setStatusMessage(null), 3000);
+              }}
               onApproveRequest={(id) => {
+                room.respondActionRequest(id, "approve");
                 setPendingRequests((prev) => prev.filter((r) => r.id !== id));
-                setStatusMessage(`Authorized action request ${id}.`);
+                setStatusMessage(`Authorized request ${id}.`);
+                setTimeout(() => setStatusMessage(null), 3000);
               }}
               onRejectRequest={(id) => {
+                room.respondActionRequest(id, "reject");
                 setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+                setStatusMessage(`Rejected request ${id}.`);
+                setTimeout(() => setStatusMessage(null), 3000);
               }}
             />
           </Card>

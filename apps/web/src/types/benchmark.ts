@@ -92,3 +92,4 @@ export interface BenchmarkScenarioItem {
   orbit_altitude_km: number;
   objectives_count: number;
 }
+

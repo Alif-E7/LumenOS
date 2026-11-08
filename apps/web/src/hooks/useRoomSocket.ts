@@ -16,6 +16,7 @@ import type {
   Telemetry,
 } from "../types";
 import { roomSocketUrl } from "../api/client";
+import type { PendingActionRequest } from "../components/ParticipantList";
 
 export type SocketStatus = "connecting" | "open" | "closed" | "error";
 
@@ -30,14 +31,31 @@ export interface RoomSocketState {
   status: SocketStatus;
   participants: ParticipantInfo[];
   phase: "lobby" | "playing" | "finished";
+  isPaused: boolean;
   roles: Record<string, string[]>;
   gameState: GameStateSummary | null;
   telemetry: Telemetry | null;
   activeEvents: ActiveEvent[];
+  pendingRequests: PendingActionRequest[];
+  activityFeed: Array<Record<string, any>>;
   /** Recent action log lines for the shared feed. */
   feed: string[];
   lastError: string | null;
   finished: RoomFinishInfo | null;
+}
+
+function mapPendingRequest(raw: any): PendingActionRequest {
+  return {
+    id: raw.request_id || raw.id || "",
+    requesterId: raw.requester_id || raw.requesterId || "",
+    requesterName: raw.requester_name || raw.requesterName || "Crew",
+    role: (raw.target_role || raw.role || "mission_director") as any,
+    actionType: raw.action_type || raw.actionType || "",
+    description: raw.reason || raw.description || "",
+    timestamp: new Date(
+      (raw.created_at || Date.now() / 1000) * 1000
+    ).toLocaleTimeString(),
+  };
 }
 
 export function useRoomSocket(
@@ -50,10 +68,13 @@ export function useRoomSocket(
     status: roomCode ? "connecting" : "closed",
     participants: [],
     phase: "lobby",
+    isPaused: false,
     roles: {},
     gameState: null,
     telemetry: null,
     activeEvents: [],
+    pendingRequests: [],
+    activityFeed: [],
     feed: [],
     lastError: null,
     finished: null,
@@ -85,15 +106,91 @@ export function useRoomSocket(
       ws.close();
       wsRef.current = null;
     };
-    // displayName intentionally excluded — renaming mid-connection would drop the socket
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, playerId]);
 
   const send = useCallback((message: Record<string, unknown>) => {
     wsRef.current?.send(JSON.stringify(message));
   }, []);
 
-  return { ...state, send };
+  const requestAction = useCallback(
+    (
+      targetRole: string,
+      actionType: string,
+      params: Record<string, unknown> = {},
+      reason = ""
+    ) => {
+      send({
+        command: "request_action",
+        target_role: targetRole,
+        action_type: actionType,
+        params,
+        reason,
+      });
+    },
+    [send]
+  );
+
+  const respondActionRequest = useCallback(
+    (requestId: string, decision: "approve" | "reject", reason = "") => {
+      send({
+        command: "respond_action_request",
+        request_id: requestId,
+        decision,
+        reason,
+      });
+    },
+    [send]
+  );
+
+  const sendTacticalPing = useCallback(
+    (pingType: string, message: string) => {
+      send({
+        command: "tactical_ping",
+        ping_type: pingType,
+        message,
+      });
+    },
+    [send]
+  );
+
+  const reassignRoles = useCallback(
+    (roleAssignments: Record<string, string[]>) => {
+      send({
+        command: "reassign_roles",
+        role_assignments: roleAssignments,
+      });
+    },
+    [send]
+  );
+
+  const pause = useCallback(() => {
+    send({ command: "pause" });
+  }, [send]);
+
+  const resume = useCallback(() => {
+    send({ command: "resume" });
+  }, [send]);
+
+  const restart = useCallback(() => {
+    send({ command: "restart" });
+  }, [send]);
+
+  const end = useCallback(() => {
+    send({ command: "end" });
+  }, [send]);
+
+  return {
+    ...state,
+    send,
+    requestAction,
+    respondActionRequest,
+    sendTacticalPing,
+    reassignRoles,
+    pause,
+    resume,
+    restart,
+    end,
+  };
 }
 
 // ── Message reducer ─────────────────────────────────────────────────────────
@@ -115,23 +212,75 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
     case "player_joined":
     case "player_left":
     case "ready_status":
+    case "player_disconnected":
+    case "player_reconnected": {
+      const parts = (msg.participants as ParticipantInfo[]) ?? s.participants;
+      let feedLine: string | null = null;
+      if (msg.type === "player_joined" && msg.display_name) {
+        feedLine = `${String(msg.display_name)} joined the mission room.`;
+      } else if (msg.type === "player_disconnected" && msg.display_name) {
+        feedLine = `${String(msg.display_name)} disconnected (holding slot).`;
+      } else if (msg.type === "player_reconnected" && msg.display_name) {
+        feedLine = `${String(msg.display_name)} reconnected to station.`;
+      }
       return {
         ...s,
-        participants: (msg.participants as ParticipantInfo[]) ?? s.participants,
+        participants: parts,
+        roles: (msg.roles as Record<string, string[]>) ?? s.roles,
+        feed: feedLine ? [feedLine, ...s.feed].slice(0, 15) : s.feed,
         lastError: null,
+      };
+    }
+
+    case "roles_updated":
+      return {
+        ...s,
+        roles: (msg.roles as Record<string, string[]>) ?? s.roles,
+        participants: (msg.participants as ParticipantInfo[]) ?? s.participants,
+        feed: [`Host updated station role assignments.`, ...s.feed].slice(0, 15),
       };
 
     case "game_started":
+    case "game_restarted":
       return {
         ...s,
         phase: "playing",
+        isPaused: false,
         roles: (msg.roles as Record<string, string[]>) ?? {},
         gameState: msg.state as GameStateSummary,
+        telemetry: (msg.telemetry as Telemetry) ?? s.telemetry,
+        feed: [
+          msg.type === "game_restarted"
+            ? `Mission restarted from ignition step 0.`
+            : `Mission launched: ${String(msg.mission_name || "Orbiter")}`,
+          ...s.feed,
+        ].slice(0, 15),
+      };
+
+    case "game_paused":
+      return {
+        ...s,
+        isPaused: true,
+        feed: [
+          `Simulation clock paused by ${String(msg.paused_by || "crew")}.`,
+          ...s.feed,
+        ].slice(0, 15),
+      };
+
+    case "game_resumed":
+      return {
+        ...s,
+        isPaused: false,
+        feed: [
+          `Simulation clock resumed by ${String(msg.resumed_by || "crew")}.`,
+          ...s.feed,
+        ].slice(0, 15),
       };
 
     case "step_result": {
       let next = applyState(s, msg.state);
-      const results = (msg.results as Array<{ telemetry?: Telemetry; new_events?: unknown[] }>) ?? [];
+      const results =
+        (msg.results as Array<{ telemetry?: Telemetry; new_events?: unknown[] }>) ?? [];
       const lastWithTel = [...results].reverse().find((r) => r.telemetry);
       if (lastWithTel?.telemetry) next = { ...next, telemetry: lastWithTel.telemetry };
       return next;
@@ -144,7 +293,7 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
           feed: [
             `You: ${String(msg.action_type)} — accepted (${msg.budget_cost ?? 0} cr)`,
             ...s.feed,
-          ].slice(0, 8),
+          ].slice(0, 15),
         };
       }
       return { ...s, lastError: String(msg.error ?? "Action rejected") };
@@ -153,9 +302,76 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
       return {
         ...s,
         feed: [
-          `${String(msg.display_name)}: ${String(msg.action_type)}`,
+          `${String(msg.display_name || msg.player_id)} (${String(
+            (msg.roles as string[])?.[0] || "crew"
+          )}): ${String(msg.action_type)}`,
           ...s.feed,
-        ].slice(0, 8),
+        ].slice(0, 15),
+      };
+
+    case "action_requested": {
+      const rawReq = (msg.request || msg) as any;
+      const pending = [
+        ...s.pendingRequests.filter((r) => r.id !== (rawReq.request_id || rawReq.id)),
+        mapPendingRequest(rawReq),
+      ];
+      return {
+        ...s,
+        pendingRequests: pending,
+        feed: [
+          `Request: ${String(rawReq.requester_name || "Crew")} asked ${String(
+            rawReq.target_role || "station"
+          )} for ${String(rawReq.action_type)}`,
+          ...s.feed,
+        ].slice(0, 15),
+      };
+    }
+
+    case "request_approved": {
+      const reqId = String(msg.request_id || "");
+      const remaining = s.pendingRequests.filter((r) => r.id !== reqId);
+      return {
+        ...s,
+        pendingRequests: remaining,
+        feed: [
+          `Request ${reqId} approved by ${String(msg.approved_by || "station")}.`,
+          ...s.feed,
+        ].slice(0, 15),
+      };
+    }
+
+    case "request_rejected": {
+      const reqId = String(msg.request_id || "");
+      const remaining = s.pendingRequests.filter((r) => r.id !== reqId);
+      return {
+        ...s,
+        pendingRequests: remaining,
+        feed: [
+          `Request ${reqId} rejected by ${String(msg.rejected_by || "station")}.`,
+          ...s.feed,
+        ].slice(0, 15),
+      };
+    }
+
+    case "requests_timed_out": {
+      const expired = (msg.expired_ids as string[]) ?? [];
+      const remaining = s.pendingRequests.filter((r) => !expired.includes(r.id));
+      return {
+        ...s,
+        pendingRequests: remaining,
+        feed: [`${expired.length} request(s) safely timed out.`, ...s.feed].slice(0, 15),
+      };
+    }
+
+    case "tactical_ping":
+      return {
+        ...s,
+        feed: [
+          `📢 [${String(msg.ping_type)}] ${String(msg.display_name)}: ${String(
+            msg.message
+          )}`,
+          ...s.feed,
+        ].slice(0, 15),
       };
 
     case "event_resolved":
@@ -164,16 +380,27 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
         feed: [
           `Event resolved by ${String(msg.player_id)}: ${String(msg.choice ?? "")}`,
           ...s.feed,
-        ].slice(0, 8),
+        ].slice(0, 15),
       };
 
     case "state_snapshot":
-    case "reconnect_state":
+    case "reconnect_state": {
+      let next = applyState(s, msg.state);
+      if (msg.telemetry) next = { ...next, telemetry: msg.telemetry as Telemetry };
+      if (msg.pending_requests && Array.isArray(msg.pending_requests)) {
+        next = {
+          ...next,
+          pendingRequests: msg.pending_requests.map(mapPendingRequest),
+        };
+      }
       return {
-        ...applyState(s, msg.state),
+        ...next,
         roles: (msg.roles as Record<string, string[]>) ?? s.roles,
         phase: (msg as { phase?: RoomSocketState["phase"] }).phase ?? s.phase,
+        isPaused: Boolean(msg.is_paused ?? s.isPaused),
+        participants: (msg.participants as ParticipantInfo[]) ?? s.participants,
       };
+    }
 
     case "game_finished":
       return {

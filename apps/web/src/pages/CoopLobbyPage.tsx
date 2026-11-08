@@ -3,7 +3,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { StatusBadge } from "../components/StatusBadge";
+import { RoleBadge } from "../components/RoleBadge";
 import { Selector } from "../components/Selector";
+import type { RoleId } from "../lib/constants";
 import { createRoom, joinRoom } from "../api/client";
 import { useRoomSocket } from "../hooks/useRoomSocket";
 import { saveMissionSession, loadMissionSession } from "../lib/mission";
@@ -350,28 +352,51 @@ export function CoopLobbyPage() {
             </Card>
 
             {/* Role Bundling Preview */}
-            <Card title="Role Assignment" icon="🎖️">
+            <Card title="Station Role Assignment" icon="🎖️">
               <p className="text-xs text-slate-400 mb-3">
-                Roles bundle automatically according to crew size:
+                Server-authoritative role distribution:
               </p>
+              {room.participants.length > 0 && Object.keys(room.roles).length > 0 ? (
+                <div className="space-y-2 mb-4">
+                  {room.participants.map((p) => {
+                    const assigned = (room.roles[p.player_id] ?? p.roles ?? []) as RoleId[];
+                    return (
+                      <div
+                        key={p.player_id}
+                        className="p-2 rounded bg-slate-800/60 border border-slate-700/50 flex items-center justify-between gap-2"
+                      >
+                        <span className="text-xs font-semibold text-slate-200">
+                          {p.display_name} {p.is_host && "(Host)"}:
+                        </span>
+                        <div className="flex gap-1 flex-wrap">
+                          {assigned.map((r) => (
+                            <RoleBadge key={r} role={r} size="sm" />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
               <div className="space-y-2 text-xs">
-                <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                  <span className="font-semibold text-slate-200">4 Players:</span> 1 role each
+                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
+                  <span className="font-semibold text-slate-200">4 Players:</span> 1 role each (Director, Systems, Science, Flight)
                 </div>
-                <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                  <span className="font-semibold text-slate-200">3 Players:</span> Director + Science bundled
+                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
+                  <span className="font-semibold text-slate-200">3 Players:</span> Director + Science bundle, Flight, Systems
                 </div>
-                <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
-                  <span className="font-semibold text-slate-200">2 Players:</span> 2 roles per player
+                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
+                  <span className="font-semibold text-slate-200">2 Players:</span> 2 roles per player (Director+Science, Flight+Systems)
                 </div>
-                <div className="p-2 rounded bg-slate-800/60 border border-slate-700/50">
+                <div className="p-2 rounded bg-slate-800/40 border border-slate-700/40">
                   <span className="font-semibold text-slate-200">1 Player:</span> All Stations
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-800">
                 <p className="text-[11px] text-slate-500">
-                  Stations have role-specific controls enforced by server permissions.
+                  Stations have role-specific controls enforced by server permissions. Host can reassign roles dynamically.
                 </p>
               </div>
             </Card>

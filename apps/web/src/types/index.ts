@@ -538,6 +538,7 @@ export interface ParticipantInfo {
   is_host: boolean;
   ready: boolean;
   connected: boolean;
+  roles?: string[];
 }
 
 export interface CreateRoomResponse {
@@ -562,11 +563,22 @@ export interface RoomServerMessage {
   type:
     | "player_joined"
     | "player_left"
+    | "player_disconnected"
+    | "player_reconnected"
+    | "roles_updated"
     | "ready_status"
     | "game_started"
+    | "game_paused"
+    | "game_resumed"
+    | "game_restarted"
     | "step_result"
     | "action_result"
     | "action_broadcast"
+    | "action_requested"
+    | "request_approved"
+    | "request_rejected"
+    | "requests_timed_out"
+    | "tactical_ping"
     | "event_resolved"
     | "state_snapshot"
     | "score_breakdown"
