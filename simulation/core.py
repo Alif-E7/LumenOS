@@ -338,7 +338,7 @@ class SimulationRunner:
         elif action_type == "collect_data":
             vol = float(action.get("volume_mb", action.get("duration_steps", 1) * 20.0))
             self._comms.state.data_collected_mb += vol
-            self._storage.write(vol, "raw")
+            self._storage.write(vol)
             result["applied"] = True
             result["changes"].append(f"data_collected_mb={self._comms.state.data_collected_mb:.1f}")
 

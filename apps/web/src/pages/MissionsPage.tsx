@@ -105,7 +105,7 @@ export function MissionsPage() {
               <div className="flex items-center justify-between pt-2 border-t border-slate-800">
                 {severityBadge(mission.difficulty)}
                 <div className="flex gap-1">
-                  {mission.tags.map((tag) => (
+                  {mission.tags?.map((tag) => (
                     <span
                       key={tag}
                       className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400"

@@ -214,6 +214,7 @@ describe("Prompt 15 Results & Replay Frontend", () => {
     vi.mocked(client.getTeamContributions).mockResolvedValue(mockTeamSummary);
     vi.mocked(client.getMissionReplay).mockResolvedValue(mockTrajectory);
     vi.mocked(client.runWhatIf).mockResolvedValue(mockWhatIfResult);
+    vi.mocked(client.recordMissionProgression).mockResolvedValue({} as any);
   });
 
   it("renders ResultsPage with primary/optional objective metrics and cost model", async () => {

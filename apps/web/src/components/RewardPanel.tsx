@@ -16,14 +16,15 @@ interface RewardPanelProps {
   /** XP needed for the next rank. */
   nextRankXp: number;
   rankLabel: string;
+  credits?: number;
   className?: string;
 }
 
 /**
- * Rewards & progression. `earned` flags come from the mission outcome;
- * career XP persistence is browser-local (labeled) until profiles ship.
+ * Rewards & progression. Displays earned badges, rank progress,
+ * and persistent career metrics.
  */
-export function RewardPanel({ rewards, xp, nextRankXp, rankLabel, className }: RewardPanelProps) {
+export function RewardPanel({ rewards, xp, nextRankXp, rankLabel, credits, className }: RewardPanelProps) {
   const xpPct = Math.min(100, (xp / nextRankXp) * 100);
   const earnedCount = rewards.filter((r) => r.earned).length;
 
@@ -31,7 +32,14 @@ export function RewardPanel({ rewards, xp, nextRankXp, rankLabel, className }: R
     <section className={cn("space-y-4", className)} aria-label="Rewards and progression">
       <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
         <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-semibold text-white">{rankLabel}</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="font-semibold text-white">{rankLabel}</h3>
+            {credits !== undefined && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono">
+                💰 {credits.toLocaleString()} Credits
+              </span>
+            )}
+          </div>
           <span className="text-xs font-mono text-slate-400">
             {xp.toLocaleString()} / {nextRankXp.toLocaleString()} XP
           </span>
@@ -39,9 +47,8 @@ export function RewardPanel({ rewards, xp, nextRankXp, rankLabel, className }: R
         <div className="h-2 rounded-full bg-slate-800 overflow-hidden" role="progressbar" aria-valuenow={Math.round(xpPct)} aria-valuemin={0} aria-valuemax={100} aria-label="Rank progress">
           <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full transition-all duration-700" style={{ width: `${xpPct}%` }} />
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          XP and rank are stored in this browser only — server-side profiles are
-          not implemented yet.
+        <p className="mt-2 text-xs text-slate-400">
+          Career XP, rank, and Engineering Credits are tracked via persistent player profile.
         </p>
       </div>
 

@@ -116,3 +116,4 @@ async def get_team_contributions(session_id: str):
             "spacecraft_health_pct": trajectory.steps[-1].spacecraft_health_pct if trajectory.steps else 100.0,
         },
     )
+

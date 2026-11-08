@@ -38,6 +38,9 @@ import type {
   WhatIfBranchRequest,
   WhatIfComparisonResult,
   ReplayListItem,
+  PlayerProfileResponse,
+  RecordMissionProgressionRequest,
+  RecordMissionProgressionResponse,
 } from "../types";
 
 const BASE = "/api";
@@ -384,6 +387,27 @@ export const getTeamContributions = (sessionId: string) =>
 
 export const listReplays = () =>
   fetchJSON<ReplayListItem[]>("/replay");
+
+// ── Player Profile & Progression API (Prompt 16) ─────────────────────────────
+
+export const getPlayerProfile = (playerId: string = "pilot-local") =>
+  fetchJSON<PlayerProfileResponse>(`/progression/profile?player_id=${encodeURIComponent(playerId)}`);
+
+export const recordMissionProgression = (body: RecordMissionProgressionRequest) =>
+  fetchJSON<RecordMissionProgressionResponse>("/progression/record_mission", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const purchaseUnlock = (playerId: string, unlockId: string) =>
+  fetchJSON<{ success: boolean; unlock_id: string; remaining_credits: number; unlocked: string[] }>(
+    "/progression/unlock",
+    {
+      method: "POST",
+      body: JSON.stringify({ player_id: playerId, unlock_id: unlockId }),
+    }
+  );
+
 
 
 

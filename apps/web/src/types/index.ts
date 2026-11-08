@@ -810,3 +810,81 @@ export interface ReplayListItem {
   stars: number;
 }
 
+// ── Progression & Player Profile (Prompt 16) ─────────────────────────────────
+
+export interface AchievementItem {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  xp_reward: number;
+  credit_reward: number;
+  unlocked: boolean;
+  unlock_date?: string | null;
+  progress_value: number;
+  target_value: number;
+}
+
+export interface UnlockItem {
+  id: string;
+  name: string;
+  description: string;
+  unlock_type: string;
+  credit_cost: number;
+  required_level: number;
+  icon: string;
+  unlocked: boolean;
+}
+
+export interface PlayerProfileResponse {
+  player_id: string;
+  display_name: string;
+  total_xp: number;
+  level: number;
+  xp_to_next_level: number;
+  engineering_credits: number;
+  missions_completed: number;
+  achievements: AchievementItem[];
+  unlocks: UnlockItem[];
+  campaign: {
+    unlocked_missions: string[];
+    mission_records: Record<string, any>;
+  };
+}
+
+export interface RecordMissionProgressionRequest {
+  player_id?: string;
+  mission_id: string;
+  grade: string;
+  stars?: number;
+  is_win?: boolean;
+  spacecraft_health_pct?: number;
+  budget_spent_pct?: number;
+  score?: number;
+  difficulty_multiplier?: number;
+}
+
+export interface RecordMissionProgressionResponse {
+  player_id: string;
+  rewards: {
+    mission_id: string;
+    xp_earned: number;
+    credits_earned: number;
+    stars_earned: number;
+    best_stars: number;
+    new_stars_earned: number;
+    is_first_completion: boolean;
+    new_achievements: string[];
+    newly_unlocked_missions: string[];
+    total_xp: number;
+    level: number;
+    engineering_credits: number;
+    explanation: string;
+  };
+  current_level: number;
+  total_xp: number;
+  engineering_credits: number;
+}
+
+

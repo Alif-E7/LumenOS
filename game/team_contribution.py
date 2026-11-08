@@ -243,3 +243,4 @@ def calculate_team_contributions(
         tactical_pings_count=len(tactical_pings),
         summary_narrative=narrative,
     )
+

@@ -11,8 +11,9 @@ import {
   getGameState,
   getCostAnalysis,
   getTeamContributions,
+  recordMissionProgression,
 } from "../api/client";
-import { loadMissionSession, saveMissionSession, clearMissionSession } from "../lib/mission";
+import { loadMissionSession, clearMissionSession } from "../lib/mission";
 import type {
   GameStateSummary,
   ScoreResponse,
@@ -68,15 +69,31 @@ export function ResultsPage() {
         if (cost) setCostModel(cost);
         if (team) setTeamSummary(team);
 
-        // Award XP once per mission completion
+        // Award XP once per mission completion and record into persistent player profile
         if (!xpAwarded && st?.game_state.outcome && s) {
           const gained = Math.round(s.total_score / 10);
           const next = { xp: loadCareer().xp + gained };
           saveCareer(next.xp);
           setCareer(next);
           setXpAwarded(true);
-          const updated = loadMissionSession();
-          if (updated) saveMissionSession({ ...updated, sessionId: null }); // mission consumed
+
+          try {
+            const prom = recordMissionProgression({
+              player_id: session.playerId || "pilot-local",
+              mission_id: session.missionId || "wildfire",
+              grade: s.grade || "B",
+              stars: s.stars || 1,
+              is_win: st.game_state.outcome === "WIN" || s.score_fraction >= 0.5,
+              spacecraft_health_pct: st.game_state.spacecraft_health_pct ?? 100,
+              budget_spent_pct: 50.0,
+              score: s.total_score,
+            });
+            if (prom && typeof prom.catch === "function") {
+              prom.catch(() => {});
+            }
+          } catch {
+            // Non-blocking fallback
+          }
         }
       })
       .catch((err: Error) => setError(err.message))
