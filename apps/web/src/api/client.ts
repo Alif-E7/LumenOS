@@ -48,8 +48,14 @@ import {
   BUNDLED_MISSION_DETAILS,
 } from "../lib/bundled-missions";
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
-const BASE = API_BASE_URL ? `${API_BASE_URL}/api` : "/api";
+// Normalise API and WebSocket URLs from environment variables
+const rawApiUrl = (import.meta.env.VITE_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE_URL = rawApiUrl;
+const BASE = rawApiUrl
+  ? rawApiUrl.endsWith("/api")
+    ? rawApiUrl
+    : `${rawApiUrl}/api`
+  : "/api";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${BASE}${url}`, {
@@ -288,15 +294,26 @@ export const roomSocketUrl = (
   displayName?: string
 ) => {
   const name = displayName ? `?display_name=${encodeURIComponent(displayName)}` : "";
-  if (import.meta.env.VITE_WS_URL) {
-    const wsBase = (import.meta.env.VITE_WS_URL as string).replace(/\/+$/, "");
+  const rawWsUrl = (import.meta.env.VITE_WS_URL || "").trim().replace(/\/+$/, "");
+
+  if (rawWsUrl) {
+    // Normalise http(s) to ws(s) if user entered web scheme by mistake
+    const wsBase = rawWsUrl
+      .replace(/^https:\/\//i, "wss://")
+      .replace(/^http:\/\//i, "ws://")
+      .replace(/\/api$/i, "");
     return `${wsBase}/api/rooms/ws/${roomCode}/${playerId}${name}`;
   }
+
   if (API_BASE_URL) {
     const wsProto = API_BASE_URL.startsWith("https") ? "wss" : "ws";
-    const host = API_BASE_URL.replace(/^https?:\/\//, "");
+    const host = API_BASE_URL
+      .replace(/^https?:\/\//, "")
+      .replace(/\/api$/i, "")
+      .replace(/\/+$/, "");
     return `${wsProto}://${host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
   }
+
   const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
   const host = typeof window !== "undefined" ? window.location.host : "localhost:5173";
   return `${proto}://${host}/api/rooms/ws/${roomCode}/${playerId}${name}`;
