@@ -33,45 +33,45 @@ export function ApprovalPanel({
   const total = participants.length;
 
   return (
-    <section
+ <section
       className={cn("rounded-none border border-edge-strong bg-panel/70 p-5", className)}
       aria-label={requestLabel}
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-ink">{requestLabel}</h3>
-        <span className="text-xs font-mono text-muted">
+ >
+ <div className="flex items-center justify-between mb-3">
+ <h3 className="text-sm font-semibold text-ink">{requestLabel}</h3>
+ <span className="text-xs font-mono text-muted">
           {approved}/{total} approved
-        </span>
-      </div>
-      <div className="space-y-1.5 mb-4">
+ </span>
+ </div>
+ <div className="space-y-1.5 mb-4">
         {participants.map((p) => (
-          <div key={p.player_id} className="flex items-center gap-2 text-sm">
-            <span aria-hidden>{p.ready ? "✅" : "⏳"}</span>
-            <span className="text-ink">
+ <div key={p.player_id} className="flex items-center gap-2 text-sm">
+ <span aria-hidden>{p.ready ? "" : ""}</span>
+ <span className="text-ink">
               {p.display_name}
               {p.player_id === requesterId && (
-                <span className="text-ink0 text-xs"> — requested</span>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
+ <span className="text-faint text-xs"> — requested</span>
+ )}
+ </span>
+ </div>
+ ))}
+ </div>
       {canRespond && (
-        <div className="flex gap-2">
-          <button
+ <div className="flex gap-2">
+ <button
             onClick={onApprove}
-            className="flex-1 rounded-none bg-ok/80 hover:bg-ok text-ink text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
+            className="flex-1 rounded-none bg-ok/80 hover:bg-ok text-ink text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-ok"
+ >
             Approve
-          </button>
-          <button
+ </button>
+ <button
             onClick={onDeny}
             className="flex-1 rounded-none bg-edge-strong hover:bg-edge-strong text-ink text-sm font-medium py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent"
-          >
+ >
             Hold
-          </button>
-        </div>
-      )}
-    </section>
-  );
+ </button>
+ </div>
+ )}
+ </section>
+ );
 }

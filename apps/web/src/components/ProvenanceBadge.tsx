@@ -40,16 +40,16 @@ export function ProvenanceBadge({
   const { Icon } = info;
 
   return (
-    <span
+ <span
       className={cn(
         "inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em]",
         info.className,
         className
-      )}
+ )}
       title={info.disclaimer || info.description}
-    >
+ >
       {showIcon && <Icon aria-hidden className="h-3 w-3" />}
-      <span>{customLabel || info.label}</span>
-    </span>
-  );
+ <span>{customLabel || info.label}</span>
+ </span>
+ );
 }

@@ -281,8 +281,8 @@ describe("Prompt 15 Results & Replay Frontend", () => {
     expect(screen.getByText("Ground Contact: Svalbard")).toBeInTheDocument();
 
     // Telemetry readouts
-    expect(screen.getByText(/⚡ Power Bus/)).toBeInTheDocument();
-    expect(screen.getByText(/🌡️ Thermal State/)).toBeInTheDocument();
+    expect(screen.getByText(/Power Bus/)).toBeInTheDocument();
+    expect(screen.getByText(/Thermal State/)).toBeInTheDocument();
   });
 
   it("runs What-If branching simulation and renders side-by-side comparison with semantic tag", async () => {

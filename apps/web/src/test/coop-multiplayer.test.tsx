@@ -113,7 +113,7 @@ describe("Prompt 14 — Cooperative Multiplayer Stations, Roles & Synchronizatio
 
     expect(screen.getByText(/Tactical Coordination Pings/i)).toBeInTheDocument();
 
-    const needPowerBtn = screen.getByRole("button", { name: /⚡ Need Power/i });
+    const needPowerBtn = screen.getByRole("button", { name: /Need Power/i });
     fireEvent.click(needPowerBtn);
 
     expect(handlePing).toHaveBeenCalledWith(
@@ -121,7 +121,7 @@ describe("Prompt 14 — Cooperative Multiplayer Stations, Roles & Synchronizatio
       "Requesting additional power allocation"
     );
 
-    const stationPassBtn = screen.getByRole("button", { name: /📡 Station Pass/i });
+    const stationPassBtn = screen.getByRole("button", { name: /Station Pass/i });
     fireEvent.click(stationPassBtn);
 
     expect(handlePing).toHaveBeenCalledWith(

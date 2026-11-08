@@ -57,7 +57,7 @@ export function Tabs({
       const buttons = tabListRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
       const targetButton = Array.from(buttons ?? []).find(
         (btn) => btn.dataset.tabId === nextTab.id
-      );
+ );
       targetButton?.focus();
     }
   };
@@ -86,15 +86,15 @@ export function Tabs({
   const styles = tabStyles[variant];
 
   return (
-    <div className={className}>
-      <div
+ <div className={className}>
+ <div
         ref={tabListRef}
         role="tablist"
         aria-label="Tabs"
         className={cn("flex", styles.list)}
-      >
+ >
         {tabs.map((tab, i) => (
-          <button
+ <button
             key={tab.id}
             role="tab"
             data-tab-id={tab.id}
@@ -108,23 +108,23 @@ export function Tabs({
               styles.tab,
               active === tab.id ? styles.active : styles.inactive,
               tab.disabled && "opacity-40 cursor-not-allowed"
-            )}
-          >
-            <span className="flex items-center gap-2">
+ )}
+ >
+ <span className="flex items-center gap-2">
               {tab.icon && <span aria-hidden>{tab.icon}</span>}
               {tab.label}
               {tab.badge != null && (
-                <span className="border border-edge-strong bg-raised px-1.5 py-0.5 text-[10px] text-muted">
+ <span className="border border-edge-strong bg-raised px-1.5 py-0.5 text-[10px] text-muted">
                   {tab.badge}
-                </span>
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`panel-${active}`} aria-labelledby={active} className="mt-4">
+ </span>
+ )}
+ </span>
+ </button>
+ ))}
+ </div>
+ <div role="tabpanel" id={`panel-${active}`} aria-labelledby={active} className="mt-4">
         {children}
-      </div>
-    </div>
-  );
+ </div>
+ </div>
+ );
 }

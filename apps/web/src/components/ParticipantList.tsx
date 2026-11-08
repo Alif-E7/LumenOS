@@ -63,220 +63,220 @@ export function ParticipantList({
   className,
 }: ParticipantListProps) {
   return (
-    <div className={cn("space-y-4", className)}>
+ <div className={cn("space-y-4", className)}>
       {/* Crew Members List */}
-      <ul className="space-y-2" aria-label="Room participants and role assignments">
+ <ul className="space-y-2" aria-label="Room participants and role assignments">
         {participants.map((p) => {
           const pRoles = (roles[p.player_id] ?? p.roles ?? []) as RoleId[];
           return (
-            <li
+ <li
               key={p.player_id}
               className={cn(
                 "flex flex-wrap items-center justify-between gap-3 rounded-none border px-3 py-2 text-sm",
                 p.player_id === selfId
-                  ? "border-accent/50 bg-accent/10/30"
+                  ? "border-accent/50 bg-accent/10"
                   : "border-edge bg-panel/50",
-                !p.connected && "opacity-60 bg-void/40 border-rose-900/40"
-              )}
-            >
-              <div className="flex items-center gap-2.5">
-                <span
+                !p.connected && "opacity-60 bg-void/40 border-crit/30"
+ )}
+ >
+ <div className="flex items-center gap-2.5">
+ <span
                   className={cn(
                     "h-2.5 w-2.5 rounded-full",
-                    p.connected ? "bg-ok animate-pulse" : "bg-rose-500"
-                  )}
+                    p.connected ? "bg-ok animate-pulse" : "bg-crit"
+ )}
                   title={p.connected ? "Connected" : "Disconnected (reconnecting...)"}
                   aria-hidden
                 />
-                <span className="text-ink font-medium">
+ <span className="text-ink font-medium">
                   {p.display_name}
                   {p.player_id === selfId && <span className="text-accent"> (you)</span>}
-                </span>
+ </span>
                 {p.is_host && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-warn/20 text-warn border border-warn/30 font-mono">
+ <span className="text-xs px-2 py-0.5 rounded-full bg-warn/20 text-warn border border-warn/30 font-mono">
                     Host
-                  </span>
-                )}
+ </span>
+ )}
                 {!p.connected && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-mono">
+ <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-crit/10 text-crit border-crit/40 font-mono">
                     DISCONNECTED
-                  </span>
-                )}
-              </div>
+ </span>
+ )}
+ </div>
 
               {/* Roles Badges */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+ <div className="flex items-center gap-1.5 flex-wrap">
                 {pRoles.length > 0 ? (
                   pRoles.map((r) => <RoleBadge key={r} role={r} size="sm" />)
-                ) : (
-                  <span className="text-xs text-ink0 italic">Assigning role...</span>
-                )}
-                <span
+ ) : (
+ <span className="text-xs text-faint italic">Assigning role...</span>
+ )}
+ <span
                   className={cn(
                     "text-xs px-2 py-0.5 rounded-full border font-mono",
                     p.ready
                       ? "bg-ok/20 text-ok border-ok/30"
                       : "bg-edge-strong/40 text-muted border-edge-strong/40"
-                  )}
-                >
-                  {p.ready ? "✓ Ready" : "Standby"}
-                </span>
-              </div>
-            </li>
-          );
+ )}
+ >
+                  {p.ready ? "Ready" : "Standby"}
+ </span>
+ </div>
+ </li>
+ );
         })}
-      </ul>
+ </ul>
 
       {/* Quick Tactical Coordination Pings */}
       {onSendTacticalPing && (
-        <div className="p-2.5 rounded-none border border-edge bg-void/40">
-          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
-            <span>📢</span> Tactical Coordination Pings
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <button
+ <div className="p-2.5 rounded-none border border-edge bg-void/40">
+ <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+            Tactical Coordination Pings
+ </div>
+ <div className="flex flex-wrap gap-1.5">
+ <button
               type="button"
               onClick={() => onSendTacticalPing("NEED_POWER", "Requesting additional power allocation")}
-              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded border border-edge-strong transition-colors"
-            >
-              ⚡ Need Power
-            </button>
-            <button
+              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded-none border border-edge-strong transition-colors"
+ >
+              Need Power
+ </button>
+ <button
               type="button"
               onClick={() => onSendTacticalPing("STATION_PASS", "Ground station contact in <60s")}
-              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded border border-edge-strong transition-colors"
-            >
-              📡 Station Pass
-            </button>
-            <button
+              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded-none border border-edge-strong transition-colors"
+ >
+              Station Pass
+ </button>
+ <button
               type="button"
               onClick={() => onSendTacticalPing("THERMAL_WARN", "Thermal bus margin low")}
-              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded border border-edge-strong transition-colors"
-            >
-              🧊 Thermal Margin
-            </button>
-            <button
+              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded-none border border-edge-strong transition-colors"
+ >
+              Thermal Margin
+ </button>
+ <button
               type="button"
               onClick={() => onSendTacticalPing("DOWNLINK_STANDBY", "Standby for science downlink")}
-              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded border border-edge-strong transition-colors"
-            >
-              📶 Downlink Standby
-            </button>
-            <button
+              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded-none border border-edge-strong transition-colors"
+ >
+              Downlink Standby
+ </button>
+ <button
               type="button"
               onClick={() => onSendTacticalPing("HOLD_STEP", "Requesting hold simulation")}
-              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded border border-edge-strong transition-colors"
-            >
-              ⏸️ Hold / Pause
-            </button>
-          </div>
-        </div>
-      )}
+              className="px-2 py-1 bg-raised hover:bg-edge-strong text-ink text-xs rounded-none border border-edge-strong transition-colors"
+ >
+              Hold / Pause
+ </button>
+ </div>
+ </div>
+ )}
 
       {/* Pending Action Requests & Authorizations */}
       {pendingRequests.length > 0 && (
-        <div className="rounded-none border border-warn/30 bg-warn/10/20 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-semibold text-warn uppercase tracking-wider flex items-center gap-1.5">
-              <span>⚠️</span> Pending Action Authorizations
-            </h4>
-            <span className="text-[10px] font-mono text-warn/80">
+ <div className="rounded-none border border-warn/30 bg-warn/10 p-3 space-y-2">
+ <div className="flex items-center justify-between">
+ <h4 className="text-xs font-semibold text-warn uppercase tracking-wider flex items-center gap-1.5">
+              Pending Action Authorizations
+ </h4>
+ <span className="text-[10px] font-mono text-warn/80">
               {pendingRequests.length} pending
-            </span>
-          </div>
-          <div className="space-y-2">
+ </span>
+ </div>
+ <div className="space-y-2">
             {pendingRequests.map((req) => {
               const userCanAuthorize = canApprove || userRoles.includes(req.role);
               return (
-                <div
+ <div
                   key={req.id}
                   className="flex flex-wrap items-center justify-between gap-3 bg-void/80 border border-warn/20 p-2.5 rounded-none text-xs"
-                >
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                      <span className="font-semibold text-ink">{req.requesterName}</span>
-                      <RoleBadge role={req.role} size="sm" />
-                      <span className="text-muted font-mono text-[11px]">{req.actionType}</span>
-                    </div>
-                    <p className="text-ink text-[11px]">{req.description}</p>
-                  </div>
+ >
+ <div>
+ <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+ <span className="font-semibold text-ink">{req.requesterName}</span>
+ <RoleBadge role={req.role} size="sm" />
+ <span className="text-muted font-mono text-[11px]">{req.actionType}</span>
+ </div>
+ <p className="text-ink text-[11px]">{req.description}</p>
+ </div>
                   {userCanAuthorize && (
-                    <div className="flex items-center gap-1.5">
-                      <Button
+ <div className="flex items-center gap-1.5">
+ <Button
                         size="sm"
                         variant="primary"
                         onClick={() => onApproveRequest?.(req.id)}
-                      >
+ >
                         Approve
-                      </Button>
-                      <Button
+ </Button>
+ <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => onRejectRequest?.(req.id)}
-                      >
+ >
                         Reject
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
+ </Button>
+ </div>
+ )}
+ </div>
+ );
             })}
-          </div>
-        </div>
-      )}
+ </div>
+ </div>
+ )}
 
       {/* Team Activity & Log Feed */}
       {(feed.length > 0 || recentActions.length > 0) && (
-        <div className="rounded-none border border-edge bg-void/60 p-3 space-y-2">
-          <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center justify-between">
-            <span>Team Activity & Command Audit Feed</span>
-            <span className="text-[10px] font-mono text-ink0">REAL-TIME</span>
-          </h4>
+ <div className="rounded-none border border-edge bg-void/60 p-3 space-y-2">
+ <h4 className="text-xs font-semibold text-ink uppercase tracking-wider flex items-center justify-between">
+ <span>Team Activity & Command Audit Feed</span>
+ <span className="text-[10px] font-mono text-faint">REAL-TIME</span>
+ </h4>
 
           {feed.length > 0 && (
-            <div className="max-h-36 overflow-y-auto space-y-1 text-xs font-mono text-ink">
+ <div className="max-h-36 overflow-y-auto space-y-1 text-xs font-mono text-ink">
               {feed.slice(0, 8).map((line, idx) => (
-                <div
+ <div
                   key={idx}
-                  className="px-2 py-1 rounded bg-panel/60 border border-edge/40 text-[11px] text-ink"
-                >
+                  className="px-2 py-1 rounded-none bg-panel/60 border border-edge/40 text-[11px] text-ink"
+ >
                   {line}
-                </div>
-              ))}
-            </div>
-          )}
+ </div>
+ ))}
+ </div>
+ )}
 
           {recentActions.length > 0 && (
-            <ul className="space-y-1 text-xs font-mono pt-1">
+ <ul className="space-y-1 text-xs font-mono pt-1">
               {recentActions.slice(0, 4).map((act, idx) => (
-                <li
+ <li
                   key={idx}
                   className="flex items-center justify-between text-ink border-b border-edge/40 pb-1"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-ink font-medium">{act.actor}</span>
-                    <span className="text-ink0">[{act.role}]</span>
-                    <span className="text-info">{act.actionType}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
+ >
+ <div className="flex items-center gap-2">
+ <span className="text-ink font-medium">{act.actor}</span>
+ <span className="text-faint">[{act.role}]</span>
+ <span className="text-info">{act.actionType}</span>
+ </div>
+ <div className="flex items-center gap-2">
+ <span
                       className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                        "text-[10px] px-1.5 py-0.5 rounded-none font-bold",
                         act.result === "ACCEPTED"
                           ? "bg-ok/20 text-ok"
-                          : "bg-rose-500/20 text-rose-400"
-                      )}
-                    >
+                          : "bg-crit/10 text-crit"
+ )}
+ >
                       {act.result}
-                    </span>
-                    <span className="text-ink0 text-[10px]">{act.timestamp}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
-  );
+ </span>
+ <span className="text-faint text-[10px]">{act.timestamp}</span>
+ </div>
+ </li>
+ ))}
+ </ul>
+ )}
+ </div>
+ )}
+ </div>
+ );
 }

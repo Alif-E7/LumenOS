@@ -211,7 +211,7 @@ export const getSpacecraftCatalog = () =>
 export const getDesignerPresets = () =>
   fetchJSON<Record<string, Record<string, SpacecraftDesign>>>(
     "/spacecraft/designer/presets"
-  );
+ );
 
 export const evaluateDesign = (
   design: SpacecraftDesign,
@@ -294,7 +294,7 @@ export const stepGame = (sessionId: string, steps = 1) =>
   fetchJSON<{ session_id: string; results: StepResult[] }>(
     `/game/${sessionId}/step`,
     { method: "POST", body: JSON.stringify({ steps }) }
-  );
+ );
 
 export const performAction = (
   sessionId: string,
@@ -317,12 +317,12 @@ export const resolveEvent = (
 export const getGameState = (sessionId: string) =>
   fetchJSON<{ session_id: string; game_state: GameStateSummary }>(
     `/game/${sessionId}/state`
-  );
+ );
 
 export const getGameTelemetry = (sessionId: string) =>
   fetchJSON<{ session_id: string; telemetry: Telemetry }>(
     `/game/${sessionId}/telemetry`
-  );
+ );
 
 export const getGameScore = (sessionId: string) =>
   fetchJSON<ScoreResponse>(`/game/${sessionId}/score`);
@@ -390,13 +390,13 @@ export const pauseSimulationClock = (sessionId: string) =>
   fetchJSON<{ session_id: string; status: string; clock: ClockState }>(
     `/game/${sessionId}/clock/pause`,
     { method: "POST" }
-  );
+ );
 
 export const resumeSimulationClock = (sessionId: string) =>
   fetchJSON<{ session_id: string; status: string; clock: ClockState }>(
     `/game/${sessionId}/clock/resume`,
     { method: "POST" }
-  );
+ );
 
 export const setSimulationClockSpeed = (sessionId: string, speed: number) =>
   fetchJSON<{ session_id: string; clock: ClockState }>(
@@ -405,7 +405,7 @@ export const setSimulationClockSpeed = (sessionId: string, speed: number) =>
       method: "POST",
       body: JSON.stringify({ speed }),
     }
-  );
+ );
 
 export const fastForwardSimulation = (
   sessionId: string,
@@ -417,7 +417,7 @@ export const fastForwardSimulation = (
       method: "POST",
       body: JSON.stringify(params),
     }
-  );
+ );
 
 export const getForecastTimeline = (sessionId: string, horizonSeconds = 86400) =>
   fetchJSON<{
@@ -436,14 +436,14 @@ export const getGroundTrack = (
     : `?num_points=${numPoints}`;
   return fetchJSON<{ session_id: string; points: GroundTrackPoint[] }>(
     `/game/${sessionId}/orbit/groundtrack${query}`
-  );
+ );
 };
 
 export const saveSimulationCheckpoint = (sessionId: string) =>
   fetchJSON<{ session_id: string; checkpoint: CheckpointData }>(
     `/game/${sessionId}/checkpoint/save`,
     { method: "POST" }
-  );
+ );
 
 export const restoreSimulationCheckpoint = (
   sessionId: string,
@@ -455,7 +455,7 @@ export const restoreSimulationCheckpoint = (
       method: "POST",
       body: JSON.stringify({ checkpoint }),
     }
-  );
+ );
 
 // ── LumenOS Predictive Advisory API (Prompt 12) ──────────────────────────────
 
@@ -554,7 +554,7 @@ export const purchaseUnlock = (playerId: string, unlockId: string) =>
       method: "POST",
       body: JSON.stringify({ player_id: playerId, unlock_id: unlockId }),
     }
-  );
+ );
 
 
 

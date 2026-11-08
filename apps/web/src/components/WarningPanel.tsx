@@ -27,45 +27,45 @@ const levelStyles = {
 export function WarningPanel({ warnings, title = "System Warnings", className }: WarningPanelProps) {
   if (warnings.length === 0) {
     return (
-      <div
+ <div
         className={cn(
           "flex items-center gap-2 border border-ok/30 bg-ok/[0.06] px-4 py-3 text-sm text-ok",
           className
-        )}
+ )}
         role="status"
-      >
-        <ShieldCheck aria-hidden className="h-4 w-4" />
+ >
+ <ShieldCheck aria-hidden className="h-4 w-4" />
         All systems nominal — no active warnings.
-      </div>
-    );
+ </div>
+ );
   }
 
   return (
-    <section
+ <section
       className={cn("border border-crit/40 bg-crit/[0.06] p-4", className)}
       role="alert"
       aria-label={title}
-    >
-      <h3 className="micro-label mb-2.5 flex items-center gap-2 text-crit">
-        <TriangleAlert aria-hidden className="h-3.5 w-3.5" />
-        <span>
+ >
+ <h3 className="micro-label mb-2.5 flex items-center gap-2 text-crit">
+ <TriangleAlert aria-hidden className="h-3.5 w-3.5" />
+ <span>
           {title} ({warnings.length})
-        </span>
-      </h3>
-      <ul className="space-y-2">
+ </span>
+ </h3>
+ <ul className="space-y-2">
         {warnings.map((w) => {
           const s = levelStyles[w.level];
           const Icon = s.Icon;
           return (
-            <li key={w.id} className={cn("flex items-center gap-2 text-sm", s.row)}>
-              <span className={cn("h-1.5 w-1.5 animate-pulse-soft", s.dot)} aria-hidden="true" />
-              <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
-              <span className="micro-label opacity-90">[{s.label}]</span>
-              <span className="min-w-0 text-ink">{w.message}</span>
-            </li>
-          );
+ <li key={w.id} className={cn("flex items-center gap-2 text-sm", s.row)}>
+ <span className={cn("h-1.5 w-1.5 animate-pulse-soft", s.dot)} aria-hidden="true" />
+ <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" />
+ <span className="micro-label opacity-90">[{s.label}]</span>
+ <span className="min-w-0 text-ink">{w.message}</span>
+ </li>
+ );
         })}
-      </ul>
-    </section>
-  );
+ </ul>
+ </section>
+ );
 }

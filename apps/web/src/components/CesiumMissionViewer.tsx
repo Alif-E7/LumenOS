@@ -29,7 +29,7 @@ function isWebGLAvailable(): boolean {
     return !!(
       window.WebGLRenderingContext &&
       (canvas.getContext("webgl") || canvas.getContext("experimental-webgl"))
-    );
+ );
   } catch {
     return false;
   }
@@ -117,7 +117,7 @@ export function CesiumMissionViewer({
         try {
           const provider = await Cesium.TileMapServiceImageryProvider.fromUrl(
             Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
-          );
+ );
           viewer.imageryLayers.addImageryProvider(provider);
         } catch {
           // If offline NaturalEarthII texture fails, Cesium renders the default WGS84 ellipsoid
@@ -133,7 +133,7 @@ export function CesiumMissionViewer({
             gs.longitude,
             gs.latitude,
             gs.altitudeMeters
-          );
+ );
 
           // Station Point & Label
           const stationEntity = viewer.entities.add({
@@ -276,13 +276,13 @@ export function CesiumMissionViewer({
     if (comms?.in_contact && comms.active_station) {
       const activeGs = GROUND_STATIONS.find((gs) =>
         comms.active_station?.toLowerCase().includes(gs.id)
-      );
+ );
       if (activeGs) {
         const gsPos = Cesium.Cartesian3.fromDegrees(
           activeGs.longitude,
           activeGs.latitude,
           activeGs.altitudeMeters
-        );
+ );
         if (!entitiesRef.current.rfBeam) {
           entitiesRef.current.rfBeam = viewer.entities.add({
             name: "Active RF Downlink Beam",
@@ -309,7 +309,7 @@ export function CesiumMissionViewer({
       viewer.camera.lookAt(
         subSatGroundPos,
         new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_TWO, (satAltKm + 400) * 1000)
-      );
+ );
     } else {
       viewer.trackedEntity = undefined;
     }
@@ -332,7 +332,7 @@ export function CesiumMissionViewer({
         pt.longitude_deg,
         pt.latitude_deg,
         (pt.altitude_km ?? satAltKm) * 1000
-      );
+ );
     });
 
     // Update or create Ground Track polyline
@@ -396,129 +396,129 @@ export function CesiumMissionViewer({
   // ── Render 2D Accessible Fallback if WebGL/Cesium disabled ──────────────────
   if (useFallback || !webGLSupported) {
     return (
-      <div className={`space-y-2 ${className}`}>
+ <div className={`space-y-2 ${className}`}>
         {webGLSupported && !forceFallback && (
-          <div className="flex justify-end">
-            <button
+ <div className="flex justify-end">
+ <button
               type="button"
               onClick={() => setUseFallback(false)}
               className="text-xs font-mono text-info hover:text-info underline"
-            >
+ >
               Switch to 3D Cesium View
-            </button>
-          </div>
-        )}
-        <AccessibleMissionMap
+ </button>
+ </div>
+ )}
+ <AccessibleMissionMap
           orbital={orbital}
           comms={comms}
           scenarioId={scenarioId}
           groundTrackPoints={groundTrackPoints}
         />
-      </div>
-    );
+ </div>
+ );
   }
 
   return (
-    <div
+ <div
       className={`relative w-full rounded-none overflow-hidden border border-edge bg-void ${className}`}
       style={{ height: "480px" }}
-    >
+ >
       {/* 3D WebGL Canvas Container */}
-      <div ref={containerRef} className="w-full h-full" />
+ <div ref={containerRef} className="w-full h-full" />
 
       {/* Mission Control HUD Overlay */}
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-auto">
-        <span className="bg-void/80 backdrop-blur-md border border-edge px-3 py-1 rounded-full text-xs font-mono text-info flex items-center gap-1.5 shadow-md">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span>CESIUM 3D ORBIT VIEW</span>
-        </span>
-        <span
+ <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-auto">
+ <span className="bg-void/80 backdrop-blur-md border border-edge px-3 py-1 rounded-full text-xs font-mono text-info flex items-center gap-1.5 shadow-md">
+ <span className="w-2 h-2 rounded-full bg-info animate-pulse" />
+ <span>CESIUM 3D ORBIT VIEW</span>
+ </span>
+ <span
           className={`px-2.5 py-1 rounded-full text-xs font-mono border backdrop-blur-md ${
             inEclipse
               ? "bg-indigo-950/80 border-indigo-500/30 text-indigo-300"
-              : "bg-warn/10/80 border-warn/30 text-warn"
+              : "bg-warn/10 border-warn/30 text-warn"
           }`}
-        >
-          {inEclipse ? "🌑 Umbra (Eclipse)" : "☀️ Sunlit"}
-        </span>
-      </div>
+ >
+          {inEclipse ? "🌑 Umbra (Eclipse)" : " Sunlit"}
+ </span>
+ </div>
 
       {/* Camera Mode Toolbar */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-void/80 backdrop-blur-md p-1 rounded-none border border-edge shadow-md pointer-events-auto">
-        <button
+ <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-void/80 backdrop-blur-md p-1 rounded-none border border-edge shadow-md pointer-events-auto">
+ <button
           type="button"
           onClick={() => handleCameraChange("follow")}
-          className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
+          className={`px-2 py-1 text-xs font-mono rounded-none transition-colors ${
             cameraMode === "follow"
               ? "bg-accent text-ink font-bold"
               : "text-muted hover:text-ink"
           }`}
           title="Lock camera to spacecraft in orbital frame"
-        >
+ >
           Track Sat
-        </button>
-        <button
+ </button>
+ <button
           type="button"
           onClick={() => handleCameraChange("nadir")}
-          className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
+          className={`px-2 py-1 text-xs font-mono rounded-none transition-colors ${
             cameraMode === "nadir"
               ? "bg-accent text-ink font-bold"
               : "text-muted hover:text-ink"
           }`}
           title="Direct top-down view of nadir ground swath"
-        >
+ >
           Nadir
-        </button>
-        <button
+ </button>
+ <button
           type="button"
           onClick={() => handleCameraChange("free")}
-          className={`px-2 py-1 text-xs font-mono rounded transition-colors ${
+          className={`px-2 py-1 text-xs font-mono rounded-none transition-colors ${
             cameraMode === "free"
               ? "bg-accent text-ink font-bold"
               : "text-muted hover:text-ink"
           }`}
           title="Free interactive 3D camera"
-        >
+ >
           Free 3D
-        </button>
-        <div className="h-4 w-px bg-raised mx-0.5" />
-        <button
+ </button>
+ <div className="h-4 w-px bg-raised mx-0.5" />
+ <button
           type="button"
           onClick={() => setUseFallback(true)}
-          className="px-2 py-1 text-xs font-mono text-info hover:text-info hover:bg-panel rounded"
+          className="px-2 py-1 text-xs font-mono text-info hover:text-info hover:bg-panel rounded-none"
           title="Switch to high-contrast 2D accessible map"
-        >
+ >
           2D Map
-        </button>
-      </div>
+ </button>
+ </div>
 
       {/* Bottom Coordinates & Comms HUD Bar */}
-      <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 bg-void/85 backdrop-blur-md px-4 py-2 rounded-none border border-edge/80 text-xs font-mono pointer-events-auto shadow-lg">
-        <div className="flex items-center gap-4 text-ink">
-          <span>
+ <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 bg-void/85 backdrop-blur-md px-4 py-2 rounded-none border border-edge/80 text-xs font-mono pointer-events-auto shadow-lg">
+ <div className="flex items-center gap-4 text-ink">
+ <span>
             LAT: <strong className="text-ink">{satLat.toFixed(2)}°</strong>
-          </span>
-          <span>
+ </span>
+ <span>
             LON: <strong className="text-ink">{satLon.toFixed(2)}°</strong>
-          </span>
-          <span>
+ </span>
+ <span>
             ALT: <strong className="text-ink">{satAltKm.toFixed(1)} km</strong>
-          </span>
-          <span>
+ </span>
+ <span>
             VEL: <strong className="text-ink">{(orbital?.velocity_km_s ?? 7.6).toFixed(2)} km/s</strong>
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
+ </span>
+ </div>
+ <div className="flex items-center gap-2">
           {comms?.in_contact ? (
-            <span className="flex items-center gap-1.5 text-info">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span>RF LINK: {comms.active_station} ({comms.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps)</span>
-            </span>
-          ) : (
-            <span className="text-ink0">RF LINK: NO CONTACT</span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+ <span className="flex items-center gap-1.5 text-info">
+ <span className="w-2 h-2 rounded-full bg-info animate-ping" />
+ <span>RF LINK: {comms.active_station} ({comms.current_data_rate_mbps?.toFixed(1) ?? "0.0"} Mbps)</span>
+ </span>
+ ) : (
+ <span className="text-faint">RF LINK: NO CONTACT</span>
+ )}
+ </div>
+ </div>
+ </div>
+ );
 }

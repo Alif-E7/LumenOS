@@ -97,7 +97,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Active wildfire front, FRP 850 MW, 45% smoke obscuration",
     colorHex: "#ef4444",
-    icon: "🔥",
+    icon: "",
   },
   {
     id: "fire_zone_bravo",
@@ -109,7 +109,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 2,
     description: "Rapidly spreading ridge line fire, FRP 620 MW",
     colorHex: "#f97316",
-    icon: "🔥",
+    icon: "",
   },
   {
     id: "fire_zone_charlie",
@@ -121,7 +121,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 3,
     description: "Emerging ember spotting flank, FRP 340 MW",
     colorHex: "#eab308",
-    icon: "⚠️",
+    icon: "",
   },
 
   // Flood Scout targets
@@ -135,7 +135,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Riverine flood extent 14,500 km², 95% cloud cover (SAR required)",
     colorHex: "#06b6d4",
-    icon: "🌊",
+    icon: "",
   },
   {
     id: "flood_basin_bravo",
@@ -147,7 +147,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Estuarine storm surge flooding 21,000 km²",
     colorHex: "#3b82f6",
-    icon: "🌊",
+    icon: "",
   },
   {
     id: "flood_basin_charlie",
@@ -159,7 +159,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 2,
     description: "Coastal lagoon backwater inundation 6,200 km²",
     colorHex: "#60a5fa",
-    icon: "🌊",
+    icon: "",
   },
 
   // Volcano Watch targets
@@ -173,7 +173,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Active stratovolcano, thermal hotspot 420 MW, SO2 plume 14 km",
     colorHex: "#dc2626",
-    icon: "🌋",
+    icon: "",
   },
   {
     id: "volcano_krakatoa",
@@ -185,7 +185,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Island caldera eruption, thermal hotspot 680 MW, SO2 plume 18 km",
     colorHex: "#b91c1c",
-    icon: "🌋",
+    icon: "",
   },
   {
     id: "volcano_iceland",
@@ -197,7 +197,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 2,
     description: "Basaltic fissure eruption and lava fountain",
     colorHex: "#f87171",
-    icon: "🌋",
+    icon: "",
   },
 
   // Solar Storm Sentinel targets
@@ -211,7 +211,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 1,
     description: "Polar magnetic cusp monitoring station (Geomag Lat 75.4°N)",
     colorHex: "#a855f7",
-    icon: "⚡",
+    icon: "",
   },
   {
     id: "solar_antarctic_station",
@@ -223,7 +223,7 @@ export const SCENARIO_TARGETS: ScenarioTargetCoord[] = [
     priority: 2,
     description: "Antarctic geomagnetic and solar proton flux station",
     colorHex: "#c084fc",
-    icon: "⚡",
+    icon: "",
   },
 ];
 

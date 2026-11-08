@@ -60,6 +60,6 @@ export interface ApiStatusResponse {
       status: string;
       note: string;
     }
-  >;
+ >;
 }
 

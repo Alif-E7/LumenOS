@@ -1,9 +1,10 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { BenchmarkComparisonView } from "../components/BenchmarkComparisonView";
 import { Button } from "../components/Button";
+import { BookOpen } from "lucide-react";
 
 /**
- * BenchmarkPage — Fair Three-Way Control Comparison Harness (Prompt 13).
+ * BenchmarkPage — Fair Three-Way Control Comparison Harness.
  * Evaluates Manual Pilot vs Traditional Reactive Autopilot vs LumenOS Predictive Control.
  */
 export function BenchmarkPage() {
@@ -12,29 +13,26 @@ export function BenchmarkPage() {
   const initialScenario = searchParams.get("scenario") || "wildfire_scout";
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-extrabold text-ink tracking-tight">
-              Control Strategy Benchmark
-            </h1>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono font-medium bg-accent/10/60 border border-accent text-accent-hi">
-              PROMPT 13
-            </span>
-          </div>
-          <p className="text-sm text-muted">
-            Head-to-head empirical evaluation of Manual, Reactive, and Predictive satellite flight controllers under identical physical conditions.
+          <p className="micro-label mb-2 text-accent">Benchmark Harness</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">
+            Control Strategy Benchmark
+          </h1>
+          <p className="mt-1.5 max-w-2xl text-sm text-muted">
+            Head-to-head empirical evaluation of Manual, Reactive, and Predictive satellite
+            flight controllers under identical physical conditions.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" size="sm" onClick={() => navigate("/operate")}>
-            Satellite Operations 🛰️
+            Satellite Operations
           </Button>
           <Button variant="secondary" size="sm" onClick={() => navigate("/sources")}>
-            Data Provenance 📚
+            <BookOpen className="h-3.5 w-3.5" aria-hidden /> Data Provenance
           </Button>
         </div>
       </div>
@@ -44,4 +42,3 @@ export function BenchmarkPage() {
     </div>
   );
 }
-

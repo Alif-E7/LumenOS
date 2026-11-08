@@ -8,7 +8,7 @@ export const BUNDLED_MISSION_BRIEFS: MissionBrief[] = [
     description:
       "Deploy a high-resolution thermal imaging satellite into sun-synchronous orbit to monitor active wildfire corridors across southeastern Australia.",
     difficulty: 2,
-    icon: "🔥",
+    icon: "",
     recommended_payload: "thermal_infrared",
     orbit_altitude_km: 700.0,
     orbit_inclination_deg: 98.2,
@@ -22,7 +22,7 @@ export const BUNDLED_MISSION_BRIEFS: MissionBrief[] = [
     description:
       "Map severe inundation events across the Brahmaputra and Ganges basins using Synthetic Aperture Radar (SAR), managing high storage pressure and downlink passes.",
     difficulty: 3,
-    icon: "🌊",
+    icon: "",
     recommended_payload: "synthetic_aperture_radar",
     orbit_altitude_km: 580.0,
     orbit_inclination_deg: 98.2,
@@ -36,7 +36,7 @@ export const BUNDLED_MISSION_BRIEFS: MissionBrief[] = [
     description:
       "Monitor space-weather activity, track coronal mass ejections and solar flares, and execute emergency safe mode procedures during high-energy particle radiation storms.",
     difficulty: 4,
-    icon: "☀️",
+    icon: "",
     recommended_payload: "euv_spectrometer",
     orbit_altitude_km: 700.0,
     orbit_inclination_deg: 98.5,
@@ -50,7 +50,7 @@ export const BUNDLED_MISSION_BRIEFS: MissionBrief[] = [
     description:
       "Detect thermal anomalies and sulfur dioxide (SO2) eruption plumes at Mount Merapi and Anak Krakatau while managing orbital debris collision hazards.",
     difficulty: 4,
-    icon: "🌋",
+    icon: "",
     recommended_payload: "multispectral_optical",
     orbit_altitude_km: 500.0,
     orbit_inclination_deg: 28.5,

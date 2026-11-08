@@ -54,7 +54,7 @@ function mapPendingRequest(raw: any): PendingActionRequest {
     description: raw.reason || raw.description || "",
     timestamp: new Date(
       (raw.created_at || Date.now() / 1000) * 1000
-    ).toLocaleTimeString(),
+ ).toLocaleTimeString(),
   };
 }
 
@@ -158,7 +158,7 @@ export function useRoomSocket(
       actionType: string,
       params: Record<string, unknown> = {},
       reason = ""
-    ) => {
+ ) => {
       send({
         command: "request_action",
         target_role: targetRole,
@@ -168,7 +168,7 @@ export function useRoomSocket(
       });
     },
     [send]
-  );
+ );
 
   const respondActionRequest = useCallback(
     (requestId: string, decision: "approve" | "reject", reason = "") => {
@@ -180,7 +180,7 @@ export function useRoomSocket(
       });
     },
     [send]
-  );
+ );
 
   const sendTacticalPing = useCallback(
     (pingType: string, message: string) => {
@@ -191,7 +191,7 @@ export function useRoomSocket(
       });
     },
     [send]
-  );
+ );
 
   const reassignRoles = useCallback(
     (roleAssignments: Record<string, string[]>) => {
@@ -201,7 +201,7 @@ export function useRoomSocket(
       });
     },
     [send]
-  );
+ );
 
   const pause = useCallback(() => {
     send({ command: "pause" });
@@ -344,7 +344,7 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
         feed: [
           `${String(msg.display_name || msg.player_id)} (${String(
             (msg.roles as string[])?.[0] || "crew"
-          )}): ${String(msg.action_type)}`,
+ )}): ${String(msg.action_type)}`,
           ...s.feed,
         ].slice(0, 15),
       };
@@ -361,7 +361,7 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
         feed: [
           `Request: ${String(rawReq.requester_name || "Crew")} asked ${String(
             rawReq.target_role || "station"
-          )} for ${String(rawReq.action_type)}`,
+ )} for ${String(rawReq.action_type)}`,
           ...s.feed,
         ].slice(0, 15),
       };
@@ -409,7 +409,7 @@ function reduce(s: RoomSocketState, msg: RoomServerMessage): RoomSocketState {
         feed: [
           `📢 [${String(msg.ping_type)}] ${String(msg.display_name)}: ${String(
             msg.message
-          )}`,
+ )}`,
           ...s.feed,
         ].slice(0, 15),
       };

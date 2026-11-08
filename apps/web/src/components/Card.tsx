@@ -24,14 +24,14 @@ export function Card({
 }: CardProps) {
   const interactive = Boolean(onClick);
   return (
-    <div
+ <div
       className={cn(
         "relative border border-edge bg-panel",
         frame && "tactical-frame",
         interactive &&
           "cursor-pointer transition-colors hover:border-accent-dim focus-visible:border-accent focus-visible:outline-none",
         className
-      )}
+ )}
       onClick={onClick}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
@@ -45,27 +45,27 @@ export function Card({
             }
           : undefined
       }
-    >
+ >
       {(title || icon) && (
-        <div className="flex items-center gap-3 border-b border-edge px-5 py-3.5">
+ <div className="flex items-center gap-3 border-b border-edge px-5 py-3.5">
           {icon && (
-            <span aria-hidden="true" className="text-accent">
+ <span aria-hidden="true" className="text-accent">
               {icon}
-            </span>
-          )}
-          <div className="min-w-0">
+ </span>
+ )}
+ <div className="min-w-0">
             {title && (
-              <h3 className="micro-label text-muted !text-[11px] leading-none">
+ <h3 className="micro-label text-muted !text-[11px] leading-none">
                 {title}
-              </h3>
-            )}
+ </h3>
+ )}
             {subtitle && (
-              <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="p-5">{children}</div>
-    </div>
-  );
+ <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
+ )}
+ </div>
+ </div>
+ )}
+ <div className="p-5">{children}</div>
+ </div>
+ );
 }

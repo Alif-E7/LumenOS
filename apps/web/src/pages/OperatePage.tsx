@@ -64,6 +64,7 @@ import type {
   TimelineEvent,
 } from "../types";
 import { ROLES, type RoleId } from "../lib/constants";
+import { Satellite, Activity, Radio, Globe, Crosshair, Wallet, Users, ChevronRight, LogOut, Radar } from "lucide-react";
 
 const BUDGET_TOTAL = 10000;
 
@@ -88,7 +89,7 @@ export function OperatePage() {
   const [session] = useState<MissionSession | null>(() => loadMissionSession());
   const [engineerMode, setEngineerMode] = useState(
     () => localStorage.getItem("lumenos.engineerMode") === "true"
-  );
+ );
   const [force2DMap, setForce2DMap] = useState(false);
 
   // Solo REST state
@@ -118,7 +119,7 @@ export function OperatePage() {
     session?.mode === "coop" ? session.roomCode : null,
     session?.playerId ?? "",
     undefined
-  );
+ );
 
   useEffect(() => {
     localStorage.setItem("lumenos.engineerMode", String(engineerMode));
@@ -171,7 +172,7 @@ export function OperatePage() {
     recId: string,
     action: "accept" | "reject" | "modify",
     modifiedParams?: Record<string, any>
-  ) => {
+ ) => {
     if (!session?.sessionId) return;
     try {
       if (session.mode === "solo") {
@@ -481,50 +482,50 @@ export function OperatePage() {
   // ── Guard states ─────────────────────────────────────────────────────
   if (!session || !session.missionId) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <Card title="No Active Mission" icon="🛰️">
-          <p className="text-muted text-sm mb-4">
+ <div className="max-w-3xl mx-auto px-4 py-12">
+ <Card title="No Active Mission">
+ <p className="text-muted text-sm mb-4">
             Mission Control needs an accepted contract. Start from the campaign.
-          </p>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/mode")}>Choose Mission Mode</Button>
-            <Button variant="secondary" onClick={() => navigate("/missions")}>
+ </p>
+ <div className="flex gap-2">
+ <Button onClick={() => navigate("/mode")}>Choose Mission Mode</Button>
+ <Button variant="secondary" onClick={() => navigate("/missions")}>
               Mission Campaign
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
+ </Button>
+ </div>
+ </Card>
+ </div>
+ );
   }
 
   if (isCoop && !session.roomCode) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <Card title="Not in a Room" icon="👥">
-          <p className="text-muted text-sm mb-4">
+ <div className="max-w-3xl mx-auto px-4 py-12">
+ <Card title="Not in a Room">
+ <p className="text-muted text-sm mb-4">
             This is a co-op session but no room is connected. Create or join a room first.
-          </p>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/coop/create")}>Create Room</Button>
-            <Button variant="secondary" onClick={() => navigate("/coop/join")}>Join Room</Button>
-          </div>
-        </Card>
-      </div>
-    );
+ </p>
+ <div className="flex gap-2">
+ <Button onClick={() => navigate("/coop/create")}>Create Room</Button>
+ <Button variant="secondary" onClick={() => navigate("/coop/join")}>Join Room</Button>
+ </div>
+ </Card>
+ </div>
+ );
   }
 
   if (isCoop && room.phase === "lobby") {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <Card title="Waiting in Lobby…" icon="⏳">
-          <p className="text-muted text-sm mb-4">
+ <div className="max-w-3xl mx-auto px-4 py-12">
+ <Card title="Waiting in Lobby…">
+ <p className="text-muted text-sm mb-4">
             Room <span className="font-mono text-ink">{session.roomCode}</span> — the
             host hasn't launched yet. Return to the lobby for status.
-          </p>
-          <Button onClick={() => navigate("/coop/lobby")}>Open Lobby</Button>
-        </Card>
-      </div>
-    );
+ </p>
+ <Button onClick={() => navigate("/coop/lobby")}>Open Lobby</Button>
+ </Card>
+ </div>
+ );
   }
 
   const missionHours = 24;
@@ -547,26 +548,27 @@ export function OperatePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* ── Top Header & Mission Identity ── */}
+    <div className="mx-auto max-w-7xl space-y-4 px-4 py-6 sm:px-6 lg:px-8">
+      {/* ── Command header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-edge pb-4">
         <div className="flex items-center gap-3">
-          <span className="text-3xl" aria-hidden="true">🛰️</span>
+          <span className="flex h-11 w-11 items-center justify-center border border-accent/40 bg-accent/10 text-accent">
+            <Satellite className="h-5 w-5" aria-hidden />
+          </span>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-ink tracking-tight">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-semibold tracking-tight text-ink md:text-2xl">
                 {session.missionName}
               </h1>
               <ProvenanceBadge provenance="SIMULATED_SPACECRAFT" />
             </div>
-            <p className="text-xs text-muted">
-              Contract Ref: <span className="font-mono text-info">{session.missionId}</span> ·
-              Orbiter: <span className="font-mono text-ink">LUMEN-1</span>
+            <p className="micro-label mt-1 text-faint">
+              CONTRACT {session.missionId} · ORBITER LUMEN-1
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge
             label={isCoop ? `CO-OP ROOM: ${session.roomCode}` : "SOLO FLIGHT DECK"}
             variant="info"
@@ -587,18 +589,18 @@ export function OperatePage() {
                   : "info"
             }
           />
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => setForce2DMap(!force2DMap)}
-            className="px-3 py-1 text-xs font-mono rounded-none border border-edge-strong bg-panel text-ink hover:text-ink"
             title="Toggle between 3D Cesium View and 2D Accessible Map"
           >
-            {force2DMap ? "Switch to 3D Cesium View" : "Accessible 2D Map"}
-          </button>
+            {force2DMap ? "3D View" : "2D Map"}
+          </Button>
         </div>
       </div>
 
-      {/* ── Simulation Runtime Clock & Time Controls Bar ── */}
+      {/* ── Mission clock & transport controls ── */}
       <MissionClockBar
         clock={activeClock}
         onPause={() => void handlePause()}
@@ -612,77 +614,33 @@ export function OperatePage() {
         isCoop={isCoop}
       />
 
-      {/* Status or Success Notifications */}
+      {/* Status toast */}
       {statusMessage && (
-        <div className="p-3 bg-accent/10/60 border border-accent/40 rounded-none text-xs font-mono text-blue-200 flex items-center gap-2 animate-fade-in">
-          <span>ℹ️</span> {statusMessage}
+        <div
+          className="flex items-center gap-2 border border-accent/40 bg-accent/10 px-3 py-2 font-mono text-xs text-accent animate-rise"
+          role="status"
+        >
+          <Radar className="h-3.5 w-3.5" aria-hidden /> {statusMessage}
         </div>
       )}
 
-      {/* ── Decision Matrix Grid: Objectives, Forecast Timeline, Budget & Events ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Objectives (Col span 2) */}
-        <Card title="Contract Objectives & Scoring Weights" icon="🎯" className="lg:col-span-2">
-          <ObjectiveTracker objectives={objectives} />
-        </Card>
-
-        {/* Forecast Timeline & Budget */}
-        <div className="space-y-4">
-          <Card title="Mission Budget" icon="💰">
-            <BudgetMeter remaining={budgetRemaining} total={BUDGET_TOTAL} />
-          </Card>
-          <Timeline
-            marks={[
-              {
-                label: "Now",
-                fraction:
-                  ((activeGameState?.step ?? 0) / Math.max(1, activeGameState?.step ?? 1)) *
-                  0.999,
-                kind: "active",
-              },
-            ]}
-            timeLabel={fmtClock(activeGameState?.elapsed_seconds ?? 0, missionHours)}
-          />
-          {forecastEvents.length > 0 && (
-            <div className="rounded-none border border-edge bg-panel/60 p-3 space-y-2">
-              <h4 className="text-xs font-semibold text-info uppercase tracking-wider flex items-center gap-1.5">
-                <span>🛰️</span> Upcoming Orbital Pass Forecast
-              </h4>
-              <ul className="space-y-1 text-xs font-mono">
-                {forecastEvents.slice(0, 3).map((ev) => (
-                  <li
-                    key={ev.event_id}
-                    className="flex items-center justify-between text-ink border-b border-edge/40 pb-1"
-                  >
-                    <span className="text-ink truncate max-w-[160px]">{ev.label}</span>
-                    <span className="text-info">T+{Math.floor(ev.timestamp_seconds / 60)}m</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Co-op Reconnecting Banner */}
+      {/* Co-op reconnecting banner */}
       {isCoop && room.status === "connecting" && (
         <div
-          className="rounded-none border border-warn/40 bg-warn/10/20 px-4 py-2.5 text-sm text-warn flex items-center justify-between"
+          className="flex items-center justify-between border border-warn/40 bg-warn/10 px-4 py-2.5 text-sm text-warn"
           role="status"
           aria-live="polite"
         >
           <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" aria-hidden="true" />
-            <span>Reconnecting to mission network... holding your station slot and telemetry sync.</span>
+            <span className="h-2 w-2 animate-ping bg-warn" aria-hidden="true" />
+            <span>Reconnecting to mission network…</span>
           </div>
-          <span className="text-xs font-mono font-bold text-warn bg-warn/10/60 px-2 py-0.5 rounded border border-warn/30">
-            [RECONNECTING]
-          </span>
+          <span className="micro-label">RECONNECTING</span>
         </div>
       )}
 
-      {/* Active Events & Critical Command Feedback */}
-      {(activeEvents.length > 0 || room.lastError || error) && (
+      {/* ── Decision zone: errors + active events (always on top) ── */}
+      {(error || room.lastError || activeEvents.length > 0) && (
         <div className="space-y-3">
           {error && (
             <WarningPanel
@@ -707,30 +665,144 @@ export function OperatePage() {
         </div>
       )}
 
-      {/* Active Subsystem Warnings */}
-      <div className="mb-2">
-        <WarningPanel warnings={warnings} />
+      {/* ── Flight director cockpit ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        {/* Center: situation display + systems */}
+        <div className="min-w-0 space-y-4">
+          <Card frame title="Orbital Situation Display" icon={<Globe className="h-4 w-4" />}>
+            <CesiumMissionViewer
+              orbital={activeTelemetry?.orbital}
+              comms={activeTelemetry?.comms}
+              clock={activeClock}
+              scenarioId={session.missionId}
+              groundTrackPoints={groundTrack}
+              forceFallback={force2DMap}
+            />
+          </Card>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Card title="Subsystem Status" icon={<Activity className="h-4 w-4" />}>
+              {activeTelemetry ? (
+                <div className="space-y-4">
+                  <ResourceMeter
+                    label="Spacecraft Health"
+                    value={activeTelemetry.spacecraft_health_pct}
+                    max={100}
+                    unit="%"
+                  />
+                  <ResourceMeter
+                    label="Battery SoC"
+                    value={activeTelemetry.power.battery_soc_pct}
+                    max={100}
+                    unit="%"
+                  />
+                  <ResourceMeter
+                    label="Bus Temp"
+                    value={activeTelemetry.thermal.temperature_c}
+                    max={100}
+                    unit="°C"
+                    invert
+                  />
+                  <ResourceMeter
+                    label="Comms Buffer"
+                    value={activeTelemetry.comms.data_buffer_pct}
+                    max={100}
+                    unit="%"
+                    invert
+                  />
+                  {engineerMode && (
+                    <details className="border border-edge bg-void/60 p-3">
+                      <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.1em] text-info">
+                        Deep physics telemetry
+                      </summary>
+                      <div className="mt-3 grid grid-cols-1 gap-4 font-mono text-xs text-muted sm:grid-cols-2">
+                        <div>
+                          <p className="micro-label mb-1 text-ink">Power accounting</p>
+                          <p>Solar Gen: {activeTelemetry.power.solar_output_w.toFixed(0)} W</p>
+                          <p>Bus Load: {activeTelemetry.power.total_load_w.toFixed(0)} W</p>
+                          <p>Net Power: {activeTelemetry.power.net_power_w.toFixed(0)} W</p>
+                          <p>DoD: {activeTelemetry.power.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
+                          <p>EFC: {activeTelemetry.power.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</p>
+                        </div>
+                        <div>
+                          <p className="micro-label mb-1 text-ink">Thermal balance</p>
+                          <p>Solar+Albedo: {((activeTelemetry.thermal.solar_absorbed_w ?? 0) + (activeTelemetry.thermal.albedo_absorbed_w ?? 0)).toFixed(0)} W</p>
+                          <p>Internal Heat: {activeTelemetry.thermal.internal_dissipation_w?.toFixed(0) ?? "0"} W</p>
+                          <p>Rejected: {activeTelemetry.thermal.heat_rejected_w.toFixed(0)} W</p>
+                          <p>T Bus: {activeTelemetry.thermal.temperature_c.toFixed(1)} °C</p>
+                        </div>
+                        <div>
+                          <p className="micro-label mb-1 text-ink">Comms & storage</p>
+                          <p>Data Buffer: {activeTelemetry.comms.data_buffer_mb.toFixed(1)} MB</p>
+                          <p>RF Link: {activeTelemetry.comms.in_contact ? "ACTIVE" : "NO CONTACT"}</p>
+                          <p>Ground Stn: {activeTelemetry.comms.active_station || "None"}</p>
+                          <p>Downlinked: {activeTelemetry.comms.data_downlinked_mb.toFixed(1)} MB</p>
+                        </div>
+                        <div>
+                          <p className="micro-label mb-1 text-ink">Orbit & environment</p>
+                          <p>Altitude: {activeTelemetry.orbital.altitude_km.toFixed(1)} km</p>
+                          <p>Velocity: {activeTelemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
+                          <p>True Anomaly: {activeTelemetry.orbital.true_anomaly_deg.toFixed(1)}°</p>
+                          <p>Illumination: {activeTelemetry.orbital.in_eclipse ? "Umbra" : "Sunlit"}</p>
+                        </div>
+                      </div>
+                    </details>
+                  )}
+                </div>
+              ) : (
+                <p className="font-mono text-xs text-faint">
+                  {isCoop
+                    ? "AWAITING TELEMETRY — ADVANCE THE MISSION"
+                    : "AWAITING TELEMETRY — PRESS STEP OR RESUME"}
+                </p>
+              )}
+            </Card>
+
+            <div className="space-y-4">
+              <Card title="Pass Forecast" icon={<Radio className="h-4 w-4" />}>
+                {forecastEvents.length > 0 ? (
+                  <ul className="space-y-2 font-mono text-xs">
+                    {forecastEvents.slice(0, 4).map((ev) => (
+                      <li key={ev.event_id} className="flex items-center justify-between border-b border-edge pb-1.5 last:border-0">
+                        <span className="truncate text-muted">{ev.label}</span>
+                        <span className="ml-3 shrink-0 text-info">T+{Math.floor(ev.timestamp_seconds / 60)}m</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="font-mono text-xs text-faint">NO UPCOMING CONTACTS</p>
+                )}
+              </Card>
+              <Timeline
+                marks={[
+                  {
+                    label: "Now",
+                    fraction:
+                      ((activeGameState?.step ?? 0) / Math.max(1, activeGameState?.step ?? 1)) *
+                      0.999,
+                    kind: "active",
+                  },
+                ]}
+                timeLabel={fmtClock(activeGameState?.elapsed_seconds ?? 0, missionHours)}
+                className="border border-edge bg-panel p-4"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right rail: contract & budget */}
+        <div className="space-y-4">
+          <Card frame title="Contract Objectives" icon={<Crosshair className="h-4 w-4" />}>
+            <ObjectiveTracker objectives={objectives} />
+          </Card>
+          <Card title="Mission Budget" icon={<Wallet className="h-4 w-4" />}>
+            <BudgetMeter remaining={budgetRemaining} total={BUDGET_TOTAL} />
+          </Card>
+          <WarningPanel warnings={warnings} />
+        </div>
       </div>
 
-      {/* ── Primary 3D Mission View (CesiumJS) & Live Operations Deck ── */}
-      <div className="grid grid-cols-1 gap-6">
-        <Card
-          title="Primary 3D Mission View"
-          icon="🌍"
-          subtitle="CesiumJS WGS-84 Orbit & Observation Swath (with Accessible 2D Fallback)"
-        >
-          <CesiumMissionViewer
-            orbital={activeTelemetry?.orbital}
-            comms={activeTelemetry?.comms}
-            clock={activeClock}
-            scenarioId={session.missionId}
-            groundTrackPoints={groundTrack}
-            forceFallback={force2DMap}
-          />
-        </Card>
-      </div>
-
-      {/* ── LumenOS Predictive Mission Management & Advisory (Prompt 12) ── */}
+      {/* ── LumenOS Predictive advisory ── */}
       <PredictiveAdvisoryPanel
         forecast={advisoryForecast}
         recommendations={advisoryRecs}
@@ -740,97 +812,13 @@ export function OperatePage() {
         onToggleAutomation={handleToggleAdvisoryAutomation}
       />
 
-      {/* ── Subsystems Resource Gauges & Telemetry Bar ── */}
-      <Card
-        title="Authoritative Spacecraft Telemetry"
-        icon="📊"
-        subtitle="Live state transition telemetry from physics subsystem accounting"
-      >
-        {activeTelemetry ? (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <ResourceMeter
-                label="Spacecraft Health"
-                value={activeTelemetry.spacecraft_health_pct}
-                max={100}
-                unit="%"
-              />
-              <ResourceMeter
-                label="Battery SoC"
-                value={activeTelemetry.power.battery_soc_pct}
-                max={100}
-                unit="%"
-              />
-              <ResourceMeter
-                label="Bus Temp"
-                value={activeTelemetry.thermal.temperature_c}
-                max={100}
-                unit="°C"
-                invert
-              />
-              <ResourceMeter
-                label="Comms Buffer"
-                value={activeTelemetry.comms.data_buffer_pct}
-                max={100}
-                unit="%"
-                invert
-              />
-            </div>
-
-            {/* Engineer Mode Subsystem Assumptions */}
-            {engineerMode && (
-              <details className="mt-4 rounded-none border border-edge bg-void/60 p-4" open>
-                <summary className="text-sm font-medium text-info cursor-pointer">
-                  Engineer Mode — Deep Physics Telemetry & Rate Calculations
-                </summary>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 font-mono text-xs text-muted">
-                  <div>
-                    <p className="text-ink font-semibold mb-1">POWER ACCOUNTING</p>
-                    <p>Solar Gen: {activeTelemetry.power.solar_output_w.toFixed(0)} W</p>
-                    <p>Bus Load: {activeTelemetry.power.total_load_w.toFixed(0)} W</p>
-                    <p>Net Power: {activeTelemetry.power.net_power_w.toFixed(0)} W</p>
-                    <p>DoD: {activeTelemetry.power.battery_dod_pct?.toFixed(1) ?? "0.0"}%</p>
-                    <p>EFC: {activeTelemetry.power.battery_equivalent_full_cycles?.toFixed(3) ?? "0.000"}</p>
-                  </div>
-                  <div>
-                    <p className="text-ink font-semibold mb-1">THERMAL BALANCE</p>
-                    <p>Solar+Albedo: {((activeTelemetry.thermal.solar_absorbed_w ?? 0) + (activeTelemetry.thermal.albedo_absorbed_w ?? 0)).toFixed(0)} W</p>
-                    <p>Internal Heat: {activeTelemetry.thermal.internal_dissipation_w?.toFixed(0) ?? "0"} W</p>
-                    <p>Rejected: {activeTelemetry.thermal.heat_rejected_w.toFixed(0)} W</p>
-                    <p>T Bus: {activeTelemetry.thermal.temperature_c.toFixed(1)} °C</p>
-                  </div>
-                  <div>
-                    <p className="text-ink font-semibold mb-1">COMMS & STORAGE</p>
-                    <p>Data Buffer: {activeTelemetry.comms.data_buffer_mb.toFixed(1)} MB</p>
-                    <p>RF Link: {activeTelemetry.comms.in_contact ? "ACTIVE" : "NO CONTACT"}</p>
-                    <p>Ground Stn: {activeTelemetry.comms.active_station || "None"}</p>
-                    <p>Downlinked: {activeTelemetry.comms.data_downlinked_mb.toFixed(1)} MB</p>
-                  </div>
-                  <div>
-                    <p className="text-ink font-semibold mb-1">ORBIT & ENVIRONMENT</p>
-                    <p>Altitude: {activeTelemetry.orbital.altitude_km.toFixed(1)} km</p>
-                    <p>Velocity: {activeTelemetry.orbital.velocity_km_s.toFixed(2)} km/s</p>
-                    <p>True Anomaly: {activeTelemetry.orbital.true_anomaly_deg.toFixed(1)}°</p>
-                    <p>Illumination: {activeTelemetry.orbital.in_eclipse ? "Umbra" : "Sunlit"}</p>
-                  </div>
-                </div>
-              </details>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-ink0">
-            Waiting for simulation telemetry... {isCoop ? "Advance the mission to start the flow." : "Press Step or Resume."}
-          </p>
-        )}
-      </Card>
-
-      {/* ── Co-op Team Desk vs Solo Workstations ── */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-ink">
-            {isCoop ? "Role-Specific Control Station" : "All Flight Deck Stations"}
+      {/* ── Workstations ── */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-edge pt-5">
+          <h2 className="micro-label text-faint">
+            {isCoop ? "Role Station" : "Flight Deck Stations"}
           </h2>
-          <label className="flex items-center gap-2 text-sm text-muted cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-muted">
             <input
               type="checkbox"
               checked={engineerMode}
@@ -841,19 +829,16 @@ export function OperatePage() {
           </label>
         </div>
 
-        {/* In Co-op: Display Crew Roster & Command Feed */}
+        {/* Co-op crew network */}
         {isCoop && (
-          <Card title="Crew Network & Command Operations" icon="👥" className="mb-4">
-            {/* Host Operational Controls Bar */}
+          <Card title="Crew Network & Command Operations" icon={<Users className="h-4 w-4" />}>
             {isHost && (
-              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 mb-3 rounded-none bg-void border border-warn/30">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-warn/30 bg-void p-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded bg-warn/20 text-warn font-mono font-semibold">
-                    HOST CONTROLS
+                  <span className="micro-label border border-warn/30 bg-warn/10 px-2 py-1 text-warn">
+                    HOST
                   </span>
-                  <span className="text-xs text-muted">
-                    Live simulation controls & session authority
-                  </span>
+                  <span className="text-xs text-muted">Session authority</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -864,7 +849,7 @@ export function OperatePage() {
                       else room.pause();
                     }}
                   >
-                    {room.isPaused ? "▶ Resume" : "⏸ Pause"}
+                    {room.isPaused ? "Resume" : "Pause"}
                   </Button>
                   <Button
                     size="sm"
@@ -875,7 +860,7 @@ export function OperatePage() {
                       }
                     }}
                   >
-                    🔄 Restart
+                    Restart
                   </Button>
                   <Button
                     size="sm"
@@ -886,7 +871,7 @@ export function OperatePage() {
                       }
                     }}
                   >
-                    ⏹ End Mission
+                    End Mission
                   </Button>
                 </div>
               </div>
@@ -922,16 +907,14 @@ export function OperatePage() {
           </Card>
         )}
 
-        {/* Role Workstations Tabs */}
+        {/* Role workstations */}
         <Tabs
           tabs={stationTabs.length > 0 ? stationTabs : [{ id: "none", label: "No Station Assigned" }]}
         >
           {stationTabs.length === 0 ? (
-            <p className="text-sm text-ink0">
-              No station assigned yet. Contact room host.
-            </p>
+            <p className="font-mono text-xs text-faint">No station assigned yet. Contact room host.</p>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               {myRoles.map((roleId) => {
                 const Station = STATION_COMPONENTS[roleId];
                 const RoleIcon = ROLES[roleId].Icon;
@@ -940,7 +923,7 @@ export function OperatePage() {
                     key={roleId}
                     title={ROLES[roleId].label}
                     icon={<RoleIcon className="h-4 w-4" />}
-                    subtitle={`Flight Station — ${ROLES[roleId].label}`}
+                    subtitle={ROLES[roleId].description}
                   >
                     <Station {...stationProps} />
                   </Card>
@@ -949,27 +932,27 @@ export function OperatePage() {
             </div>
           )}
         </Tabs>
-      </div>
+      </section>
 
-      {/* ── Bottom Controls Bar ── */}
-      <Card className="sticky bottom-4">
+      {/* ── Command bar (sticky) ── */}
+      <div className="sticky bottom-4 border border-edge-strong bg-panel/95 p-3 shadow-[0_-4px_24px_rgba(0,0,0,0.5)] backdrop-blur-md">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => void doStep(1)}
               disabled={stepping || isFinished(activeGameState)}
             >
-              {stepping ? "Stepping…" : "Advance ▸ 1 Step (60s)"}
+              {stepping ? "Stepping…" : "Advance 1 Step"}
             </Button>
             <Button
               variant="secondary"
               onClick={() => void doStep(5)}
               disabled={stepping || isFinished(activeGameState)}
             >
-              ▸▸ 5 Steps (5m)
+              +5 Steps
             </Button>
             {!isCoop && (
-              <label className="flex items-center gap-2 text-sm text-muted cursor-pointer ml-2">
+              <label className="ml-2 flex cursor-pointer items-center gap-2 font-mono text-xs uppercase tracking-[0.08em] text-muted">
                 <input
                   type="checkbox"
                   checked={autoRun}
@@ -982,11 +965,13 @@ export function OperatePage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(activeGameState?.status === "completed" ||
               activeGameState?.status === "failed" ||
               room.phase === "finished") && (
-              <Button onClick={() => navigate("/results")}>View Mission Results →</Button>
+              <Button onClick={() => navigate("/results")}>
+                Mission Results <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </Button>
             )}
             <Button
               variant="ghost"
@@ -1003,11 +988,11 @@ export function OperatePage() {
                 navigate("/");
               }}
             >
-              End & Leave Mission
+              <LogOut className="h-3.5 w-3.5" aria-hidden /> End & Leave
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -32,27 +32,27 @@ export function ResourceMeter({
   const text = !good ? "text-crit" : !warn ? "text-warn" : "text-ok";
 
   return (
-    <div
+ <div
       className={className}
       role="meter"
       aria-label={label}
       aria-valuenow={Number(value.toFixed(decimals))}
       aria-valuemin={0}
       aria-valuemax={max}
-    >
-      <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="micro-label text-faint">{label}</span>
-        <span className={cn("data-readout text-xs", text)}>
+ >
+ <div className="mb-1.5 flex items-baseline justify-between">
+ <span className="micro-label text-faint">{label}</span>
+ <span className={cn("data-readout text-xs", text)}>
           {value.toFixed(decimals)}
           {unit && ` ${unit}`}
-        </span>
-      </div>
-      <div className="h-1 bg-edge overflow-hidden">
-        <div
+ </span>
+ </div>
+ <div className="h-1 bg-edge overflow-hidden">
+ <div
           className={cn("h-full transition-all duration-500", color)}
           style={{ width: `${pct}%` }}
         />
-      </div>
-    </div>
-  );
+ </div>
+ </div>
+ );
 }

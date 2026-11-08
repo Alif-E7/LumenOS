@@ -25,14 +25,14 @@ const variantIcons = {
 export function StatusBadge({ label, variant = "neutral" }: StatusBadgeProps) {
   const Icon = variantIcons[variant];
   return (
-    <span
+ <span
       className={cn(
         "inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.08em]",
         variantStyles[variant]
-      )}
-    >
-      <Icon aria-hidden="true" className="h-3 w-3" strokeWidth={2.5} />
-      <span>{label}</span>
-    </span>
-  );
+ )}
+ >
+ <Icon aria-hidden="true" className="h-3 w-3" strokeWidth={2.5} />
+ <span>{label}</span>
+ </span>
+ );
 }

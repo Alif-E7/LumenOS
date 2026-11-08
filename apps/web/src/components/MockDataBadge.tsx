@@ -12,15 +12,15 @@ interface MockDataBadgeProps {
  */
 export function MockDataBadge({ reason, className }: MockDataBadgeProps) {
   return (
-    <span
+ <span
       className={cn(
         "inline-flex items-center gap-1 border border-edge-strong bg-raised px-2 py-0.5",
         "font-mono text-[10px] font-medium uppercase tracking-[0.08em] text-muted",
         className
-      )}
+ )}
       title={reason}
-    >
-      <span aria-hidden className="text-accent">◈</span> MOCK — {reason}
-    </span>
-  );
+ >
+ <span aria-hidden className="text-accent">◈</span> MOCK — {reason}
+ </span>
+ );
 }

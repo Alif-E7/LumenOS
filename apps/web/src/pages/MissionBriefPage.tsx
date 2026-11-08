@@ -3,7 +3,9 @@ import { useApi } from "../hooks/useApi";
 import { getMission } from "../api/client";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { PageHeader } from "../components/PageHeader";
 import { ContractCard } from "../components/ContractCard";
+import { missionIcon } from "../lib/constants";
 import { saveMissionSession, loadMissionSession, newPlayerId, type MissionSession } from "../lib/mission";
 
 /**
@@ -35,19 +37,19 @@ export function MissionBriefPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-accent mx-auto mb-4" />
-        <p className="text-muted">Loading mission brief…</p>
+      <div className="mx-auto max-w-4xl px-4 py-12 text-center">
+        <div className="mx-auto mb-4 h-8 w-8 animate-spin border-t-2 border-accent" />
+        <p className="font-mono text-xs uppercase tracking-[0.14em] text-muted">Loading brief</p>
       </div>
     );
   }
 
   if (error || !mission) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <Card title="Mission Not Available" icon="⚠️">
-          <p className="text-crit text-sm">{error ?? "Unknown mission"}</p>
-          <p className="text-sm text-ink0 mt-2">
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <Card title="Mission Not Available">
+          <p className="text-sm text-crit">{error ?? "Unknown mission"}</p>
+          <p className="mt-2 text-sm text-faint">
             The API server may be offline — start it on port 8000 and reload.
           </p>
           <Button variant="secondary" className="mt-4" onClick={() => navigate("/missions")}>
@@ -58,19 +60,23 @@ export function MissionBriefPage() {
     );
   }
 
+  const Icon = missionIcon(mission.id);
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-4xl" aria-hidden>{mission.icon}</span>
-        <div>
-          <h1 className="text-3xl font-bold text-ink">{mission.name}</h1>
-          <p className="text-muted">Operation “{mission.codename}” — Mission Brief</p>
-        </div>
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-8 flex items-center gap-4">
+        <span className="flex h-12 w-12 items-center justify-center border border-accent/40 bg-accent/10 text-accent">
+          <Icon className="h-6 w-6" aria-hidden />
+        </span>
+        <PageHeader
+          kicker={`Operation “${mission.codename}” · Mission Brief`}
+          title={mission.name}
+        />
       </div>
 
-      <ContractCard mission={mission} className="my-8" />
+      <ContractCard mission={mission} className="my-8" frame />
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-end">
+      <div className="flex flex-col justify-end gap-3 sm:flex-row">
         <Button variant="ghost" onClick={() => navigate("/missions")}>
           Back to Campaign
         </Button>

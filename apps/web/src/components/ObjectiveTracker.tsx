@@ -22,57 +22,57 @@ function barColor(fraction: number, isPrimary: boolean) {
 export function ObjectiveTracker({ objectives, compact = false, className }: ObjectiveTrackerProps) {
   if (objectives.length === 0) {
     return (
-      <p className={cn("font-mono text-[11px] text-faint", className)}>
+ <p className={cn("font-mono text-[11px] text-faint", className)}>
         NO OBJECTIVES TRACKED — START THE MISSION
-      </p>
-    );
+ </p>
+ );
   }
 
   return (
-    <ul className={cn("space-y-3.5", className)} aria-label="Mission objectives">
+ <ul className={cn("space-y-3.5", className)} aria-label="Mission objectives">
       {objectives.map((obj) => {
         const pct = Math.min(100, Math.round(obj.fraction * 100));
         return (
-          <li key={obj.objective_id}>
-            <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span className="text-ink">
+ <li key={obj.objective_id}>
+ <div className="flex items-baseline justify-between gap-2 text-sm">
+ <span className="text-ink">
                 {obj.is_primary && (
-                  <Star
+ <Star
                     className="mr-1 inline h-3.5 w-3.5 text-accent"
                     aria-label="Primary objective"
                     fill="currentColor"
                   />
-                )}
+ )}
                 {obj.description}
-              </span>
-              <span
+ </span>
+ <span
                 className={cn(
                   "data-readout whitespace-nowrap text-xs",
                   obj.is_complete ? "text-ok" : "text-muted"
-                )}
-              >
+ )}
+ >
                 {obj.is_complete && <Check className="mr-0.5 inline h-3 w-3" aria-hidden />}
                 {Number(obj.current_value.toFixed(1))}/{obj.target_value} {obj.unit}
-              </span>
-            </div>
+ </span>
+ </div>
             {!compact && (
-              <div
+ <div
                 className="mt-1.5 h-1 bg-edge overflow-hidden"
                 role="progressbar"
                 aria-valuenow={pct}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-label={`Progress: ${obj.description}`}
-              >
-                <div
+ >
+ <div
                   className={cn("h-full transition-all duration-500", barColor(obj.fraction, obj.is_primary))}
                   style={{ width: `${pct}%` }}
                 />
-              </div>
-            )}
-          </li>
-        );
+ </div>
+ )}
+ </li>
+ );
       })}
-    </ul>
-  );
+ </ul>
+ );
 }

@@ -54,7 +54,7 @@ export function Modal({
       }
     },
     [onClose, persistent]
-  );
+ );
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
@@ -63,41 +63,41 @@ export function Modal({
       }
     },
     [onClose, persistent]
-  );
+ );
 
   if (!open) return null;
 
   return (
-    <dialog
+ <dialog
       ref={dialogRef}
       className={cn(
         "w-full rounded-none border border-edge-strong bg-panel p-0 text-ink shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm",
         sizeClasses[size]
-      )}
+ )}
       onKeyDown={handleKeyDown}
       onClick={handleBackdropClick}
       aria-label={title}
-    >
-      <div className="p-6" onClick={(e) => e.stopPropagation()}>
+ >
+ <div className="p-6" onClick={(e) => e.stopPropagation()}>
         {title && (
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-ink">{title}</h2>
+ <div className="flex items-center justify-between mb-4">
+ <h2 className="text-xl font-bold text-ink">{title}</h2>
             {!persistent && (
-              <button
+ <button
                 onClick={onClose}
                 className="rounded-none p-1 text-muted hover:text-ink hover:bg-raised transition-colors"
                 aria-label="Close dialog"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
+ >
+ <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+ <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+ </svg>
+ </button>
+ )}
+ </div>
+ )}
         {children}
-      </div>
-    </dialog>
-  );
+ </div>
+ </dialog>
+ );
 }
 

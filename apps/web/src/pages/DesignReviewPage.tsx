@@ -4,6 +4,7 @@ import { useApi } from "../hooks/useApi";
 import { validateSpacecraft } from "../api/client";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { BudgetMeter } from "../components/BudgetMeter";
 import { loadMissionSession, saveMissionSession } from "../lib/mission";
@@ -48,9 +49,9 @@ export function DesignReviewPage() {
 
   if (!session) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <Card title="No Mission Selected" icon="⚠️">
-          <p className="text-muted text-sm">
+      <div className="mx-auto max-w-4xl px-4 py-12">
+        <Card title="No Mission Selected">
+          <p className="text-sm text-muted">
             Start from the mission campaign so the review knows which contract
             this spacecraft must satisfy.
           </p>
@@ -63,24 +64,25 @@ export function DesignReviewPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold text-ink mb-2">Design Review</h1>
-      <p className="text-muted mb-8">
-        Mission: <span className="text-ink">{session.missionName}</span> —
-        pick your spacecraft and run the pre-flight validation.
-      </p>
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <PageHeader
+        kicker="Pre-flight"
+        title="Design Review"
+        description={`Mission: ${session.missionName} — pick your spacecraft and run the pre-flight validation.`}
+        className="mb-8"
+      />
 
-      {listLoading && <p className="text-muted">Loading saved configurations…</p>}
+      {listLoading && <p className="font-mono text-xs text-faint">LOADING SAVED CONFIGURATIONS…</p>}
       {listError && (
-        <Card title="API Error" icon="⚠️">
-          <p className="text-crit text-sm">{listError}</p>
-          <p className="text-sm text-ink0 mt-2">Start the API server on port 8000.</p>
+        <Card title="API Error">
+          <p className="text-sm text-crit">{listError}</p>
+          <p className="mt-2 text-sm text-faint">Start the API server on port 8000.</p>
         </Card>
       )}
 
       {spacecraftList && spacecraftList.length === 0 && (
-        <Card title="No Spacecraft Yet" icon="🛠️">
-          <p className="text-muted text-sm mb-4">
+        <Card title="No Spacecraft Yet">
+          <p className="mb-4 text-sm text-muted">
             You need at least one spacecraft configuration. Build one in the designer.
           </p>
           <Button onClick={() => navigate("/design")}>Open Spacecraft Designer</Button>
@@ -90,21 +92,21 @@ export function DesignReviewPage() {
       {spacecraftList && spacecraftList.length > 0 && (
         <>
           <fieldset className="mb-6">
-            <legend className="text-sm font-medium text-ink mb-2">Spacecraft Configuration</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <legend className="micro-label mb-2 text-faint">Spacecraft Configuration</legend>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {spacecraftList.map((sc) => (
                 <button
                   key={sc.id}
                   onClick={() => { setSelectedId(sc.id); setValidation(null); }}
                   aria-pressed={selectedId === sc.id}
-                  className={`rounded-none border p-4 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-accent ${
+                  className={`tactical-frame-soft border p-4 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
                     selectedId === sc.id
-                      ? "border-accent bg-accent/10/30"
+                      ? "border-accent bg-accent/10"
                       : "border-edge bg-panel/50 hover:border-edge-strong"
                   }`}
                 >
-                  <p className="font-medium text-ink">🛰️ {sc.name}</p>
-                  <p className="text-xs text-ink0 mt-1 font-mono">
+                  <p className="font-medium text-ink">{sc.name}</p>
+                  <p className="data-readout mt-1 text-xs text-faint">
                     {sc.total_mass_kg.toFixed(0)} kg · {sc.power.solar_panel_area_m2} m² panels ·{" "}
                     {sc.thermal.radiator_area_m2} m² radiator
                   </p>
@@ -113,7 +115,7 @@ export function DesignReviewPage() {
             </div>
           </fieldset>
 
-          <div className="flex gap-2 mb-8">
+          <div className="mb-8 flex gap-2">
             <Button variant="secondary" onClick={runValidation} disabled={!selectedId || validating}>
               {validating ? "Validating…" : "Run Pre-Flight Validation"}
             </Button>
@@ -123,30 +125,30 @@ export function DesignReviewPage() {
           </div>
 
           {validation && (
-            <Card title="Validation Report" icon="🧪" className="mb-8">
-              <div className="flex items-center gap-2 mb-4">
+            <Card frame title="Validation Report" className="mb-8">
+              <div className="mb-4 flex items-center gap-2">
                 <StatusBadge
                   label={validation.valid ? "PASSED — cleared for launch" : "FAILED — fix errors first"}
                   variant={validation.valid ? "success" : "danger"}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                <BudgetMeter remaining={validation.mass_budget_kg} total={Math.max(validation.mass_budget_kg, 1)} showNumbers />
-                <BudgetMeter remaining={validation.power_budget_w} total={Math.max(validation.power_budget_w, 1)} showNumbers />
-                <BudgetMeter remaining={validation.thermal_margin_pct} total={100} showNumbers />
+              <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <BudgetMeter label="Mass Budget" unit="kg" remaining={validation.mass_budget_kg} total={Math.max(validation.mass_budget_kg, 1)} showNumbers />
+                <BudgetMeter label="Power Budget" unit="W" remaining={validation.power_budget_w} total={Math.max(validation.power_budget_w, 1)} showNumbers />
+                <BudgetMeter label="Thermal Margin" unit="%" remaining={validation.thermal_margin_pct} total={100} showNumbers />
               </div>
               {validation.errors.length > 0 && (
                 <div className="mb-3">
-                  <h4 className="text-sm font-semibold text-crit mb-1">Errors</h4>
-                  <ul className="text-sm text-crit list-disc list-inside">
+                  <h4 className="micro-label mb-1.5 text-crit">Errors</h4>
+                  <ul className="list-inside list-disc text-sm text-crit">
                     {validation.errors.map((e, i) => <li key={i}>{e}</li>)}
                   </ul>
                 </div>
               )}
               {validation.warnings.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-warn mb-1">Warnings</h4>
-                  <ul className="text-sm text-warn list-disc list-inside">
+                  <h4 className="micro-label mb-1.5 text-warn">Warnings</h4>
+                  <ul className="list-inside list-disc text-sm text-warn">
                     {validation.warnings.map((w, i) => <li key={i}>{w}</li>)}
                   </ul>
                 </div>
@@ -155,8 +157,8 @@ export function DesignReviewPage() {
           )}
 
           {validateError && (
-            <Card title="Validation Failed to Run" icon="⚠️" className="mb-8">
-              <p className="text-crit text-sm">{validateError}</p>
+            <Card title="Validation Failed to Run" className="mb-8">
+              <p className="text-sm text-crit">{validateError}</p>
             </Card>
           )}
 

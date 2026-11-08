@@ -30,15 +30,15 @@ export function Slider({
   const pct = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className={cn("space-y-1.5", className)}>
-      <div className="flex items-center justify-between">
-        <label className="micro-label text-faint">{label}</label>
-        <span className="data-readout text-xs text-accent">
+ <div className={cn("space-y-1.5", className)}>
+ <div className="flex items-center justify-between">
+ <label className="micro-label text-faint">{label}</label>
+ <span className="data-readout text-xs text-accent">
           {value}
           {unit && ` ${unit}`}
-        </span>
-      </div>
-      <input
+ </span>
+ </div>
+ <input
         type="range"
         min={min}
         max={max}
@@ -60,16 +60,16 @@ export function Slider({
         aria-valuemax={max}
         aria-valuenow={value}
       />
-      <div className="flex justify-between font-mono text-[10px] text-faint">
-        <span>
+ <div className="flex justify-between font-mono text-[10px] text-faint">
+ <span>
           {min}
           {unit && ` ${unit}`}
-        </span>
-        <span>
+ </span>
+ <span>
           {max}
           {unit && ` ${unit}`}
-        </span>
-      </div>
-    </div>
-  );
+ </span>
+ </div>
+ </div>
+ );
 }
