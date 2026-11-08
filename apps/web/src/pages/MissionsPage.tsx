@@ -58,13 +58,25 @@ export function MissionsPage() {
         </div>
       )}
 
-      {error && (
+      {error && missions && missions.length > 0 && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-500/40 bg-amber-950/20 text-sm text-amber-300 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>API server offline — displaying bundled mission scenarios from local catalog.</span>
+          </div>
+          <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30">
+            [OFFLINE CATALOG]
+          </span>
+        </div>
+      )}
+
+      {error && (!missions || missions.length === 0) && (
         <Card title="Error" icon="⚠️">
           <p className="text-red-400">
             Failed to load missions: {error}
           </p>
           <p className="text-sm text-slate-500 mt-2">
-            Make sure the API server is running on port 8000.
+            Make sure the API server is running on port 8000 or deployed to Render.
           </p>
         </Card>
       )}

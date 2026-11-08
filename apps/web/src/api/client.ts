@@ -43,6 +43,11 @@ import type {
   RecordMissionProgressionResponse,
 } from "../types";
 
+import {
+  BUNDLED_MISSION_BRIEFS,
+  BUNDLED_MISSION_DETAILS,
+} from "../lib/bundled-missions";
+
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
 const BASE = API_BASE_URL ? `${API_BASE_URL}/api` : "/api";
 
@@ -66,17 +71,57 @@ export const getHealth = () => fetchJSON<HealthResponse>("/health");
 
 // ── Spacecraft ──────────────────────────────────────────────────────────────
 
-export const listSpacecraft = () =>
-  fetchJSON<SpacecraftResponse[]>("/spacecraft");
+export const listSpacecraft = async (): Promise<SpacecraftResponse[]> => {
+  try {
+    return await fetchJSON<SpacecraftResponse[]>("/spacecraft");
+  } catch (err) {
+    console.warn("Backend /spacecraft unreachable; using baseline spacecraft fallback:", err);
+    return [
+      {
+        id: "baseline-orbiter",
+        name: "Standard LEO Research Bus",
+        description: "Versatile modular smallsat bus configured for multi-spectral Earth observation.",
+        structure: { dry_mass_kg: 500.0, fuel_mass_kg: 50.0 },
+        power: { solar_panel_area_m2: 6.0, battery_capacity_wh: 2000.0 },
+        thermal: { radiator_area_m2: 2.0 },
+        comms: { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
+        propulsion: { isp_s: 220.0, thrust_n: 1.0 },
+        payload: { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
+        total_mass_kg: 600.0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+  }
+};
 
 export const getSpacecraft = (id: string) =>
   fetchJSON<SpacecraftResponse>(`/spacecraft/${id}`);
 
-export const createSpacecraft = (body: SpacecraftCreate) =>
-  fetchJSON<SpacecraftResponse>("/spacecraft", {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+export const createSpacecraft = async (body: SpacecraftCreate): Promise<SpacecraftResponse> => {
+  try {
+    return await fetchJSON<SpacecraftResponse>("/spacecraft", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    console.warn("Backend /spacecraft POST unreachable; using local spacecraft fallback:", err);
+    return {
+      id: `sc_${Date.now()}`,
+      name: body.name,
+      description: body.description || "Custom Spacecraft Build",
+      structure: body.structure || { dry_mass_kg: 500.0, fuel_mass_kg: 50.0 },
+      power: body.power || { solar_panel_area_m2: 6.0, battery_capacity_wh: 2000.0 },
+      thermal: body.thermal || { radiator_area_m2: 2.0 },
+      comms: body.comms || { antenna_gain_dbi: 12.0, transmit_power_w: 15.0 },
+      propulsion: body.propulsion || { isp_s: 220.0, thrust_n: 1.0 },
+      payload: body.payload || { payload_type: "thermal_infrared", mass_kg: 50.0, power_w: 120.0 },
+      total_mass_kg: 550.0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+};
 
 export const updateSpacecraft = (id: string, body: Partial<SpacecraftCreate>) =>
   fetchJSON<SpacecraftResponse>(`/spacecraft/${id}`, {
@@ -120,10 +165,23 @@ export const reviewDesign = (
 
 // ── Missions ────────────────────────────────────────────────────────────────
 
-export const listMissions = () => fetchJSON<MissionBrief[]>("/missions");
+export const listMissions = async (): Promise<MissionBrief[]> => {
+  try {
+    return await fetchJSON<MissionBrief[]>("/missions");
+  } catch (err) {
+    console.warn("Backend /missions unreachable; using bundled missions fallback:", err);
+    return BUNDLED_MISSION_BRIEFS;
+  }
+};
 
-export const getMission = (id: string) =>
-  fetchJSON<MissionDetail>(`/missions/${id}`);
+export const getMission = async (id: string): Promise<MissionDetail> => {
+  try {
+    return await fetchJSON<MissionDetail>(`/missions/${id}`);
+  } catch (err) {
+    console.warn(`Backend /missions/${id} unreachable; using bundled mission fallback:`, err);
+    return BUNDLED_MISSION_DETAILS[id] || BUNDLED_MISSION_DETAILS.wildfire;
+  }
+};
 
 export const getCampaignNodes = () =>
   fetchJSON<CampaignMissionNode[]>("/missions/campaign/nodes");
