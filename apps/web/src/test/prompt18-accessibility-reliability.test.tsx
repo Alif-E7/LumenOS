@@ -84,19 +84,19 @@ describe("Prompt 18 — Accessibility, Reliability & Hardening Frontend Tests", 
         { id: "w3", level: "info", message: "Acquiring Svalbard ground station pass" },
       ];
 
-      render(<WarningPanel warnings={warnings} />);
+      const { container } = render(<WarningPanel warnings={warnings} />);
 
       // Verify role="alert"
       const alertRegion = screen.getByRole("alert");
       expect(alertRegion).toBeInTheDocument();
 
-      // Verify non-color textual prefixes and icons
+      // Verify non-color textual prefixes and SVG icon shapes
       expect(screen.getByText("[CRITICAL]")).toBeInTheDocument();
-      expect(screen.getByText("⛔")).toBeInTheDocument();
       expect(screen.getByText("[CAUTION]")).toBeInTheDocument();
-      expect(screen.getAllByText("⚠️").length).toBeGreaterThan(0);
       expect(screen.getByText("[INFO]")).toBeInTheDocument();
-      expect(screen.getByText("ℹ️")).toBeInTheDocument();
+      expect(container.querySelector("svg.lucide-octagon-x")).toBeInTheDocument();
+      expect(container.querySelector("svg.lucide-triangle-alert")).toBeInTheDocument();
+      expect(container.querySelector("svg.lucide-info")).toBeInTheDocument();
 
       // Verify message text
       expect(screen.getByText(/battery soc below critical reserve/i)).toBeInTheDocument();
@@ -110,15 +110,17 @@ describe("Prompt 18 — Accessibility, Reliability & Hardening Frontend Tests", 
     });
 
     it("renders StatusBadge with non-color glyphs for accessibility", () => {
-      const { rerender } = render(<StatusBadge label="Operational" variant="success" />);
-      expect(screen.getByText("✓")).toBeInTheDocument();
+      const { rerender, container } = render(<StatusBadge label="Operational" variant="success" />);
+      expect(container.querySelector("svg.lucide-check")).toBeInTheDocument();
       expect(screen.getByText("Operational")).toBeInTheDocument();
 
       rerender(<StatusBadge label="Degraded" variant="warning" />);
-      expect(screen.getByText("▲")).toBeInTheDocument();
+      expect(container.querySelector("svg.lucide-alert-triangle, svg.lucide-triangle-alert")).toBeInTheDocument();
+      expect(screen.getByText("Degraded")).toBeInTheDocument();
 
       rerender(<StatusBadge label="Offline" variant="danger" />);
-      expect(screen.getByText("✕")).toBeInTheDocument();
+      expect(container.querySelector("svg.lucide-x")).toBeInTheDocument();
+      expect(screen.getByText("Offline")).toBeInTheDocument();
     });
   });
 

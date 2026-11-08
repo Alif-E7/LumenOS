@@ -156,7 +156,7 @@ describe("Prompt 11 — Cesium 3D Mission View, Geometry & Accessible Fallback",
     expect(screen.getByText("RUNNING")).toBeInTheDocument();
 
     // Pause toggle
-    const pauseBtn = screen.getByRole("button", { name: /❚❚ Pause/i });
+    const pauseBtn = screen.getByRole("button", { name: /Pause/i });
     fireEvent.click(pauseBtn);
     expect(onPause).toHaveBeenCalledTimes(1);
 
@@ -175,16 +175,16 @@ describe("Prompt 11 — Cesium 3D Mission View, Geometry & Accessible Fallback",
     expect(onSetSpeed).toHaveBeenCalledWith(5);
 
     // Event jump button
-    const jumpBtn = screen.getByRole("button", { name: /Jump ⏭/i });
+    const jumpBtn = screen.getByRole("button", { name: /Jump/i });
     fireEvent.click(jumpBtn);
     expect(onFastForward).toHaveBeenCalledWith({ event_type: "SUNSET" });
 
     // Checkpoint save and restore
-    const saveBtn = screen.getByRole("button", { name: /💾 Save/i });
+    const saveBtn = screen.getByRole("button", { name: /Save/i });
     fireEvent.click(saveBtn);
     expect(onSaveCheckpoint).toHaveBeenCalledTimes(1);
 
-    const restoreBtn = screen.getByRole("button", { name: /↺ Restore/i });
+    const restoreBtn = screen.getByRole("button", { name: /Restore/i });
     fireEvent.click(restoreBtn);
     expect(onRestoreCheckpoint).toHaveBeenCalledTimes(1);
 
@@ -198,7 +198,7 @@ describe("Prompt 11 — Cesium 3D Mission View, Geometry & Accessible Fallback",
       />
     );
     expect(screen.getByText("PAUSED")).toBeInTheDocument();
-    const resumeBtn = screen.getByRole("button", { name: /▶ Resume/i });
+    const resumeBtn = screen.getByRole("button", { name: /Resume/i });
     fireEvent.click(resumeBtn);
     expect(onResume).toHaveBeenCalledTimes(1);
   });

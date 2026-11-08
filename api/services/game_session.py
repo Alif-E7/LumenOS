@@ -288,7 +288,13 @@ class GameSession:
                 "game_state": self._state.to_summary(),
                 "advisory": {
                     "forecast": forecast.model_dump(),
-                    "recommendations": [r.model_dump() for r in self._advisory.active_recommendations],
+                    "recommendations": [
+                        r.model_dump() for r in (
+                            self._advisory.active_recommendations.values()
+                            if isinstance(self._advisory.active_recommendations, dict)
+                            else self._advisory.active_recommendations
+                        )
+                    ],
                     "auto_executed": [r.model_dump() for r in auto_executed],
                     "metrics": self._advisory.compute_metrics_summary().model_dump(),
                 },
