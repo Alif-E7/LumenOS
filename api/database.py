@@ -7,7 +7,9 @@ automatically on application startup via `init_db()`.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text
@@ -15,6 +17,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 from api.config import settings
+
+
+# Ensure parent directory exists if using SQLite
+if "sqlite" in settings.database_url:
+    # URL format: sqlite+aiosqlite:///path/to/db
+    raw_path = settings.database_url.split("sqlite:///")[-1]
+    db_file = Path(raw_path)
+    if not db_file.is_absolute():
+        db_file = Path.cwd() / db_file
+    db_file.parent.mkdir(parents=True, exist_ok=True)
 
 
 # ── Engine & session factory ─────────────────────────────────────────────────
@@ -96,6 +108,13 @@ class MissionRunRow(Base):
 
 async def init_db() -> None:
     """Create all tables if they don't exist."""
+    if "sqlite" in settings.database_url:
+        raw_path = settings.database_url.split("sqlite:///")[-1]
+        db_file = Path(raw_path)
+        if not db_file.is_absolute():
+            db_file = Path.cwd() / db_file
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

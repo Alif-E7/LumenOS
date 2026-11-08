@@ -12,6 +12,8 @@ from pydantic_settings import BaseSettings
 
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_DATA_DIR = _PROJECT_ROOT / "data"
+_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Settings(BaseSettings):
@@ -24,7 +26,7 @@ class Settings(BaseSettings):
 
     # ── Database ─────────────────────────────────────────────────────────
     # SQLite for local development; swap the URL for PostgreSQL in production.
-    database_url: str = f"sqlite+aiosqlite:///{_PROJECT_ROOT / 'data' / 'lumenos.db'}"
+    database_url: str = f"sqlite+aiosqlite:///{_DATA_DIR / 'lumenos.db'}"
 
     # ── CORS ─────────────────────────────────────────────────────────────
     cors_origins: list[str] = [
