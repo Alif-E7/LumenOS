@@ -28,7 +28,7 @@ export interface UltraRealisticEarthFlightProps {
   className?: string;
 }
 
-export type CameraViewMode = "tpp" | "global" | "wing" | "free";
+export type CameraViewMode = "tpp" | "nadir" | "orbit" | "global" | "wing" | "free";
 
 const EARTH_RADIUS = 5.0;
 
@@ -513,55 +513,164 @@ function createRippleSprite(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas);
 }
 
-/** Procedural 3D Spacecraft Model with RCS and Main Ion Thruster. */
+/** Procedural 3D Spacecraft Model with forward-facing (+Z) avionics, lateral (+/-X) solar wings, nadir (-Y) dish & sensors, and aft (-Z) ion thruster. */
 function createSpacecraftModel(): THREE.Group {
   const ship = new THREE.Group();
 
-  // Central bus
-  const busMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, metalness: 0.85, roughness: 0.25 });
-  const bus = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), busMat);
+  // 1. Central Avionics Bus: Length along Z (0.75), Width along X (0.5), Height along Y (0.42)
+  const busMat = new THREE.MeshStandardMaterial({
+    color: 0xcfd8dc,
+    metalness: 0.85,
+    roughness: 0.25,
+  });
+  const bus = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.75), busMat);
   ship.add(bus);
 
-  // Gold foil blanket wrap
-  const foilMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.95, roughness: 0.35 });
-  const foil = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.22, 0.42), foilMat);
+  // Gold Kapton Thermal Foil Wrap (central section)
+  const foilMat = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    metalness: 0.95,
+    roughness: 0.35,
+  });
+  const foil = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.44, 0.38), foilMat);
   ship.add(foil);
 
-  // Solar wings
-  const solarMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.65, roughness: 0.2 });
-  const wingGeom = new THREE.BoxGeometry(0.35, 0.02, 0.9);
+  // Radiator Panels on top (+Y space-facing)
+  const radMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    metalness: 0.9,
+    roughness: 0.1,
+  });
+  const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.7), radMat);
+  radiator.position.set(0, 0.22, 0);
+  ship.add(radiator);
 
-  const rightWing = new THREE.Mesh(wingGeom, solarMat);
-  rightWing.position.set(0, 0, 0.7);
-  ship.add(rightWing);
+  // "TPP" Mission Insignia Plaque on the side flank (+X flank) matching real reference
+  const plaqueCanvas = document.createElement("canvas");
+  plaqueCanvas.width = 128;
+  plaqueCanvas.height = 64;
+  const pctx = plaqueCanvas.getContext("2d")!;
+  pctx.fillStyle = "#1e293b";
+  pctx.fillRect(0, 0, 128, 64);
+  pctx.fillStyle = "#38bdf8";
+  pctx.font = "bold 32px sans-serif";
+  pctx.textAlign = "center";
+  pctx.textBaseline = "middle";
+  pctx.fillText("TPP", 64, 32);
+  const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
+  const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex });
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.12), plaqueMat);
+  plaque.rotation.y = Math.PI / 2;
+  plaque.position.set(0.255, 0.05, 0);
+  ship.add(plaque);
 
-  const leftWing = new THREE.Mesh(wingGeom, solarMat);
-  leftWing.position.set(0, 0, -0.7);
-  ship.add(leftWing);
+  // 2. Dual Solar Array Wings extending laterally on +/- X
+  const solarMat = new THREE.MeshStandardMaterial({
+    color: 0x1d4ed8,
+    metalness: 0.7,
+    roughness: 0.2,
+    emissive: 0x0f172a,
+  });
+  const wingFrameMat = new THREE.MeshStandardMaterial({
+    color: 0xd97706,
+    metalness: 0.9,
+    roughness: 0.3,
+  });
 
-  // Dish antenna
-  const dishMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+  const wingPanelGeom = new THREE.BoxGeometry(0.85, 0.015, 0.42);
+
+  // Right Wing (+X)
+  const rightWingGroup = new THREE.Group();
+  rightWingGroup.position.set(0.28, 0, 0);
+  const rightBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), busMat);
+  rightBoom.rotation.z = Math.PI / 2;
+  rightBoom.position.set(0.1, 0, 0);
+  rightWingGroup.add(rightBoom);
+
+  const rightPanel = new THREE.Mesh(wingPanelGeom, solarMat);
+  rightPanel.position.set(0.62, 0, 0);
+  rightWingGroup.add(rightPanel);
+
+  const rightBorder = new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.018, 0.44), wingFrameMat);
+  rightBorder.position.set(0.62, 0, 0);
+  rightBorder.scale.set(0.98, 0.8, 0.96);
+  rightWingGroup.add(rightBorder);
+  ship.add(rightWingGroup);
+
+  // Left Wing (-X)
+  const leftWingGroup = new THREE.Group();
+  leftWingGroup.position.set(-0.28, 0, 0);
+  const leftBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), busMat);
+  leftBoom.rotation.z = Math.PI / 2;
+  leftBoom.position.set(-0.1, 0, 0);
+  leftWingGroup.add(leftBoom);
+
+  const leftPanel = new THREE.Mesh(wingPanelGeom, solarMat);
+  leftPanel.position.set(-0.62, 0, 0);
+  leftWingGroup.add(leftPanel);
+
+  const leftBorder = new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.018, 0.44), wingFrameMat);
+  leftBorder.position.set(-0.62, 0, 0);
+  leftBorder.scale.set(0.98, 0.8, 0.96);
+  leftWingGroup.add(leftBorder);
+  ship.add(leftWingGroup);
+
+  // 3. Nadir High-Gain Parabolic Dish & Earth Sensors on -Y (Earth-facing)
+  const dishMat = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
+    metalness: 0.3,
+    roughness: 0.3,
+  });
   const dish = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.08, 24, 1, true), dishMat);
-  dish.rotation.x = Math.PI;
-  dish.position.set(0, -0.28, 0);
+  dish.rotation.x = 0; // pointing down along -Y
+  dish.position.set(0, -0.26, 0.1);
   ship.add(dish);
 
-  // Thruster nozzle
-  const nozzleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9 });
-  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.04, 0.12, 16), nozzleMat);
-  nozzle.rotation.z = Math.PI / 2;
-  nozzle.position.set(-0.3, 0, 0);
+  // Earth Imager Aperture lens (Nadir optical sensor on -Y)
+  const lensMat = new THREE.MeshStandardMaterial({
+    color: 0x0284c7,
+    roughness: 0.1,
+    metalness: 0.9,
+  });
+  const imager = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 16), lensMat);
+  imager.position.set(0, -0.22, -0.15);
+  ship.add(imager);
+
+  // 4. Forward Avionics Nose Cone at +Z (flight velocity direction)
+  const noseMat = new THREE.MeshStandardMaterial({
+    color: 0x64748b,
+    metalness: 0.9,
+    roughness: 0.2,
+  });
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.18, 16), noseMat);
+  nose.rotation.x = Math.PI / 2; // points forward along +Z
+  nose.position.set(0, 0, 0.44);
+  ship.add(nose);
+
+  // 5. Aft Ion Thruster Assembly at -Z
+  const nozzleMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    metalness: 0.95,
+    roughness: 0.2,
+  });
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.05, 0.16, 20), nozzleMat);
+  nozzle.rotation.x = Math.PI / 2; // nozzle points backward along -Z
+  nozzle.position.set(0, 0, -0.42);
   ship.add(nozzle);
 
-  // Dynamic Ion Thruster Plume
-  const plumeMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.9 });
-  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, 16), plumeMat);
+  // Glowing Plasma Thruster Plume at -Z (expands backward along -Z)
+  const plumeMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
+    transparent: true,
+    opacity: 0.95,
+  });
+  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.45, 16), plumeMat);
   plume.name = "thrusterPlume";
-  plume.rotation.z = -Math.PI / 2;
-  plume.position.set(-0.52, 0, 0);
+  plume.rotation.x = -Math.PI / 2; // cone points backward along -Z
+  plume.position.set(0, 0, -0.68);
   ship.add(plume);
 
-  ship.scale.set(0.65, 0.65, 0.65);
+  ship.scale.set(0.7, 0.7, 0.7);
   return ship;
 }
 
@@ -569,8 +678,9 @@ function createSpacecraftModel(): THREE.Group {
  * Ultra-Realistic 3D Space Flight Game.
  *
  * Core Features:
- * - True Third-Person Perspective (TPP) by default ("driving the satellite").
- * - Continuous 60 FPS orbital motion with player steering & boost (Arrow keys / WASD / On-screen controls).
+ * - True Third-Person Perspective (TPP Chase) by default ("driving the satellite").
+ * - Interactive Camera Switcher: TPP Chase, Ride-Along (Nadir), and Orbit View.
+ * - Continuous 60 FPS orbital motion with player steering & boost (Arrow keys / WASD / C key / On-screen controls).
  * - Majestic Sun with radiant lens flare rays and solar corona.
  * - Spectacular live animated disasters across planet Earth (wildfires, volcanoes, floods, auroras, typhoons).
  * - Target-in-range laser lock and sound/HUD alerts.
@@ -602,22 +712,28 @@ export function UltraRealisticEarthFlight({
 
   const isDraggingRef = useRef(false);
   const mousePosRef = useRef({ x: 0, y: 0 });
-  const orbitAngleRef = useRef({ theta: 0.65, phi: 0.35 });
+  const orbitAngleRef = useRef({ theta: 0.65, phi: 0.35, radius: 19.0 });
   const viewModeRef = useRef<CameraViewMode>("tpp");
   viewModeRef.current = viewMode;
+
+  // Camera transition lerp targets
+  const camPosRef = useRef(new THREE.Vector3(0, 5, 12));
+  const camLookAtRef = useRef(new THREE.Vector3(0, 0, 0));
+  const camUpRef = useRef(new THREE.Vector3(0, 1, 0));
+  const tppZoomRef = useRef(1.0);
 
   const satLat = orbital?.latitude_deg ?? -33.8;
   const satLon = orbital?.longitude_deg ?? 145.0;
   const satAltKm = orbital?.altitude_km ?? 550.0;
   const inEclipse = orbital?.in_eclipse ?? false;
 
-  const orbitRadius = EARTH_RADIUS + 0.75;
+  const orbitRadius = EARTH_RADIUS + 0.85;
 
   const scenarioTargets = useMemo(() => {
     return GLOBAL_EARTH_EVENTS.filter((e) => e.scenarioId === scenarioId);
   }, [scenarioId]);
 
-  // Handle Steering Inputs (Keyboard)
+  // Handle Steering & Camera Inputs (Keyboard)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (["ArrowUp", "KeyW"].includes(e.code)) flightState.current.keys.w = true;
@@ -627,6 +743,13 @@ export function UltraRealisticEarthFlight({
       if (["Space", "ShiftLeft"].includes(e.code)) {
         flightState.current.keys.space = true;
         setIsBoosting(true);
+      }
+      if (["KeyC", "KeyV"].includes(e.code)) {
+        setViewMode((prev) => {
+          if (prev === "tpp") return "nadir";
+          if (prev === "nadir" || prev === "wing") return "orbit";
+          return "tpp";
+        });
       }
     };
 
@@ -1014,15 +1137,21 @@ export function UltraRealisticEarthFlight({
       const toz = Math.cos(fs.progress) * orbitRadius * Math.cos(Math.PI * 0.3);
       const forwardDir = new THREE.Vector3(tox, toy, toz).normalize();
 
-      // Orient spacecraft facing along velocity vector with steering pitch & bank roll
+      const radialOut = spacecraft.position.clone().normalize();
+      const radialDown = radialOut.clone().negate();
+      const lateral = new THREE.Vector3().crossVectors(radialOut, forwardDir).normalize();
+
+      // Orient spacecraft facing along velocity vector with +Z forward, +Y zenith, -Y nadir
+      spacecraft.up.copy(radialOut);
       spacecraft.lookAt(spacecraft.position.clone().add(forwardDir));
-      spacecraft.rotateZ(fs.roll);
       spacecraft.rotateX(-fs.pitch);
+      spacecraft.rotateZ(-fs.roll);
+      spacecraft.rotateY(fs.yaw);
 
       // Thruster plume flaring when boosting
       const plume = spacecraft.getObjectByName("thrusterPlume");
       if (plume) {
-        const pScale = fs.keys.space ? 2.2 + 0.3 * Math.sin(clockTime * 25) : 1.0 + 0.15 * Math.sin(clockTime * 15);
+        const pScale = fs.keys.space ? 2.3 + 0.3 * Math.sin(clockTime * 25) : 1.0 + 0.15 * Math.sin(clockTime * 15);
         plume.scale.set(pScale, pScale, pScale);
       }
 
@@ -1113,34 +1242,70 @@ export function UltraRealisticEarthFlight({
       }
       setInRangeTargetName(acquiredTarget);
 
-      // ── 12. CAMERA MODES: TPP BY DEFAULT ("DRIVING THE SATELLITE") ──
+      // ── 12. CAMERA MODES: TPP CHASE BY DEFAULT, NADIR RIDE-ALONG, ORBIT VIEW ──
       const currentMode = viewModeRef.current;
-      if (currentMode === "tpp") {
-        // 🚀 Third-Person Chase Camera: directly behind the spaceship facing forward!
-        const chaseBehind = forwardDir.clone().multiplyScalar(-2.3);
-        const chaseUp = spacecraft.position.clone().normalize().multiplyScalar(0.75);
-        camera.position.copy(spacecraft.position).add(chaseBehind).add(chaseUp);
+      const targetCamPos = new THREE.Vector3();
+      const targetLookAt = new THREE.Vector3();
+      const targetCamUp = new THREE.Vector3();
 
-        // Look forward past the nose toward Earth's horizon ahead
-        const lookTarget = spacecraft.position.clone().add(forwardDir.clone().multiplyScalar(4.0));
-        camera.lookAt(lookTarget);
-      } else if (currentMode === "global") {
-        // Panoramic Orbital view matching Picture 2
-        const rad = 21.0;
+      if (currentMode === "tpp") {
+        // 🚀 Third-Person Perspective (TPP Chase):
+        // Positioned behind and slightly above the spacecraft, with a gentle lateral offset
+        // so the satellite is prominently framed in the foreground and Earth fills the background (matching Image 5)
+        const zoom = tppZoomRef.current;
+        const chaseBehind = forwardDir.clone().multiplyScalar(-3.0 * zoom);
+        const chaseUp = radialOut.clone().multiplyScalar(1.25 * zoom);
+        const chaseSide = lateral.clone().multiplyScalar(0.75 * zoom);
+
+        targetCamPos.copy(spacecraft.position).add(chaseBehind).add(chaseUp).add(chaseSide);
+
+        // Look ahead past the spacecraft nose down toward Earth's horizon and the orbit ring ahead
+        targetLookAt.copy(spacecraft.position)
+          .add(forwardDir.clone().multiplyScalar(1.4))
+          .add(radialDown.clone().multiplyScalar(0.45));
+
+        // Up is radial outward: keeps Earth beneath the horizon consistently without gimbal tumbling
+        targetCamUp.copy(radialOut);
+      } else if (currentMode === "nadir" || currentMode === "wing") {
+        // 🛰️ Ride-Along (Nadir):
+        // Satellite observation camera looking directly down at Earth below, with spacecraft in frame
+        const nadirPos = spacecraft.position.clone()
+          .add(radialOut.clone().multiplyScalar(1.9))
+          .add(lateral.clone().multiplyScalar(0.55));
+
+        targetCamPos.copy(nadirPos);
+
+        // Point directly down at the sub-satellite point on Earth's surface
+        const subSatPos = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS);
+        targetLookAt.copy(subSatPos);
+
+        // Up along flight direction: Earth surface scrolls forward beneath the satellite
+        targetCamUp.copy(forwardDir);
+      } else {
+        // 🌍 Orbit View ("orbit" or "global" or "free"):
+        // Grand panoramic 3D view of planet Earth, complete glowing orbit ring, and all disasters
+        const rad = orbitAngleRef.current.radius || 19.0;
         const theta = orbitAngleRef.current.theta;
         const phi = orbitAngleRef.current.phi;
-        camera.position.set(
+
+        targetCamPos.set(
           rad * Math.cos(phi) * Math.sin(theta),
           rad * Math.sin(phi),
           rad * Math.cos(phi) * Math.cos(theta)
         );
-        camera.lookAt(0, 0, 0);
-      } else if (currentMode === "wing") {
-        // Wing Cam
-        const wingOffset = new THREE.Vector3(0, 0.45, 1.25);
-        camera.position.copy(spacecraft.position).add(wingOffset);
-        camera.lookAt(spacecraft.position);
+        targetLookAt.set(0, 0, 0);
+        targetCamUp.set(0, 1, 0);
       }
+
+      // Smooth camera interpolation (lerp)
+      const lerpSpeed = currentMode === "orbit" ? 0.08 : 0.12;
+      camPosRef.current.lerp(targetCamPos, lerpSpeed);
+      camLookAtRef.current.lerp(targetLookAt, lerpSpeed);
+      camUpRef.current.lerp(targetCamUp, lerpSpeed);
+
+      camera.position.copy(camPosRef.current);
+      camera.up.copy(camUpRef.current);
+      camera.lookAt(camLookAtRef.current);
 
       // Sunburst plane always faces the camera
       sunburstMesh.lookAt(camera.position);
@@ -1150,7 +1315,7 @@ export function UltraRealisticEarthFlight({
 
     animate();
 
-    // Mouse Drag Controls (When in Free/Global mode)
+    // Mouse Drag Controls (When in Free/Orbit mode)
     const onMouseDown = (e: MouseEvent) => {
       isDraggingRef.current = true;
       mousePosRef.current = { x: e.clientX, y: e.clientY };
@@ -1162,11 +1327,14 @@ export function UltraRealisticEarthFlight({
       const dy = e.clientY - mousePosRef.current.y;
       mousePosRef.current = { x: e.clientX, y: e.clientY };
 
-      orbitAngleRef.current.theta -= dx * 0.005;
-      orbitAngleRef.current.phi = Math.max(
-        -Math.PI * 0.45,
-        Math.min(Math.PI * 0.45, orbitAngleRef.current.phi + dy * 0.005)
-      );
+      const currentMode = viewModeRef.current;
+      if (currentMode === "orbit" || currentMode === "global" || currentMode === "free") {
+        orbitAngleRef.current.theta -= dx * 0.005;
+        orbitAngleRef.current.phi = Math.max(
+          -Math.PI * 0.45,
+          Math.min(Math.PI * 0.45, orbitAngleRef.current.phi + dy * 0.005)
+        );
+      }
     };
 
     const onMouseUp = () => {
@@ -1175,8 +1343,15 @@ export function UltraRealisticEarthFlight({
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      camera.fov = Math.max(20, Math.min(65, camera.fov + e.deltaY * 0.04));
-      camera.updateProjectionMatrix();
+      const currentMode = viewModeRef.current;
+      if (currentMode === "orbit" || currentMode === "global" || currentMode === "free") {
+        orbitAngleRef.current.radius = Math.max(
+          11.0,
+          Math.min(32.0, (orbitAngleRef.current.radius || 19.0) + e.deltaY * 0.02)
+        );
+      } else {
+        tppZoomRef.current = Math.max(0.65, Math.min(1.85, tppZoomRef.current + e.deltaY * 0.0015));
+      }
     };
 
     const onResize = () => {
@@ -1233,33 +1408,47 @@ export function UltraRealisticEarthFlight({
       {/* 3D WebGL Canvas */}
       <div ref={mountRef} className="w-full h-full cursor-crosshair" />
 
-      {/* ── Top-Right: Camera Mode Switcher (TPP by Default!) ── */}
-      <div className="absolute top-3 right-3 flex items-center gap-1 bg-void/85 backdrop-blur-md p-1 rounded-full border border-edge shadow-xl pointer-events-auto z-20">
-        {(
-          [
-            ["tpp", "🚀 Pilot (TPP)"],
-            ["global", "🌍 3D Globe"],
-            ["wing", "🛰️ Wing Cam"],
-            ["free", "🖐️ Free 3D"],
-          ] as Array<[CameraViewMode, string]>
-        ).map(([mode, label]) => (
-          <button
-            key={mode}
-            type="button"
-            onClick={() => setViewMode(mode)}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
-              viewMode === mode
-                ? "bg-accent text-ink shadow-sm"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* ── Top-Right: Camera Mode Switcher (TPP Chase, Ride-Along Nadir, Orbit View) ── */}
+      <div className="absolute top-16 right-3 sm:right-6 flex flex-col items-end gap-1.5 z-40 pointer-events-auto">
+        <div className="flex items-center gap-1 bg-void/90 backdrop-blur-md p-1.5 rounded-full border border-edge/80 shadow-2xl">
+          {(
+            [
+              { id: "tpp", label: "TPP Chase", icon: "🚀", desc: "Third-Person Pilot View" },
+              { id: "nadir", label: "Ride-Along (Nadir)", icon: "🛰️", desc: "Down-Looking Earth Observation" },
+              { id: "orbit", label: "Orbit View", icon: "🌍", desc: "3D Global Orbit View" },
+            ] as const
+          ).map((opt) => {
+            const active =
+              viewMode === opt.id ||
+              (opt.id === "orbit" && (viewMode === "global" || viewMode === "free")) ||
+              (opt.id === "nadir" && viewMode === "wing");
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setViewMode(opt.id as CameraViewMode)}
+                title={`${opt.label} — ${opt.desc} (Press C to switch)`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ${
+                  active
+                    ? "bg-accent text-ink shadow-md ring-1 ring-accent/60 scale-[1.02]"
+                    : "text-muted hover:text-ink hover:bg-raised/60"
+                }`}
+              >
+                <span>{opt.icon}</span>
+                <span className="hidden sm:inline">{opt.label}</span>
+                <span className="sm:hidden">{opt.label.split(" ")[0]}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[10px] text-faint font-mono mr-2 flex items-center gap-1">
+          <span>Toggle key:</span>
+          <kbd className="px-1.5 py-0.5 rounded bg-raised border border-edge text-muted text-[10px] font-bold">C</kbd>
+        </div>
       </div>
 
-      {/* ── Top-Left: Live Orbital Status & Speedometer ── */}
-      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-2 pointer-events-none z-20">
+      {/* ── Live Orbital Status & Speedometer ── */}
+      <div className="absolute top-48 left-3 flex flex-wrap items-center gap-2 pointer-events-none z-20 max-w-sm">
         <span className="bg-void/85 backdrop-blur-md border border-cyan-500/40 px-3 py-1 rounded-full text-xs text-cyan-300 shadow-md flex items-center gap-1.5 font-bold font-mono">
           <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: "6s" }} />
           <span>VEL: {orbitalSpeedKmS.toFixed(1)} km/s</span>

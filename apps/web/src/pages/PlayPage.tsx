@@ -344,7 +344,7 @@ export function PlayPage() {
       />
 
       {/* ── Top-left: mission goal + goals ── */}
-      <div className="absolute top-3 left-3 z-30 max-w-sm pointer-events-auto">
+      <div className="absolute top-16 left-3 z-30 max-w-sm pointer-events-auto">
         <div className="bg-void/80 backdrop-blur-md rounded-2xl border border-edge px-4 py-3 shadow-lg">
           <div className="text-[11px] font-bold uppercase tracking-wider text-accent">
             Mission: {session?.missionName ?? missionId}
@@ -374,7 +374,7 @@ export function PlayPage() {
       </div>
 
       {/* ── Top-center: mission clock ── */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
         <div className="bg-void/80 backdrop-blur-md rounded-full border border-edge px-4 py-1.5 shadow-lg text-center">
           <span className="text-xs text-faint mr-1">Flight time</span>
           <span className="text-sm font-bold text-ink tabular-nums">{missionClock(elapsed)}</span>
@@ -386,7 +386,7 @@ export function PlayPage() {
 
       {/* ── Onboarding tip banner ── */}
       {tip && !kidEventView && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
           <div className="flex items-center gap-3 bg-sky-950/90 backdrop-blur-md rounded-full border border-sky-400/40 px-4 py-2 shadow-lg max-w-md">
             <span className="text-sm text-sky-100">{tip.text}</span>
             <button
@@ -485,9 +485,9 @@ export function PlayPage() {
       <button
         type="button"
         onClick={() => navigate("/mission-end")}
-        className="absolute top-3 right-3 z-20 mt-12 text-[11px] text-faint hover:text-muted pointer-events-auto"
+        className="absolute top-32 right-4 sm:right-6 z-40 text-xs text-faint hover:text-rose-300 hover:bg-rose-950/40 border border-transparent hover:border-rose-800/50 px-3 py-1 rounded-full transition-colors pointer-events-auto"
       >
-        End flight
+        ✕ End flight
       </button>
 
       {/* ── Event decision popup ── */}
