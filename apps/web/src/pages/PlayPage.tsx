@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   Camera,
   Radio,
@@ -23,7 +23,7 @@ import {
   performAction,
   resolveEvent,
 } from "../api/client";
-import { loadMissionSession } from "../lib/mission";
+import { loadMissionSession, saveMissionSession, newPlayerId, type MissionSession } from "../lib/mission";
 import {
   KID_ACTIONS,
   coinsLeft,
@@ -66,9 +66,15 @@ const SPEEDS = [
  */
 export function PlayPage() {
   const navigate = useNavigate();
-  const session = useMemo(() => loadMissionSession(), []);
-  const sessionId = session?.sessionId ?? null;
-  const missionId = session?.missionId ?? "wildfire";
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const locationState = location.state as { sessionId?: string; missionId?: string } | null;
+  const querySessionId = searchParams.get("session");
+  const [session, setSession] = useState(() => loadMissionSession());
+
+  const effectiveSessionId = locationState?.sessionId ?? querySessionId ?? session?.sessionId ?? null;
+  const sessionId = effectiveSessionId;
+  const missionId = locationState?.missionId ?? session?.missionId ?? searchParams.get("mission") ?? "wildfire";
 
   const [state, setState] = useState<GameStateSummary | null>(null);
   const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
@@ -77,13 +83,31 @@ export function PlayPage() {
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
   const [lumiAdvice, setLumiAdvice] = useState<LumiAdvice | null>(null);
 
-  const [running, setRunning] = useState(false);
+  const [running, setRunning] = useState(true);
   const [speedIdx, setSpeedIdx] = useState(0);
   const [busy, setBusy] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tip, setTip] = useState<LumiTip | null>(null);
   const toastSeq = useRef(0);
   const endedRef = useRef(false);
+
+  // ── Sync session to localStorage if arrived via router state ─────────────
+  useEffect(() => {
+    if (effectiveSessionId && session?.sessionId !== effectiveSessionId) {
+      const updated: MissionSession = {
+        mode: session?.mode ?? "solo",
+        missionId,
+        missionName: session?.missionName ?? "Mission",
+        spacecraftId: null,
+        sessionId: effectiveSessionId,
+        playerId: session?.playerId ?? newPlayerId(),
+        roomCode: null,
+        experience: "simple",
+      };
+      saveMissionSession(updated);
+      setSession(updated);
+    }
+  }, [effectiveSessionId, missionId, session]);
 
   // ── Toasts ────────────────────────────────────────────────────────────────
   const pushToast = useCallback((text: string, kind: Toast["kind"] = "ok") => {
@@ -94,9 +118,14 @@ export function PlayPage() {
 
   // ── Guard: need a live session (solo only — co-op keeps the expert deck) ──
   useEffect(() => {
-    if (!session?.sessionId) navigate("/missions", { replace: true });
-    else if (session.mode === "coop") navigate("/operate", { replace: true });
-  }, [session, navigate]);
+    const s = loadMissionSession();
+    const effectiveId = locationState?.sessionId ?? querySessionId ?? s?.sessionId;
+    if (!effectiveId) {
+      navigate("/missions", { replace: true });
+    } else if (s?.mode === "coop") {
+      navigate("/operate", { replace: true });
+    }
+  }, [locationState, querySessionId, navigate]);
 
   // ── Initial load ──────────────────────────────────────────────────────────
   const refresh = useCallback(async () => {
@@ -109,11 +138,30 @@ export function PlayPage() {
       ]);
       const gs = stateResp.game_state;
       setState(gs);
-      setTelemetry(telResp.telemetry);
+
+      const tel = telResp?.telemetry;
+      const hasValidTel = tel && typeof tel === "object" && Object.keys(tel).length > 0 && !!tel.power;
+      if (hasValidTel) {
+        setTelemetry(tel);
+        setTip(situationTip(kidGauges(tel), gs, tel.orbital?.in_eclipse ?? false));
+      } else {
+        // Step once to establish initial telemetry snapshot
+        try {
+          const stepResp = await stepGame(sessionId, 1);
+          const last = stepResp.results?.[stepResp.results.length - 1];
+          if (last?.telemetry) {
+            setState(last.game_state);
+            setTelemetry(last.telemetry);
+            setTip(situationTip(kidGauges(last.telemetry), last.game_state, last.telemetry.orbital?.in_eclipse ?? false));
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
       if (clockResp?.clock) setClock(clockResp.clock);
       const events = (gs.active_events ?? []).filter((e) => e.is_pending);
       setActiveEvent(events[0] ?? null);
-      setTip(situationTip(kidGauges(telResp.telemetry), gs, telResp.telemetry.orbital.in_eclipse));
     } catch {
       pushToast("Lost contact with mission control…", "error");
     }
@@ -184,7 +232,7 @@ export function PlayPage() {
         if (last) {
           setState(last.game_state);
           setTelemetry(last.telemetry);
-          setTip(situationTip(kidGauges(last.telemetry), last.game_state, last.telemetry.orbital.in_eclipse));
+          setTip(situationTip(kidGauges(last.telemetry), last.game_state, last.telemetry.orbital?.in_eclipse ?? false));
         }
         void refreshAdvisory();
       } catch {

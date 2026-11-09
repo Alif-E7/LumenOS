@@ -95,31 +95,39 @@ const STATUS_LINE: Record<KidGauge["id"], Record<GaugeStatus, string>> = {
  * on when something is actually wrong.
  */
 export function kidGauges(tel: Telemetry | null): KidGauge[] {
-  if (!tel) return [];
+  if (!tel || !tel.power) {
+    return [
+      { id: "battery", label: "Battery", value: 100, status: "good", line: STATUS_LINE.battery.good },
+      { id: "heat", label: "Temperature", value: 45, status: "good", line: STATUS_LINE.heat.good },
+      { id: "signal", label: "Signal", value: 100, status: "good", line: STATUS_LINE.signal.good },
+      { id: "memory", label: "Memory", value: 0, status: "good", line: STATUS_LINE.memory.good },
+      { id: "health", label: "Ship Health", value: 100, status: "good", line: STATUS_LINE.health.good },
+    ];
+  }
 
   // Battery — server flags win over raw thresholds
-  const soc = Math.round(tel.power.battery_soc_pct);
+  const soc = Math.round(tel.power?.battery_soc_pct ?? 100);
   let batStatus: GaugeStatus = soc > 50 ? "good" : soc > 25 ? "warn" : "bad";
-  if (tel.power.power_critical) batStatus = "bad";
-  else if (tel.power.low_power_warning && batStatus === "good") batStatus = "warn";
+  if (tel.power?.power_critical) batStatus = "bad";
+  else if (tel.power?.low_power_warning && batStatus === "good") batStatus = "warn";
 
   // Heat — the thermometer only reacts to server warnings, not absolute °C,
   // because safe operating range depends on the spacecraft design
   let heatStatus: GaugeStatus = "good";
-  if (tel.thermal.overtemp_warning || tel.thermal.undertemp_warning) heatStatus = "warn";
-  if (tel.thermal.thermal_critical) heatStatus = "bad";
+  if (tel.thermal?.overtemp_warning || tel.thermal?.undertemp_warning) heatStatus = "warn";
+  if (tel.thermal?.thermal_critical) heatStatus = "bad";
 
   // Signal — are we over a ground station right now?
-  const inContact = tel.comms.in_contact;
+  const inContact = tel.comms?.in_contact ?? true;
   const sigStatus: GaugeStatus = inContact ? "good" : "warn";
 
   // Memory — downlink buffer / storage usage
-  const mem = Math.round(Math.max(tel.storage.used_pct, tel.comms.data_buffer_pct));
+  const mem = Math.round(Math.max(tel.storage?.used_pct ?? 0, tel.comms?.data_buffer_pct ?? 0));
   let memStatus: GaugeStatus = mem < 70 ? "good" : mem < 90 ? "warn" : "bad";
-  if (tel.comms.buffer_full_warning || tel.storage.storage_full_warning) memStatus = "bad";
+  if (tel.comms?.buffer_full_warning || tel.storage?.storage_full_warning) memStatus = "bad";
 
   // Ship health
-  const hp = Math.round(tel.spacecraft_health_pct);
+  const hp = Math.round(tel.spacecraft_health_pct ?? 100);
   const hpStatus: GaugeStatus = hp > 70 ? "good" : hp > 40 ? "warn" : "bad";
 
   const mk = (

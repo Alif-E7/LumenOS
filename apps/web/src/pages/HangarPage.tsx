@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Rocket, Check, X } from "lucide-react";
 import { evaluateDesign, startGame } from "../api/client";
-import { loadMissionSession, saveMissionSession } from "../lib/mission";
+import { loadMissionSession, saveMissionSession, newPlayerId, type MissionSession } from "../lib/mission";
 import { missionStory } from "../lib/kid";
 import { ShipPreview3D, type ShipArchetype } from "../components/flight/ShipPreview3D";
 import type { LiveEngineeringMetrics, SpacecraftDesign } from "../types";
@@ -141,7 +141,7 @@ export function HangarPage() {
     return {
       name: `Cadet ${missionId} ship`,
       mission_id: missionId,
-      launcher_id: "launcher_smallsat_rideshare",
+      launcher_id: "launcher_dedicated_light",
       orbit_id: parts.orbit,
       instrument_ids: [parts.instrument],
       computer_id: "proc_dual_core_space",
@@ -151,6 +151,8 @@ export function HangarPage() {
       comms_id: findOption("antenna", sizeGetter.antenna),
       storage_id: "stor_flash_array_256gb",
       shielding_id: "shield_standard_aluminum",
+      chassis_dry_mass_kg: 80.0,
+      fuel_mass_kg: 25.0,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [missionId, battery, solar, antenna]);
@@ -218,15 +220,19 @@ export function HangarPage() {
           difficulty: "cadet",
           ...(withDesign ? { design } : {}),
         });
-        if (session) {
-          saveMissionSession({
-            ...session,
-            sessionId: resp.session_id,
-            missionName: resp.mission_name ?? session.missionName,
-            experience: "simple",
-          });
-        }
-        navigate("/play");
+        const playerId = session?.playerId ?? newPlayerId();
+        const updatedSession: MissionSession = {
+          mode: session?.mode ?? "solo",
+          missionId,
+          missionName: resp.mission_name ?? session?.missionName ?? missionId,
+          spacecraftId: null,
+          sessionId: resp.session_id,
+          playerId,
+          roomCode: null,
+          experience: "simple",
+        };
+        saveMissionSession(updatedSession);
+        navigate("/play", { state: { sessionId: resp.session_id, missionId } });
       } catch (err) {
         setError((err as Error).message || "The launchpad is busy — try again!");
         setLaunching(false);
@@ -234,6 +240,22 @@ export function HangarPage() {
     },
     [missionId, session, design, navigate]
   );
+
+  // Initialize session in storage if arrived directly
+  useEffect(() => {
+    if (!session) {
+      saveMissionSession({
+        mode: "solo",
+        missionId,
+        missionName: missionId,
+        spacecraftId: null,
+        sessionId: null,
+        playerId: newPlayerId(),
+        roomCode: null,
+        experience: "simple",
+      });
+    }
+  }, [session, missionId]);
 
   if (!session?.missionId && !searchParams.get("mission")) {
     navigate("/missions", { replace: true });

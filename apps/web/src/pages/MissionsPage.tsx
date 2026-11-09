@@ -7,6 +7,7 @@ import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { missionIcon } from "../lib/constants";
 import { missionStory } from "../lib/kid";
+import { saveMissionSession, newPlayerId } from "../lib/mission";
 import { GraduationCap, TriangleAlert, ArrowRight } from "lucide-react";
 import type { MissionBrief } from "../types";
 
@@ -32,6 +33,20 @@ function DifficultyStars({ level }: { level: number }) {
 export function MissionsPage() {
   const navigate = useNavigate();
   const { data: missions, loading, error } = useApi(listMissions);
+
+  const startFlight = (mId: string, mName: string) => {
+    saveMissionSession({
+      mode: "solo",
+      missionId: mId,
+      missionName: mName,
+      spacecraftId: null,
+      sessionId: null,
+      playerId: newPlayerId(),
+      roomCode: null,
+      experience: "simple",
+    });
+    navigate(`/hangar?mission=${mId}`);
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
@@ -59,7 +74,7 @@ export function MissionsPage() {
             <Button size="sm" variant="secondary" onClick={() => navigate("/help")}>
               How to play
             </Button>
-            <Button size="sm" onClick={() => navigate("/hangar?mission=wildfire")}>
+            <Button size="sm" onClick={() => startFlight("wildfire", "Wildfire Scout")}>
               Start Flying <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </div>
@@ -121,7 +136,7 @@ export function MissionsPage() {
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <Button
                     size="sm"
-                    onClick={() => navigate(`/hangar?mission=${mission.id}`)}
+                    onClick={() => startFlight(mission.id, mission.name)}
                   >
                     🚀 Fly this mission
                   </Button>
