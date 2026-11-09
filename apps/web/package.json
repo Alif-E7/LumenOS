@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.5",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
