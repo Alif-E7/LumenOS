@@ -38,7 +38,7 @@ import {
   type KidAction,
   type LumiTip,
 } from "../lib/kid";
-import { CesiumFlightView } from "../components/CesiumFlightView";
+import { UltraRealisticEarthFlight } from "../components/flight/UltraRealisticEarthFlight";
 import { KidGaugeBar } from "../components/flight/KidGaugeBar";
 import { EventPopup } from "../components/flight/EventPopup";
 import { LumiBot, type LumiAdvice } from "../components/flight/LumiBot";
@@ -333,8 +333,8 @@ export function PlayPage() {
 
   return (
     <div className="fixed inset-0 bg-void overflow-hidden select-none">
-      {/* Fullscreen 3D stage */}
-      <CesiumFlightView
+      {/* Fullscreen 3D stage — Ultra-Realistic 3D Globe with Sun, Orbit & Live Earth Events */}
+      <UltraRealisticEarthFlight
         orbital={telemetry?.orbital ?? null}
         comms={telemetry?.comms ?? null}
         clock={clock}
