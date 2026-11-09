@@ -152,8 +152,8 @@ describe("Prompt 16 — Full Product Integration & Player Journeys", () => {
     expect(soloBtn).toBeInTheDocument();
     fireEvent.click(soloBtn);
 
-    // After clicking Solo, user is navigated to /missions and sees all 4 scenarios
-    expect(await screen.findByRole("heading", { name: /mission scenarios/i })).toBeInTheDocument();
+    // After clicking Solo, user is navigated to /missions and sees mission cards
+    expect(await screen.findByRole("heading", { name: /where will you fly today/i })).toBeInTheDocument();
     expect(await screen.findByText("Wildfire Scout")).toBeInTheDocument();
     expect(screen.getByText("Flood Scout")).toBeInTheDocument();
     expect(screen.getByText("Solar Storm Sentinel")).toBeInTheDocument();

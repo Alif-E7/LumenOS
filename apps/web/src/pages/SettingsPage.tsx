@@ -2,9 +2,12 @@ import { useState } from "react";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
-import { clearMissionSession } from "../lib/mission";
+import { clearMissionSession, loadDefaultExperience, saveDefaultExperience, type Experience } from "../lib/mission";
+import { isHighDetailEarthEnabled, setHighDetailEarthEnabled } from "../lib/earth-imagery";
 
 export function SettingsPage() {
+  const [experience, setExperience] = useState<Experience>(() => loadDefaultExperience());
+  const [highDetailEarth, setHighDetailEarth] = useState(() => isHighDetailEarthEnabled());
   const [engineerMode, setEngineerMode] = useState(
     () => localStorage.getItem("lumenos.engineerMode") === "true"
  );
@@ -15,6 +18,16 @@ export function SettingsPage() {
     () => localStorage.getItem("lumenos.highContrast") === "true"
  );
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  const toggleExperience = (exp: Experience) => {
+    setExperience(exp);
+    saveDefaultExperience(exp);
+  };
+
+  const toggleHighDetail = (enabled: boolean) => {
+    setHighDetailEarth(enabled);
+    setHighDetailEarthEnabled(enabled);
+  };
 
   const toggleEngineer = (enabled: boolean) => {
     setEngineerMode(enabled);
@@ -57,6 +70,56 @@ export function SettingsPage() {
         {/* Experience & Telemetry */}
  <Card title="Interface & Telemetry">
  <div className="space-y-4">
+ <div className="p-3 bg-panel/60 border border-edge">
+ <div className="flex items-center justify-between mb-2">
+ <div>
+ <span className="font-medium text-ink block">Default Experience</span>
+ <span className="text-xs text-muted">
+                      Cadet Play Mode is simplified with 3D visuals; Expert Console has full subsystem telemetry.
+ </span>
+ </div>
+ </div>
+ <div className="flex gap-2">
+ <button
+                    type="button"
+                    onClick={() => toggleExperience("simple")}
+                    className={`px-3 py-1.5 text-xs font-mono uppercase tracking-[0.1em] border transition-colors ${
+                      experience === "simple"
+                        ? "bg-accent text-void border-accent font-bold"
+                        : "bg-panel text-muted border-edge hover:text-ink"
+                    }`}
+ >
+                    🚀 Cadet Play Mode
+ </button>
+ <button
+                    type="button"
+                    onClick={() => toggleExperience("expert")}
+                    className={`px-3 py-1.5 text-xs font-mono uppercase tracking-[0.1em] border transition-colors ${
+                      experience === "expert"
+                        ? "bg-accent text-void border-accent font-bold"
+                        : "bg-panel text-muted border-edge hover:text-ink"
+                    }`}
+ >
+                    🛰️ Expert Console
+ </button>
+ </div>
+ </div>
+
+ <label className="flex items-center justify-between p-3 rounded-none bg-panel/60 border border-edge cursor-pointer">
+ <div>
+ <span className="font-medium text-ink block">High-Detail Earth (Sentinel-2 Online)</span>
+ <span className="text-xs text-muted">
+                  Stream photo-realistic Sentinel-2 cloudless Earth mosaic when connected to the internet. Falls back to offline textures automatically.
+ </span>
+ </div>
+ <input
+                type="checkbox"
+                checked={highDetailEarth}
+                onChange={(e) => toggleHighDetail(e.target.checked)}
+                className="h-5 w-5 accent-accent rounded-none"
+              />
+ </label>
+
  <label className="flex items-center justify-between p-3 rounded-none bg-panel/60 border border-edge cursor-pointer">
  <div>
  <span className="font-medium text-ink block">Default to Engineer Mode</span>

@@ -16,6 +16,10 @@ import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { CoopLobbyPage } from "./pages/CoopLobbyPage";
 import { BenchmarkPage } from "./pages/BenchmarkPage";
+// Simple / Cadet experience
+import { HangarPage } from "./pages/HangarPage";
+import { PlayPage } from "./pages/PlayPage";
+import { MissionEndPage } from "./pages/MissionEndPage";
 
 export default function App() {
   return (
@@ -26,7 +30,12 @@ export default function App() {
  <Route path="/mode" element={<ModeSelectPage />} />
  <Route path="/mode-select" element={<Navigate to="/mode" replace />} />
 
-        {/* Mission Flow */}
+        {/* Simple / Cadet experience */}
+ <Route path="/hangar" element={<HangarPage />} />
+ <Route path="/play" element={<PlayPage />} />
+ <Route path="/mission-end" element={<MissionEndPage />} />
+
+        {/* Mission Flow (Expert) */}
  <Route path="/missions" element={<MissionsPage />} />
  <Route path="/missions/:missionId/brief" element={<MissionBriefPage />} />
  <Route path="/brief" element={<Navigate to="/missions" replace />} />

@@ -6,6 +6,7 @@ import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
 import { missionIcon } from "../lib/constants";
+import { missionStory } from "../lib/kid";
 import { GraduationCap, TriangleAlert, ArrowRight } from "lucide-react";
 import type { MissionBrief } from "../types";
 
@@ -15,16 +16,29 @@ const severityVariant = (difficulty: number) => {
   return "danger" as const;
 };
 
+/** Kid-friendly difficulty stars (out of 5, matching the backend scale). */
+function DifficultyStars({ level }: { level: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-sm" aria-label={`Difficulty ${level} of 5`} role="img">
+      {Array.from({ length: 5 }, (_, i) => (
+        <span key={i} className={i < level ? "" : "opacity-20 grayscale"} aria-hidden>
+          ⭐
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function MissionsPage() {
   const navigate = useNavigate();
   const { data: missions, loading, error } = useApi(listMissions);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
       <PageHeader
-        kicker="Campaign"
-        title="Mission Scenarios"
-        description="Select a mission to begin spacecraft configuration and launch."
+        kicker="Pick a mission"
+        title="Where will you fly today?"
+        description="Choose a mission, build your ship in the hangar, and launch!"
       />
 
       {/* Onboarding flight */}
@@ -33,20 +47,20 @@ export function MissionsPage() {
           <div>
             <div className="mb-1.5 flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-accent" aria-hidden />
-              <span className="micro-label text-accent">Recommended onboarding</span>
+              <span className="micro-label text-accent">First flight?</span>
             </div>
             <h2 className="text-lg font-semibold text-ink">Sunrise Orbit — Flight Academy</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted">
-              Learn Low Earth Orbit fundamentals: orbital speed, solar power collection,
-              eclipse crossings, and battery depth-of-discharge management.
+              Learn the basics: how your spaceship stays powered, what happens when it flies
+              through Earth's shadow, and how to keep the battery happy.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 self-start md:self-center">
             <Button size="sm" variant="secondary" onClick={() => navigate("/help")}>
-              Tutorial Guide
+              How to play
             </Button>
-            <Button size="sm" onClick={() => navigate("/missions/wildfire/brief")}>
-              Start Guided Flight <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            <Button size="sm" onClick={() => navigate("/hangar?mission=wildfire")}>
+              Start Flying <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </div>
         </div>
@@ -73,9 +87,7 @@ export function MissionsPage() {
 
       {error && (!missions || missions.length === 0) && (
         <Card title="Error">
-          <p className="text-crit">
-            Failed to load missions: {error}
-          </p>
+          <p className="text-crit">Failed to load missions: {error}</p>
           <p className="mt-2 text-sm text-faint">
             Make sure the API server is running on port 8000 or deployed to Render.
           </p>
@@ -93,49 +105,33 @@ export function MissionsPage() {
                 icon={<Icon className="h-4 w-4" />}
                 className="group"
               >
-                <h3 className="text-lg font-semibold text-ink">{mission.name}</h3>
-                <p className="mt-1.5 text-sm text-muted">{mission.description}</p>
+                <h3 className="text-xl font-semibold text-ink">{mission.name}</h3>
+                <p className="mt-1.5 text-sm text-muted leading-relaxed">
+                  {missionStory(mission.id)}
+                </p>
 
-                <div className="data-readout mb-4 mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                  <div className="flex justify-between border-b border-edge/60 pb-1">
-                    <span className="text-faint">ALT</span>
-                    <span className="text-ink">{mission.orbit_altitude_km} km</span>
-                  </div>
-                  <div className="flex justify-between border-b border-edge/60 pb-1">
-                    <span className="text-faint">INC</span>
-                    <span className="text-ink">{mission.orbit_inclination_deg}°</span>
-                  </div>
-                  <div className="flex justify-between border-b border-edge/60 pb-1">
-                    <span className="text-faint">DUR</span>
-                    <span className="text-ink">{mission.duration_hours} h</span>
-                  </div>
-                  <div className="flex justify-between border-b border-edge/60 pb-1">
-                    <span className="text-faint">PAYLOAD</span>
-                    <span className="truncate text-ink">{mission.recommended_payload.replace(/_/g, " ")}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between border-t border-edge pt-3">
+                <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
+                  <DifficultyStars level={mission.difficulty} />
                   <StatusBadge
-                    label={`Difficulty ${mission.difficulty}/5`}
+                    label={mission.difficulty <= 2 ? "Good for beginners" : mission.difficulty <= 3 ? "A bit tricky" : "Expert pilots"}
                     variant={severityVariant(mission.difficulty)}
                   />
-                  <div className="flex max-w-[55%] flex-wrap justify-end gap-1">
-                    {mission.tags?.map((tag) => (
-                      <span
-                        key={tag}
-                        className="border border-edge bg-raised px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-muted"
-                      >
-                        {tag.replace(/_/g, " ")}
-                      </span>
-                    ))}
-                  </div>
                 </div>
 
-                <div className="mt-4 flex justify-end">
-                  <Button size="sm" onClick={() => navigate(`/missions/${mission.id}/brief`)}>
-                    Review Brief & Contract <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/hangar?mission=${mission.id}`)}
+                  >
+                    🚀 Fly this mission
                   </Button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/missions/${mission.id}/brief`)}
+                    className="text-xs text-faint hover:text-muted underline"
+                  >
+                    Full briefing <ArrowRight className="inline h-3 w-3" aria-hidden />
+                  </button>
                 </div>
               </Card>
             );

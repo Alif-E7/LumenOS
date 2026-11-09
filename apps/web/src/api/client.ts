@@ -284,6 +284,8 @@ export const startGame = (body: {
   seed?: number;
   player_ids?: string[];
   difficulty?: string;
+  /** Custom spacecraft design (hangar builder) — built server-side via design.to_spacecraft_config(). */
+  design?: SpacecraftDesign;
 }) =>
   fetchJSON<GameStartResponse>("/game/start", {
     method: "POST",

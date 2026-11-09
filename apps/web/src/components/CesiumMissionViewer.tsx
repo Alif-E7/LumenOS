@@ -6,6 +6,7 @@ import {
   SCENARIO_TARGETS,
   calculateFootprintRadiusKm,
 } from "../lib/mission-geometry";
+import { resolveEarthImagery } from "../lib/earth-imagery";
 
 export interface CesiumMissionViewerProps {
   orbital?: OrbitalTelemetry | null;
@@ -113,12 +114,12 @@ export function CesiumMissionViewer({
 
         viewerRef.current = viewer;
 
-        // Configure offline NaturalEarthII imagery layer
+        // Configure high-resolution Earth imagery (Sentinel-2 online with offline fallback)
         try {
-          const provider = await Cesium.TileMapServiceImageryProvider.fromUrl(
-            Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
- );
-          viewer.imageryLayers.addImageryProvider(provider);
+          const imagery = await resolveEarthImagery(Cesium);
+          if (imagery.provider) {
+            viewer.imageryLayers.addImageryProvider(imagery.provider as any);
+          }
         } catch {
           // If offline NaturalEarthII texture fails, Cesium renders the default WGS84 ellipsoid
         }
@@ -203,11 +204,25 @@ export function CesiumMissionViewer({
         const satEntity = viewer.entities.add({
           name: "LUMEN-1 Spacecraft",
           position: initialSatPos,
+          orientation: Cesium.Transforms.headingPitchRollQuaternion(
+            initialSatPos,
+            new Cesium.HeadingPitchRoll(0, 0, 0)
+          ),
+          model: {
+            uri: "/models/lumen-satellite.glb",
+            minimumPixelSize: 64,
+            maximumScale: 50000,
+            scale: 1.0,
+            show: true,
+            silhouetteColor: Cesium.Color.fromCssColorString("#38bdf8").withAlpha(0.6),
+            silhouetteSize: 1.5,
+          },
           point: {
-            pixelSize: 10,
+            pixelSize: 8,
             color: Cesium.Color.fromCssColorString("#38bdf8"),
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 2,
+            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(25000000, Number.POSITIVE_INFINITY),
           },
           label: {
             text: "LUMEN-1",

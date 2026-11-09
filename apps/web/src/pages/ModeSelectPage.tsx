@@ -71,7 +71,9 @@ export function ModeSelectPage() {
       {hasLiveSession && (
         <Card title="Continue Mission" icon={<History className="h-4 w-4" />} subtitle={`In progress: ${saved?.missionName} (${saved?.mode})`}>
           <div className="flex gap-2">
-            <Button onClick={() => navigate("/operate")}>Resume Mission Control</Button>
+            <Button onClick={() => navigate(saved?.experience === "expert" || saved?.mode === "coop" ? "/operate" : "/play")}>
+              Resume Flight
+            </Button>
             <Button
               variant="ghost"
               onClick={() => navigate("/results")}

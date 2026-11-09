@@ -4,15 +4,16 @@ import { MemoryRouter } from "react-router-dom";
 import App from "../App";
 
 describe("Route & Navigation Acceptance Checks", () => {
-  it("renders HomePage at / with Solo and Co-op entry points", () => {
+  it("renders HomePage at / with Play and Co-op entry points", () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
       </MemoryRouter>
     );
-    expect(screen.getByRole("heading", { name: /lumenos/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /start solo mission/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /multiplayer co-op room/i })).toBeInTheDocument();
+    // New simplified homepage: hero heading + PLAY button + secondary links
+    expect(screen.getByRole("heading", { name: /fly your own satellite/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /fly with friends/i })).toBeInTheDocument();
   });
 
   it("renders ModeSelectPage at /mode", () => {

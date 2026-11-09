@@ -8,6 +8,9 @@
 
 export type PlayMode = "solo" | "coop";
 
+/** Which UI experience this session plays in. Simple = Cadet flight deck. */
+export type Experience = "simple" | "expert";
+
 export interface MissionSession {
   mode: PlayMode;
   missionId: string;
@@ -20,6 +23,8 @@ export interface MissionSession {
   playerId: string;
   /** Co-op room code. */
   roomCode: string | null;
+  /** UI experience for this session — simple (default) or expert console. */
+  experience?: Experience;
 }
 
 const KEY = "lumenos.missionSession";
@@ -43,6 +48,25 @@ export function clearMissionSession(): void {
 
 export function newPlayerId(): string {
   return `player_${Math.random().toString(16).slice(2, 10)}`;
+}
+
+const EXPERIENCE_KEY = "lumenos.experience";
+
+/** Persisted default experience — "simple" (Cadet) unless the player opted into the expert console. */
+export function loadDefaultExperience(): Experience {
+  try {
+    return localStorage.getItem(EXPERIENCE_KEY) === "expert" ? "expert" : "simple";
+  } catch {
+    return "simple";
+  }
+}
+
+export function saveDefaultExperience(exp: Experience): void {
+  try {
+    localStorage.setItem(EXPERIENCE_KEY, exp);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Role ids as defined by the backend permission matrix (game/roles.py). */

@@ -2,40 +2,24 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { getHealth } from "../api/client";
 import { Button } from "../components/Button";
-import { Card } from "../components/Card";
-import { PageHeader } from "../components/PageHeader";
 import { StatusBadge } from "../components/StatusBadge";
-import { MISSIONS } from "../lib/constants";
 import { loadMissionSession } from "../lib/mission";
-import { Rocket, Users, DraftingCompass, ArrowRight, Radio } from "lucide-react";
+import { Rocket, Users, Wrench, ArrowRight, Radio } from "lucide-react";
 
-function DifficultyTicks({ level }: { level: number }) {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5"
-      aria-label={`Difficulty ${level} of 5`}
-      role="img"
-    >
-      {Array.from({ length: 5 }, (_, i) => (
-        <span
-          key={i}
-          className={`h-3 w-0.5 ${i < level ? "bg-accent" : "bg-edge-strong"}`}
-          aria-hidden="true"
-        />
-      ))}
-    </span>
-  );
-}
-
+/**
+ * Kid-first landing: one hero line, one giant PLAY button, and small links
+ * to everything else (friends mode, expert console, rewards).
+ */
 export function HomePage() {
   const navigate = useNavigate();
   const { data: health, loading, error } = useApi(getHealth);
   const session = loadMissionSession();
+  const hasActiveFlight = !!(session && session.sessionId);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
       {/* Active mission banner */}
-      {session && session.sessionId && (
+      {hasActiveFlight && (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-accent/40 bg-accent/[0.06] px-4 py-3">
           <div className="flex items-center gap-3">
             <Radio aria-hidden className="h-4 w-4 animate-pulse-soft text-accent" />
@@ -48,33 +32,46 @@ export function HomePage() {
               </p>
             </div>
           </div>
-          <Button size="sm" onClick={() => navigate("/operate")}>
+          <Button size="sm" onClick={() => navigate(session.experience === "expert" || session.mode === "coop" ? "/operate" : "/play")}>
             Resume Control <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Button>
         </div>
       )}
 
       {/* Hero */}
-      <section className="grid-bg relative mt-10 border border-edge px-6 py-16 md:px-12">
-        <div className="relative z-10">
-          <PageHeader
-            kicker="Orbital Operations Simulator"
-            title="LumenOS"
-            description="Design, launch and fly realistic satellite missions. Real astrodynamics, live telemetry, real consequences."
-            className="max-w-3xl"
-          />
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button size="lg" onClick={() => navigate("/mode")}>
-              <Rocket className="h-4 w-4" aria-hidden /> Start Solo Mission
-            </Button>
-            <Button size="lg" variant="secondary" onClick={() => navigate("/coop")}>
-              <Users className="h-4 w-4" aria-hidden /> Multiplayer Co-op Room
-            </Button>
-            <Button size="lg" variant="ghost" onClick={() => navigate("/design")}>
-              <DraftingCompass className="h-4 w-4" aria-hidden /> Spacecraft Designer
-            </Button>
-          </div>
+      <section className="grid-bg relative mt-10 border border-edge px-6 py-16 md:px-12 text-center">
+        <p className="micro-label text-faint">LumenOS Space Academy</p>
+        <h1 className="mt-3 text-4xl md:text-5xl font-bold text-ink leading-tight">
+          Fly your own satellite!
+        </h1>
+        <p className="mt-3 text-muted text-base md:text-lg max-w-xl mx-auto">
+          Pick a mission, build your spaceship, and take photos of Earth from space.
+          No physics homework — just flying.
+        </p>
+
+        <div className="mt-10">
+          <button
+            type="button"
+            onClick={() => navigate("/missions")}
+            className="inline-flex items-center gap-3 rounded-full bg-emerald-400 px-10 py-4 text-xl font-bold text-ink shadow-lg hover:bg-emerald-300 hover:scale-[1.02] transition-all"
+          >
+            <Rocket className="h-6 w-6" aria-hidden />
+            PLAY
+          </button>
         </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+          <button type="button" onClick={() => navigate("/coop")} className="inline-flex items-center gap-1.5 text-muted hover:text-ink">
+            <Users className="h-4 w-4" aria-hidden /> Fly with Friends
+          </button>
+          <button type="button" onClick={() => navigate("/rewards")} className="inline-flex items-center gap-1.5 text-muted hover:text-ink">
+            🏅 My Rewards
+          </button>
+          <button type="button" onClick={() => navigate("/design")} className="inline-flex items-center gap-1.5 text-muted hover:text-ink">
+            <Wrench className="h-4 w-4" aria-hidden /> Expert Console
+          </button>
+        </div>
+
         {/* Orbit line art */}
         <svg
           aria-hidden
@@ -93,66 +90,8 @@ export function HomePage() {
         </svg>
       </section>
 
-      {/* Mission scenarios */}
-      <section className="mt-12">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="micro-label text-faint">Mission Scenarios</h2>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/missions")}>
-            All scenarios <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Object.values(MISSIONS).map((m) => {
-            const Icon = m.Icon;
-            return (
-              <Card
-                key={m.id}
-                title={m.codename.toUpperCase()}
-                icon={<Icon className="h-4 w-4" />}
-                onClick={() => navigate(`/missions/${m.id}/brief`)}
-                className="group"
-              >
-                <h3 className="text-lg font-semibold text-ink">{m.name}</h3>
-                <p className="mt-2 min-h-10 text-sm text-muted">{m.description}</p>
-                <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
-                  <DifficultyTicks level={m.difficulty} />
-                  <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-accent opacity-0 transition-opacity group-hover:opacity-100">
-                    Briefing →
-                  </span>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Flight loop */}
-      <section className="mt-12 border border-edge bg-panel">
-        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4">
-          {["Design", "Validate", "Launch", "Operate", "Analyze"].map((step, i, arr) => (
-            <span key={step} className="flex items-center gap-3">
-              <span className="flex items-center gap-2">
-                <span className="data-readout text-[10px] text-accent">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted">
-                  {step}
-                </span>
-              </span>
-              {i < arr.length - 1 && (
-                <span aria-hidden className="hidden h-px w-10 bg-edge-strong sm:block" />
-              )}
-            </span>
-          ))}
-          <Button size="sm" variant="secondary" onClick={() => navigate("/missions")}>
-            Begin
-          </Button>
-        </div>
-      </section>
-
       {/* System status */}
-      <section className="mb-12 mt-8 flex flex-wrap items-center gap-2">
-        <span className="micro-label mr-1 text-faint">Console status</span>
+      <section className="mb-12 mt-8 flex flex-wrap items-center justify-center gap-2">
         {loading && <StatusBadge label="Connecting" variant="warning" />}
         {error && <StatusBadge label="Simulation API offline" variant="danger" />}
         {health && (
