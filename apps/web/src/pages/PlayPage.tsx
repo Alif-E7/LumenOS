@@ -340,6 +340,7 @@ export function PlayPage() {
         clock={clock}
         scenarioId={missionId}
         groundTrackPoints={groundTrack}
+        activeEvent={activeEvent}
       />
 
       {/* ── Top-left: mission goal + goals ── */}

@@ -91,15 +91,21 @@ export function ShipPreview3D({
 
         // Slow cinematic orbit around the ship
         const radius = 18;
+        const transform = Cesium.Transforms.eastNorthUpToFixedFrame(shipPos);
         viewer.clock.onTick.addEventListener((clock: any) => {
-          const t = clock.currentTime.secondsOfDay;
-          const heading = Cesium.Math.toRadians(t * 8);
-          viewer.camera.lookAt(
-            shipPos,
-            new Cesium.HeadingPitchRange(heading, Cesium.Math.toRadians(-15), radius)
-          );
+          try {
+            const t = clock?.currentTime?.secondsOfDay ?? (Date.now() / 1000);
+            const heading = Cesium.Math.toRadians((t * 12) % 360);
+            viewer.camera.lookAtTransform(
+              transform,
+              new Cesium.HeadingPitchRange(heading, Cesium.Math.toRadians(-15), radius)
+            );
+          } catch {
+            /* frame tick safe */
+          }
         });
-      } catch {
+      } catch (err) {
+        console.error("ShipPreview3D initialization failed:", err);
         if (isMounted) setFailed(true);
       }
     }
