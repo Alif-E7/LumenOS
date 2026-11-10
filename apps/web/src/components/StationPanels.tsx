@@ -75,21 +75,27 @@ export function DirectorStation({ telemetry, budgetRemaining, budgetTotal, onAct
 
  <div className="rounded-none border border-edge bg-panel/60 p-4 backdrop-blur-sm">
  <div className="flex items-center justify-between mb-2">
- <h4 className="text-sm font-semibold text-ink">AI Consultation</h4>
- <Tooltip content="The AI consultation advisory module is scheduled for future deployment.">
- <span className="text-faint cursor-help" aria-label="AI consultation unavailable">ⓘ</span>
+ <h4 className="text-sm font-semibold text-ink">LumenOS Orbital AI Consultation</h4>
+ <Tooltip content="Executes a 5-step numerical ODE lookahead across thermal, battery SoC, and SSDR queues via the onboard Neural Compute Rack.">
+ <span className="text-accent-hi cursor-help" aria-label="AI consultation info">ⓘ</span>
  </Tooltip>
  </div>
  <p className="text-xs text-muted mb-3">
-          Request predictive flight risk forecast from LumenOS AI module (costs 100 cr).
+          Request a 5-minute forward ODE flight risk forecast and autonomous mitigation recommendations from the onboard LumenOS Predictive Scheduler (costs 100 cr).
  </p>
  <Button
           size="sm"
           variant="secondary"
-          disabled
-          title="AI module is disabled instead of mocked"
+          disabled={!enabled || budgetRemaining < 100}
+          onClick={() =>
+            onAction(
+              "request_ai_prediction",
+              { horizon_steps: 5 },
+              "Request AI Predictive Forecast"
+            )
+          }
  >
-          Request AI Prediction (100 cr) — coming soon
+          Request AI Prediction (100 cr)
  </Button>
  </div>
 

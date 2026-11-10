@@ -43,6 +43,7 @@ import { KidGaugeBar } from "../components/flight/KidGaugeBar";
 import { EventPopup } from "../components/flight/EventPopup";
 import { LumiBot, type LumiAdvice } from "../components/flight/LumiBot";
 import { ToastStack, type Toast } from "../components/flight/Toasts";
+import { deriveOrbitalAIDataCenterState } from "../lib/ai-datacenter";
 import type {
   ActiveEvent,
   ClockState,
@@ -322,12 +323,14 @@ export function PlayPage() {
     [sessionId, session, pushToast, refresh]
   );
 
-  // ── Derived kid views ─────────────────────────────────────────────────────
+  // ── Derived Flight Deck & Orbital AI Data Center views ────────────────────
   const gauges = kidGauges(telemetry);
   const goals = kidGoals(state?.objectives);
   const coins = coinsLeft(state);
   const kidEventView = activeEvent ? kidEvent(activeEvent) : null;
   const elapsed = telemetry?.elapsed_seconds ?? state?.elapsed_seconds ?? 0;
+  const aiState = deriveOrbitalAIDataCenterState(missionId, telemetry, state);
+  const [showAiPanel, setShowAiPanel] = useState(true);
 
   if (!sessionId) return null;
 
@@ -341,15 +344,26 @@ export function PlayPage() {
         scenarioId={missionId}
         groundTrackPoints={groundTrack}
         activeEvent={activeEvent}
+        thermalTempC={telemetry?.thermal?.temperature_c ?? 22.0}
+        aiActiveTops={aiState.activeTops}
       />
 
-      {/* ── Top-left: mission goal + goals ── */}
-      <div className="absolute top-16 left-3 z-30 max-w-sm pointer-events-auto">
-        <div className="bg-void/80 backdrop-blur-md rounded-2xl border border-edge px-4 py-3 shadow-lg">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-accent">
-            Mission: {session?.missionName ?? missionId}
+      {/* ── Top-left: Mission Objectives + Orbital AI Data Center Telemetry ── */}
+      <div className="absolute top-16 left-3 z-30 max-w-sm pointer-events-auto space-y-2">
+        <div className="bg-void/85 backdrop-blur-md rounded-2xl border border-edge px-4 py-3 shadow-lg">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-accent font-mono">
+              Theater: {session?.missionName ?? missionId}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAiPanel((v) => !v)}
+              className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/50 cursor-pointer"
+            >
+              {showAiPanel ? "Hide AI Rack" : "Show AI Rack"}
+            </button>
           </div>
-          <p className="text-sm text-ink mt-0.5 font-semibold leading-snug">
+          <p className="text-xs sm:text-sm text-ink mt-0.5 font-semibold leading-snug">
             {missionGoal(missionId)}
           </p>
           {goals.length > 0 && (
@@ -365,12 +379,78 @@ export function PlayPage() {
                   <span className={`text-xs flex-1 ${g.done ? "text-emerald-200 line-through" : "text-muted"}`}>
                     {g.text}
                   </span>
-                  <span className="text-[10px] text-faint tabular-nums">{g.progress}%</span>
+                  <span className="text-[10px] text-faint tabular-nums font-mono">{g.progress}%</span>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {/* Orbital AI Data Center & Phenomenology Telemetry Card */}
+        {showAiPanel && (
+          <div
+            data-testid="orbital-ai-datacenter-hud"
+            className="bg-void/85 backdrop-blur-md rounded-2xl border border-cyan-500/30 px-3.5 py-2.5 shadow-xl text-xs space-y-2"
+          >
+            <div className="flex items-center justify-between border-b border-edge/70 pb-1.5">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300">
+                🧠 Orbital AI Data Center · {aiState.operationalMode.replace("_", " ")}
+              </span>
+              <span className="font-mono text-[10px] text-emerald-300 font-bold">
+                {aiState.activeTops}/{aiState.peakTops} TOPS
+              </span>
+            </div>
+
+            <div className="space-y-1 font-mono text-[10px]">
+              <div className="flex items-center justify-between text-muted">
+                <span className="truncate pr-2">Model: {aiState.activePipelineName}</span>
+                <span className="text-violet-300 shrink-0">{aiState.compressionRatio}:1 Vec</span>
+              </div>
+              <div className="flex items-center justify-between text-faint">
+                <span>Stage: <strong className="text-ink">{aiState.pipelineStage}</strong></span>
+                <span className="text-amber-300">
+                  Rad: {aiState.radiatorRejectionW}W ({aiState.radiatorLouverPct}% Louver)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-faint">
+                <span>
+                  ISL Relay:{" "}
+                  <strong className={aiState.opticalCrosslinkActive ? "text-cyan-300" : "text-muted"}>
+                    {aiState.activeRelayNode
+                      ? `${aiState.activeRelayNode.name} (${aiState.activeRelayNode.opticalDataRateGbps} Gbps)`
+                      : "Searching Limb…"}
+                  </strong>
+                </span>
+                <span className="text-emerald-300">EDAC: {aiState.edacSeuScrubbed} SEU</span>
+              </div>
+            </div>
+
+            {/* Mission-Specific Scientific Phenomenology Mini-Grid */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-edge/60 font-mono">
+              {aiState.metrics.map((m) => (
+                <div
+                  key={m.label}
+                  className="rounded-lg bg-panel/70 border border-edge/70 px-2 py-1"
+                >
+                  <div className="text-[9px] text-faint uppercase truncate">{m.label}</div>
+                  <div
+                    className={`text-[10px] font-bold truncate ${
+                      m.status === "critical"
+                        ? "text-rose-300"
+                        : m.status === "warning"
+                          ? "text-amber-300"
+                          : m.status === "highlight"
+                            ? "text-cyan-300"
+                            : "text-emerald-300"
+                    }`}
+                  >
+                    {m.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Top-center: mission clock ── */}
@@ -440,15 +520,21 @@ export function PlayPage() {
         </div>
       </div>
 
-      {/* ── Bottom-right: coins + actions ── */}
+      {/* ── Bottom-right: Budget Credits + Orbital Command Deck ── */}
       <div className="absolute bottom-3 right-3 z-30 pointer-events-auto">
-        <div className="bg-void/85 backdrop-blur-md rounded-2xl border border-edge p-3 shadow-xl w-64">
+        <div className="bg-void/85 backdrop-blur-md rounded-2xl border border-edge p-3 shadow-xl w-68">
           <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-1.5 text-sm font-bold text-amber-300">
+            <div className="flex items-center gap-1.5 text-sm font-bold text-amber-300 font-mono">
               <Coins size={16} />
-              <span className="tabular-nums">{coins.toLocaleString()}</span>
+              <span className="tabular-nums">{coins.toLocaleString()} cr</span>
             </div>
-            <span className="text-[10px] text-faint uppercase tracking-wider">coins</span>
+            <button
+              type="button"
+              onClick={() => navigate("/operate")}
+              className="text-[10px] font-mono text-accent hover:underline uppercase tracking-wider cursor-pointer"
+            >
+              4-Station Console →
+            </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {KID_ACTIONS.map((a) => {
@@ -461,7 +547,7 @@ export function PlayPage() {
                   title={a.hint}
                   disabled={busy || !affordable}
                   onClick={() => void dispatchAction(a)}
-                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition-colors cursor-pointer ${
                     affordable
                       ? "border-edge bg-panel/80 hover:bg-raised hover:border-accent/50"
                       : "border-edge/50 bg-panel/40 opacity-40 cursor-not-allowed"
@@ -471,8 +557,8 @@ export function PlayPage() {
                   <span className="text-[11px] font-bold text-ink leading-none text-center">
                     {a.label}
                   </span>
-                  <span className={`text-[10px] leading-none ${a.cost > 0 ? "text-amber-400/80" : "text-faint"}`}>
-                    {a.cost > 0 ? `🪙 ${a.cost}` : "free"}
+                  <span className={`text-[10px] font-mono leading-none ${a.cost > 0 ? "text-amber-400/80" : "text-faint"}`}>
+                    {a.cost > 0 ? `${a.cost} cr` : "0 cr"}
                   </span>
                 </button>
               );

@@ -1,11 +1,15 @@
 # projectmem - LumenOS
 
-_Last updated: 2026-11-02_
+_Last updated: 2026-11-10_
 
 ## Project purpose
-Replace this placeholder with a concise description of what this project does, who it serves, and the main technologies or runtime assumptions.
+LumenOS is an interactive 3D Earth-observation, satellite constellation, and Orbital AI Data Center simulation game targeted at an audience aged 16+. It combines physically grounded orbital mechanics (two-body Keplerian/J2 propagation, solar/eclipse geometry, Stefan-Boltzmann radiator thermal rejection, battery state-of-charge, NVMe storage, and ground-station RF + optical crosslink communications) with an onboard edge AI inference and predictive mission management runtime (`LumenOSPredictiveScheduler`) across four Earth-monitoring crisis missions: **Wildfire Scout**, **Flood Scout**, **Volcano Watch**, and **Solar Storm Sentinel**.
 
 ## Recent issues
+- [DONE] #0014 3D spacecraft position uses arbitrary fs.progress angle while target proximity uses backend orbital lat/lon, causing target laser beam to cut through Earth and misalign with nadir cone. [apps/web/src/components/flight/UltraRealisticEarthFlight.tsx] -> Synchronized 3D target acquisition laser and nadir footprint cone to true 3D sub-satellite normal and added 3-node Optical ISL Relay Constellation. [apps/web/src/components/flight/UltraRealisticEarthFlight.tsx] (fixed)
+- [DONE] #0013 MissionEndPage never calls recordMissionProgression, so Play Mode mission completions do not persist career XP, credits, or unlocks. [apps/web/src/pages/MissionEndPage.tsx] -> Wired MissionEndPage to call recordMissionProgression and display earned XP, Engineering Credits, and Orbital AI debrief telemetry. [apps/web/src/pages/MissionEndPage.tsx] (fixed)
+- [DONE] #0012 DirectorStation Request AI Prediction button is hardcoded disabled with 'coming soon' instead of triggering request_ai_prediction action. [apps/web/src/components/StationPanels.tsx] -> Enabled DirectorStation Request AI Prediction button to dispatch request_ai_prediction action. [apps/web/src/components/StationPanels.tsx] (fixed)
+- [DONE] #0011 OperatePage timeline progress divides activeGameState.step by activeGameState.step instead of max_steps, pinning timeline mark at 99.9%. [apps/web/src/pages/OperatePage.tsx] -> Fixed OperatePage timeline mark fraction to divide by activeClock.max_steps and derived missionHours and budgetTotal dynamically. [apps/web/src/pages/OperatePage.tsx] (fixed)
 - [DONE] #0010 3D JS globe view and homepage visualizations hidden inside secondary tab instead of being displayed front-and-center on page load [dashboard/app.py] -> Homepage layout restored: 3D rotating WebGL globe, simulation controls, gauges, and race charts are mounted front-and-center on load. Multi-satellite fleet load balancer and API architecture guide are positioned seamlessly below the single-node flight deck. All unit tests passing 100%. (fixed)
 - [DONE] #0009 Solar power gauge max hardcoded to 2000W instead of orbital profile max watts [dashboard/app.py:2125] -> Fixed solar power gauge vmax to dynamically match orbital profile max watts (e.g. 860W Mars, 1300W Lunar, 2000W LEO/GEO) (fixed)
 - [DONE] #0008 OrbitalEngine.__init__ mutates global RADIATOR_AREA_M2 causing cross-instance state pollution [engine/orbital_engine.py:453] -> Removed global RADIATOR_AREA_M2 mutation in OrbitalEngine.__init__ so each engine instance maintains its own radiator_area_m2 without polluting global state (fixed)
@@ -42,6 +46,7 @@ Replace this placeholder with a concise description of what this project does, w
 - Implement multi-satellite orbital datacenter constellation engine (engine/constellation_engine.py) with real-time thermodynamic load balancing (LumenOS vs Naive), tracking heat emission, solar charge storage, and energy consumption per AI task (High, Medium, Low).
 - Integrated dual 3D graphics pipeline: users can now seamlessly select between 'Three.js WebGL (NASA Look)' with procedural continents, cloud sphere, 2,600 stars, and 3D satellite, and 'Plotly 3D (Analytic)' directly from the Flight Controls. Ensured robust timeline serialization and dynamic camera controls for both engines.
 - Cleared codebase to rebuild from scratch per user request. Previous work preserved in git branch archive/v1-pre-cleanup and git stash.
+- Redesign LumenOS into a 16+ Orbital AI Data Center & Earth-Monitoring simulation while preserving existing test contracts and backward-compatible APIs. [apps/web/src/]
 
 ## Notes
 - IDE (Pyrefly) uses Python 3.14 interpreter without packages -> false 'Cannot find module numpy/skyfield' lints. Project runs on 'python' = 3.11.9 where deps are installed.

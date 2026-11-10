@@ -20,6 +20,7 @@ import { BenchmarkPage } from "./pages/BenchmarkPage";
 import { HangarPage } from "./pages/HangarPage";
 import { PlayPage } from "./pages/PlayPage";
 import { MissionEndPage } from "./pages/MissionEndPage";
+import { GlobePage } from "./pages/GlobePage";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
         {/* Simple / Cadet experience */}
  <Route path="/hangar" element={<HangarPage />} />
  <Route path="/play" element={<PlayPage />} />
+ <Route path="/globe" element={<GlobePage />} />
  <Route path="/mission-end" element={<MissionEndPage />} />
 
         {/* Mission Flow (Expert) */}

@@ -15,8 +15,22 @@ import type { OrbitalTelemetry, CommsTelemetry, ClockState, ActiveEvent } from "
 import {
   GROUND_STATIONS,
   calculateFootprintRadiusKm,
-  haversineDistanceKm,
 } from "../../lib/mission-geometry";
+import {
+  atmosphereVertexShader,
+  atmosphereFragmentShader,
+  earthVertexShader,
+  earthFragmentShader,
+} from "../../lib/earth-shaders";
+import {
+  parseCountryBorders,
+  createBorderGeometry,
+  createCountryHighlight,
+  findCountryAtLatLon,
+  vector3ToLatLon,
+  type CountryFeature,
+} from "../../lib/geo-borders";
+import { COUNTRY_LABELS } from "../../lib/country-labels";
 
 export interface UltraRealisticEarthFlightProps {
   orbital?: OrbitalTelemetry | null;
@@ -25,6 +39,8 @@ export interface UltraRealisticEarthFlightProps {
   scenarioId?: string;
   groundTrackPoints?: Array<{ latitude_deg: number; longitude_deg: number; altitude_km?: number }>;
   activeEvent?: ActiveEvent | null;
+  thermalTempC?: number;
+  aiActiveTops?: number;
   className?: string;
 }
 
@@ -535,33 +551,83 @@ function createSpacecraftModel(): THREE.Group {
   const foil = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.44, 0.38), foilMat);
   ship.add(foil);
 
-  // Radiator Panels on top (+Y space-facing)
+  // 1b. Orbital AI Compute Blade Module (Dark anodized neural processor rack + status LEDs)
+  const aiRackMat = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    metalness: 0.9,
+    roughness: 0.2,
+    emissive: 0x082f49,
+    emissiveIntensity: 0.6,
+  });
+  const aiRack = new THREE.Mesh(new THREE.BoxGeometry(0.53, 0.22, 0.34), aiRackMat);
+  aiRack.position.set(0, 0.04, 0.12);
+  ship.add(aiRack);
+
+  // Deployable Active Thermal Radiator Wings on top (+Y space-facing)
   const radMat = new THREE.MeshStandardMaterial({
     color: 0xf8fafc,
-    metalness: 0.9,
-    roughness: 0.1,
+    metalness: 0.85,
+    roughness: 0.15,
+    emissive: 0x0ea5e9,
+    emissiveIntensity: 0.2,
   });
-  const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.02, 0.7), radMat);
-  radiator.position.set(0, 0.22, 0);
+  const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.025, 0.72), radMat);
+  radiator.name = "thermalRadiator";
+  radiator.position.set(0, 0.225, 0);
   ship.add(radiator);
 
-  // "TPP" Mission Insignia Plaque on the side flank (+X flank) matching real reference
+  // Dual Vertical Deployable Thermal Rejection Fins (+Y)
+  const finGeom = new THREE.BoxGeometry(0.018, 0.28, 0.56);
+  const leftFin = new THREE.Mesh(finGeom, radMat);
+  leftFin.name = "thermalRadiatorLeft";
+  leftFin.position.set(-0.21, 0.35, -0.04);
+  leftFin.rotation.z = 0.22;
+  ship.add(leftFin);
+
+  const rightFin = new THREE.Mesh(finGeom, radMat);
+  rightFin.name = "thermalRadiatorRight";
+  rightFin.position.set(0.21, 0.35, -0.04);
+  rightFin.rotation.z = -0.22;
+  ship.add(rightFin);
+
+  // Zenith Optical ISL (1550 nm Laser Crosslink) Gimbal Turret on +Y
+  const islBase = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.065, 0.08, 0.08, 16),
+    new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 })
+  );
+  islBase.position.set(0, 0.27, 0.22);
+  ship.add(islBase);
+
+  const islDome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+  );
+  islDome.name = "islLaserDome";
+  islDome.position.set(0, 0.32, 0.22);
+  ship.add(islDome);
+
+  // "LUMEN-AI" Orbital Data Center Insignia Plaque on the side flank (+X flank)
   const plaqueCanvas = document.createElement("canvas");
-  plaqueCanvas.width = 128;
+  plaqueCanvas.width = 256;
   plaqueCanvas.height = 64;
-  const pctx = plaqueCanvas.getContext("2d")!;
-  pctx.fillStyle = "#1e293b";
-  pctx.fillRect(0, 0, 128, 64);
-  pctx.fillStyle = "#38bdf8";
-  pctx.font = "bold 32px sans-serif";
-  pctx.textAlign = "center";
-  pctx.textBaseline = "middle";
-  pctx.fillText("TPP", 64, 32);
+  const pctx = plaqueCanvas.getContext("2d");
+  if (pctx) {
+    pctx.fillStyle = "#090d16";
+    pctx.fillRect(0, 0, 256, 64);
+    pctx.strokeStyle = "#06b6d4";
+    pctx.lineWidth = 3;
+    pctx.strokeRect(3, 3, 250, 58);
+    pctx.fillStyle = "#38bdf8";
+    pctx.font = "bold 24px monospace";
+    pctx.textAlign = "center";
+    pctx.textBaseline = "middle";
+    pctx.fillText("LUMEN-AI DC", 128, 34);
+  }
   const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
   const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex });
-  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.12), plaqueMat);
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.09), plaqueMat);
   plaque.rotation.y = Math.PI / 2;
-  plaque.position.set(0.255, 0.05, 0);
+  plaque.position.set(0.27, 0.04, 0.12);
   ship.add(plaque);
 
   // 2. Dual Solar Array Wings extending laterally on +/- X
@@ -691,13 +757,21 @@ export function UltraRealisticEarthFlight({
   scenarioId = "wildfire",
   groundTrackPoints = [],
   activeEvent,
+  thermalTempC = 22.0,
+  aiActiveTops = 18.5,
   className = "",
 }: UltraRealisticEarthFlightProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<CameraViewMode>("tpp"); // DEFAULT TPP!
   const [inRangeTargetName, setInRangeTargetName] = useState<string | null>(null);
+  const [activeRelayLabel, setActiveRelayLabel] = useState<string>("LUMEN-RELAY-1 (8.4 Gbps)");
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isBoosting, setIsBoosting] = useState(false);
   const [orbitalSpeedKmS, setOrbitalSpeedKmS] = useState(7.6);
+  const thermalTempRef = useRef(thermalTempC);
+  thermalTempRef.current = thermalTempC;
+  const scenarioIdRef = useRef(scenarioId);
+  scenarioIdRef.current = scenarioId;
 
   // Flight Steering State (Allows player to actually DRIVE the spacecraft!)
   const flightState = useRef({
@@ -853,47 +927,175 @@ export function UltraRealisticEarthFlight({
     sunburstMesh.position.copy(sunPos);
     scene.add(sunburstMesh);
 
-    // 4. 3D Earth Globe
+    // 4. Photorealistic 3D Earth Globe (NASA Blue Marble + Topographic Normal/Specular + Night Lights)
     const earthGroup = new THREE.Group();
     scene.add(earthGroup);
 
     const earthTexture = createEarthCanvasTexture();
+    const emptyBlackTex = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    emptyBlackTex.needsUpdate = true;
+
+    const sunDirNorm = sunPos.clone().normalize();
+    const earthShaderMat = new THREE.ShaderMaterial({
+      vertexShader: earthVertexShader,
+      fragmentShader: earthFragmentShader,
+      uniforms: {
+        dayTexture: { value: earthTexture },
+        nightTexture: { value: emptyBlackTex },
+        bumpTexture: { value: emptyBlackTex },
+        specularTexture: { value: emptyBlackTex },
+        sunDirection: { value: sunDirNorm },
+        bumpScale: { value: 0.045 },
+        ambientStrength: { value: 0.14 },
+      },
+    });
+
     const earthMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(EARTH_RADIUS, 64, 64),
-      new THREE.MeshStandardMaterial({ map: earthTexture, roughness: 0.55, metalness: 0.1 })
+      new THREE.SphereGeometry(EARTH_RADIUS, 128, 64),
+      earthShaderMat
     );
     earthGroup.add(earthMesh);
 
     // 5. Cloud Layer Sphere
     const cloudTexture = createCloudCanvasTexture();
+    const cloudMat = new THREE.MeshLambertMaterial({
+      map: cloudTexture,
+      transparent: true,
+      opacity: 0.28,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
     const cloudMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(EARTH_RADIUS + 0.05, 48, 48),
-      new THREE.MeshStandardMaterial({ map: cloudTexture, transparent: true, opacity: 0.55, roughness: 0.9 })
+      new THREE.SphereGeometry(EARTH_RADIUS * 1.004, 96, 48),
+      cloudMat
     );
     earthGroup.add(cloudMesh);
 
-    // 6. Glowing Atmospheric Limb Halo (Fresnel Shader)
+    // Load real NASA Blue Marble satellite imagery asynchronously
+    const texLoader = new THREE.TextureLoader();
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
+    texLoader.load("/textures/earth/earth-blue-marble.jpg", (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAniso;
+      earthShaderMat.uniforms.dayTexture.value = tex;
+    });
+    texLoader.load("/textures/earth/earth-night.jpg", (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAniso;
+      earthShaderMat.uniforms.nightTexture.value = tex;
+    });
+    texLoader.load("/textures/earth/earth-topology.png", (tex) => {
+      tex.anisotropy = maxAniso;
+      earthShaderMat.uniforms.bumpTexture.value = tex;
+    });
+    texLoader.load("/textures/earth/earth-water.png", (tex) => {
+      tex.anisotropy = maxAniso;
+      earthShaderMat.uniforms.specularTexture.value = tex;
+    });
+    texLoader.load("/textures/earth/earth-clouds.png", (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = maxAniso;
+      cloudMat.map = tex;
+      cloudMat.needsUpdate = true;
+    });
+
+    // 6. Glowing Rayleigh Atmospheric Limb Halo
     const atmoMat = new THREE.ShaderMaterial({
-      vertexShader: `
-        varying vec3 vNormal;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        varying vec3 vNormal;
-        void main() {
-          float intensity = pow(0.68 - dot(vNormal, vec3(0, 0, 1.0)), 2.2);
-          gl_FragColor = vec4(0.22, 0.65, 0.98, 1.0) * intensity * 1.6;
-        }
-      `,
+      vertexShader: atmosphereVertexShader,
+      fragmentShader: atmosphereFragmentShader,
+      uniforms: {
+        sunDirection: { value: sunDirNorm },
+        atmosphereColor: { value: new THREE.Color(0.32, 0.64, 1.0) },
+        atmosphereStrength: { value: 1.2 },
+      },
       blending: THREE.AdditiveBlending,
       side: THREE.BackSide,
       transparent: true,
+      depthWrite: false,
     });
-    const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS + 0.18, 48, 48), atmoMat);
+    const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.028, 64, 48), atmoMat);
     scene.add(atmoMesh);
+
+    // 6b. Real GeoJSON Country Borders & Geographically Accurate Country Labels
+    interface FlightLabelNode {
+      sprite: THREE.Sprite;
+      name: string;
+      importance: 1 | 2 | 3;
+      localNormal: THREE.Vector3;
+      baseWidth: number;
+      baseHeight: number;
+    }
+    const labelNodes: FlightLabelNode[] = [];
+    let countriesList: CountryFeature[] = [];
+    let selectedBorderMesh: THREE.LineSegments | null = null;
+
+    const makeCountrySprite = (name: string, importance: 1 | 2 | 3) => {
+      const c = document.createElement("canvas");
+      const dpr = 2;
+      const fs = (importance === 1 ? 26 : importance === 2 ? 22 : 19) * dpr;
+      const ctx = c.getContext("2d")!;
+      const font = `500 ${fs}px "Space Grotesk", sans-serif`;
+      ctx.font = font;
+      const w = Math.ceil(ctx.measureText(name).width + 32 * dpr);
+      const h = Math.ceil(fs + 20 * dpr);
+      c.width = w;
+      c.height = h;
+      ctx.font = font;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = 3 * dpr;
+      ctx.strokeStyle = "rgba(4, 8, 18, 0.78)";
+      ctx.strokeText(name, w / 2, h / 2);
+      ctx.shadowColor = "rgba(235, 180, 75, 0.55)";
+      ctx.shadowBlur = 5 * dpr;
+      ctx.fillStyle = importance === 1 ? "#f6dc96" : importance === 2 ? "#ecd28e" : "#e2ca8c";
+      ctx.fillText(name, w / 2, h / 2);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const spr = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+          map: tex,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+        })
+      );
+      spr.renderOrder = 10;
+      return { spr, aspect: w / h };
+    };
+
+    for (const item of COUNTRY_LABELS) {
+      const { spr, aspect } = makeCountrySprite(item.name, item.importance);
+      const lPos = latLonToVector3(item.lat, item.lon, EARTH_RADIUS * 1.006);
+      spr.position.copy(lPos);
+      const bh = item.importance === 1 ? 0.23 : item.importance === 2 ? 0.18 : 0.14;
+      const bw = bh * aspect;
+      spr.scale.set(bw, bh, 1);
+      earthGroup.add(spr);
+      labelNodes.push({
+        sprite: spr,
+        name: item.name,
+        importance: item.importance,
+        localNormal: lPos.clone().normalize(),
+        baseWidth: bw,
+        baseHeight: bh,
+      });
+    }
+    labelNodes.sort((a, b) => a.importance - b.importance);
+
+    fetch("/data/countries.geojson")
+      .then((r) => (r.ok ? r.json() : fetch("/data/countries-110m.json").then((r2) => r2.json())))
+      .then((geo) => {
+        countriesList = parseCountryBorders(geo);
+        if (countriesList.length > 0) {
+          const borders = createBorderGeometry(countriesList, EARTH_RADIUS, 0.002);
+          earthGroup.add(borders);
+        }
+      })
+      .catch(() => {
+        // Ignore in offline/test environments
+      });
 
     // 7. Ground Stations on Earth
     GROUND_STATIONS.forEach((gs) => {
@@ -928,9 +1130,65 @@ export function UltraRealisticEarthFlight({
     );
     scene.add(orbitLine);
 
-    // 9. 3D Spacecraft Model
+    // 9. 3D Spacecraft Model (Orbital AI Data Center Bus)
     const spacecraft = createSpacecraftModel();
     scene.add(spacecraft);
+
+    // 9b. 3-Node Orbital AI Relay Constellation (LUMEN-RELAY-1..3) + Optical ISL Crosslink Laser
+    const relayRadius = EARTH_RADIUS + 1.65;
+    const relayPlanes = [
+      { name: "LUMEN-RELAY-1", inc: 0.95, raan: 0.4, speed: 0.0014, phase: 0.3 },
+      { name: "LUMEN-RELAY-2", inc: 0.62, raan: 2.4, speed: 0.0013, phase: 2.3 },
+      { name: "LUMEN-RELAY-3", inc: 1.25, raan: 4.5, speed: 0.0015, phase: 4.2 },
+    ];
+    const relayNodes: Array<{
+      name: string;
+      mesh: THREE.Group;
+      inc: number;
+      raan: number;
+      speed: number;
+      phase: number;
+    }> = [];
+
+    relayPlanes.forEach((rp) => {
+      // Subtle cyan orbital track for relay plane
+      const rPts: THREE.Vector3[] = [];
+      for (let i = 0; i <= 96; i++) {
+        const a = (i / 96) * Math.PI * 2;
+        const x0 = Math.cos(a) * relayRadius;
+        const y0 = Math.sin(a) * relayRadius * Math.sin(rp.inc);
+        const z0 = Math.sin(a) * relayRadius * Math.cos(rp.inc);
+        const v = new THREE.Vector3(x0, y0, z0).applyAxisAngle(new THREE.Vector3(0, 1, 0), rp.raan);
+        rPts.push(v);
+      }
+      const rRing = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(rPts),
+        new THREE.LineBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.18 })
+      );
+      scene.add(rRing);
+
+      // Relay satellite mini-bus + solar wings + beacon
+      const rGroup = new THREE.Group();
+      const rCore = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.11, 0),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9, roughness: 0.2, emissive: 0x0284c7, emissiveIntensity: 0.8 })
+      );
+      const rWing = new THREE.Mesh(
+        new THREE.BoxGeometry(0.48, 0.012, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.8, roughness: 0.2 })
+      );
+      rGroup.add(rCore);
+      rGroup.add(rWing);
+      scene.add(rGroup);
+      relayNodes.push({ name: rp.name, mesh: rGroup, inc: rp.inc, raan: rp.raan, speed: rp.speed, phase: rp.phase });
+    });
+
+    // Optical Inter-Satellite Link (1550 nm Cyan Laser Crosslink)
+    const islBeam = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 2, transparent: true, opacity: 0.72 })
+    );
+    scene.add(islBeam);
 
     // Footprint ground reticle
     const footprintMesh = new THREE.Mesh(
@@ -1155,19 +1413,76 @@ export function UltraRealisticEarthFlight({
         plume.scale.set(pScale, pScale, pScale);
       }
 
+      // Dynamic Thermal Radiator Glow based on live spacecraft temperature
+      const topRad = spacecraft.getObjectByName("thermalRadiator") as THREE.Mesh | undefined;
+      if (topRad && topRad.material) {
+        const mat = topRad.material as THREE.MeshStandardMaterial;
+        const temp = thermalTempRef.current;
+        if (temp >= 44) {
+          mat.emissive.setHex(0xef4444);
+          mat.emissiveIntensity = 0.75 + 0.2 * Math.sin(clockTime * 8);
+        } else if (temp >= 34) {
+          mat.emissive.setHex(0xf59e0b);
+          mat.emissiveIntensity = 0.45;
+        } else {
+          mat.emissive.setHex(0x0ea5e9);
+          mat.emissiveIntensity = 0.22;
+        }
+      }
+
+      // Update 3-Node Relay Constellation & Optical ISL Laser Crosslink
+      let nearestRelay: { name: string; pos: THREE.Vector3; dist: number } | null = null;
+      relayNodes.forEach((rn) => {
+        rn.phase += rn.speed * speedMultiplier;
+        const rx0 = Math.cos(rn.phase) * relayRadius;
+        const ry0 = Math.sin(rn.phase) * relayRadius * Math.sin(rn.inc);
+        const rz0 = Math.sin(rn.phase) * relayRadius * Math.cos(rn.inc);
+        const rPos = new THREE.Vector3(rx0, ry0, rz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan);
+        rn.mesh.position.copy(rPos);
+        rn.mesh.lookAt(0, 0, 0);
+
+        // Check line-of-sight chord clearance above Earth's limb
+        const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
+        const dist = spacecraft.position.distanceTo(rPos);
+        if (midPoint.length() > EARTH_RADIUS + 0.25 && (!nearestRelay || dist < nearestRelay.dist)) {
+          nearestRelay = { name: rn.name, pos: rPos, dist };
+        }
+      });
+
+      if (nearestRelay) {
+        const nr = nearestRelay as { name: string; pos: THREE.Vector3; dist: number };
+        islBeam.geometry.setFromPoints([spacecraft.position, nr.pos]);
+        (islBeam.material as THREE.LineBasicMaterial).opacity = 0.55 + 0.25 * Math.sin(clockTime * 12);
+        if (Math.floor(clockTime * 2) % 4 === 0) {
+          const gbps = Math.max(2.4, 10.0 - nr.dist * 0.65).toFixed(1);
+          setActiveRelayLabel(`${nr.name} (${gbps} Gbps ISL)`);
+        }
+      } else {
+        (islBeam.material as THREE.LineBasicMaterial).opacity = 0;
+      }
+
       // Footprint position on Earth surface below satellite
-      const subSatPos = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS + 0.02);
+      const subSatNormal = spacecraft.position.clone().normalize();
+      const subSatPos = subSatNormal.clone().multiplyScalar(EARTH_RADIUS + 0.02);
       footprintMesh.position.copy(subSatPos);
-      footprintMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), subSatPos.clone().normalize());
+      footprintMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), subSatNormal);
 
       // Slow Earth & Cloud rotation
       cloudMesh.rotation.y = clockTime * 0.008;
 
-      // ── Animate Live Disaster Events on Earth ──
+      // ── Animate Live Disaster Events on Earth (Geometrically Locked to 3D Sub-Sat Point) ──
       let acquiredTarget: string | null = null;
-      const footprintKm = calculateFootprintRadiusKm(satAltKm, 30.0);
+      let minTargetDistKm = Infinity;
+      const footprintKm = Math.max(950, calculateFootprintRadiusKm(satAltKm, 35.0));
+      const activeScenarioClean = scenarioIdRef.current.replace(/_scout|_sentinel|_watch/g, "");
 
       liveEvents.forEach((ev, idx) => {
+        const isMissionPrimary =
+          ev.event.scenarioId === scenarioIdRef.current ||
+          ev.event.type === activeScenarioClean;
+        const baseScale = isMissionPrimary ? 1.25 : 0.72;
+        ev.group.scale.setScalar(baseScale);
+
         // Pulse ground hazard circle
         const pulse = 1.0 + 0.22 * Math.sin(clockTime * 4.5 + idx);
         ev.ringMesh.scale.set(pulse, pulse, pulse);
@@ -1221,13 +1536,15 @@ export function UltraRealisticEarthFlight({
           ev.light.intensity = 1.8 + 0.7 * Math.sin(clockTime * 15.0 + idx * 3.0);
         }
 
-        // Proximity detection to satellite
-        const dKm = haversineDistanceKm(satLat, satLon, ev.event.lat, ev.event.lon);
-        if (dKm <= footprintKm) {
+        // True 3D spherical distance from the visual spacecraft's sub-satellite point to the 3D event
+        const evNormal = ev.position.clone().normalize();
+        const dKm = subSatNormal.angleTo(evNormal) * 6371.0;
+        if (dKm <= footprintKm && dKm < minTargetDistKm) {
+          minTargetDistKm = dKm;
           acquiredTarget = ev.event.name;
           (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
 
-          // Connect targeting laser beam from satellite to ground disaster site
+          // Connect targeting laser beam directly from spacecraft nadir to surface target below
           targetBeam.geometry.setFromPoints([spacecraft.position, ev.position]);
           (targetBeam.material as THREE.LineBasicMaterial).opacity = 0.95;
         } else {
@@ -1307,6 +1624,57 @@ export function UltraRealisticEarthFlight({
       camera.up.copy(camUpRef.current);
       camera.lookAt(camLookAtRef.current);
 
+      // Update Country Labels Zoom LOD & Screen-Space Overlap Prevention
+      const camDist = camera.position.length();
+      const distScale = THREE.MathUtils.clamp((camDist - EARTH_RADIUS) / 9.5, 0.3, 1.1);
+      const placedBoxes: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [];
+      const tmpWorldPos = new THREE.Vector3();
+      const tmpNDC = new THREE.Vector3();
+
+      for (const node of labelNodes) {
+        const maxDist = node.importance === 1 ? 26.0 : node.importance === 2 ? 15.5 : 10.5;
+        if (camDist > maxDist) {
+          node.sprite.visible = false;
+          continue;
+        }
+        node.sprite.getWorldPosition(tmpWorldPos);
+        const toCam = camera.position.clone().sub(tmpWorldPos).normalize();
+        const facingDot = node.localNormal.dot(toCam);
+        if (facingDot <= 0.22) {
+          node.sprite.visible = false;
+          continue;
+        }
+        tmpNDC.copy(tmpWorldPos).project(camera);
+        if (tmpNDC.z > 1.0) {
+          node.sprite.visible = false;
+          continue;
+        }
+        const hw = (node.baseWidth * distScale) / (camDist * 0.68);
+        const hh = (node.baseHeight * distScale) / (camDist * 0.65);
+        const box = {
+          minX: tmpNDC.x - hw,
+          maxX: tmpNDC.x + hw,
+          minY: tmpNDC.y - hh,
+          maxY: tmpNDC.y + hh,
+        };
+        let collides = false;
+        for (const p of placedBoxes) {
+          if (box.minX < p.maxX && box.maxX > p.minX && box.minY < p.maxY && box.maxY > p.minY) {
+            collides = true;
+            break;
+          }
+        }
+        if (collides) {
+          node.sprite.visible = false;
+          continue;
+        }
+        placedBoxes.push(box);
+        node.sprite.visible = true;
+        node.sprite.scale.set(node.baseWidth * distScale, node.baseHeight * distScale, 1);
+        const limbFade = THREE.MathUtils.smoothstep(facingDot, 0.22, 0.48);
+        (node.sprite.material as THREE.SpriteMaterial).opacity = limbFade * 0.9;
+      }
+
       // Sunburst plane always faces the camera
       sunburstMesh.lookAt(camera.position);
 
@@ -1315,9 +1683,16 @@ export function UltraRealisticEarthFlight({
 
     animate();
 
-    // Mouse Drag Controls (When in Free/Orbit mode)
+    // Mouse Drag & Country Click Selection Controls
+    let pointerDownXY = { x: 0, y: 0 };
+    let pointerDragged = false;
+    const raycaster = new THREE.Raycaster();
+    const mouseNDC = new THREE.Vector2();
+
     const onMouseDown = (e: MouseEvent) => {
       isDraggingRef.current = true;
+      pointerDragged = false;
+      pointerDownXY = { x: e.clientX, y: e.clientY };
       mousePosRef.current = { x: e.clientX, y: e.clientY };
     };
 
@@ -1325,6 +1700,9 @@ export function UltraRealisticEarthFlight({
       if (!isDraggingRef.current) return;
       const dx = e.clientX - mousePosRef.current.x;
       const dy = e.clientY - mousePosRef.current.y;
+      if (Math.hypot(e.clientX - pointerDownXY.x, e.clientY - pointerDownXY.y) > 5) {
+        pointerDragged = true;
+      }
       mousePosRef.current = { x: e.clientX, y: e.clientY };
 
       const currentMode = viewModeRef.current;
@@ -1341,13 +1719,44 @@ export function UltraRealisticEarthFlight({
       isDraggingRef.current = false;
     };
 
+    const onClick = (e: MouseEvent) => {
+      if (pointerDragged) return;
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouseNDC, camera);
+      const hits = raycaster.intersectObject(earthMesh, false);
+
+      if (selectedBorderMesh) {
+        earthGroup.remove(selectedBorderMesh);
+        selectedBorderMesh.geometry.dispose();
+        (selectedBorderMesh.material as THREE.Material).dispose();
+        selectedBorderMesh = null;
+      }
+
+      if (hits.length > 0 && countriesList.length > 0) {
+        const localPt = earthGroup.worldToLocal(hits[0].point.clone());
+        const { lat, lon } = vector3ToLatLon(localPt);
+        const found = findCountryAtLatLon(countriesList, lat, lon);
+        if (found) {
+          selectedBorderMesh = createCountryHighlight(found, EARTH_RADIUS, 0.005);
+          earthGroup.add(selectedBorderMesh);
+          setSelectedCountry(found.name);
+        } else {
+          setSelectedCountry(null);
+        }
+      } else {
+        setSelectedCountry(null);
+      }
+    };
+
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const currentMode = viewModeRef.current;
       if (currentMode === "orbit" || currentMode === "global" || currentMode === "free") {
         orbitAngleRef.current.radius = Math.max(
-          11.0,
-          Math.min(32.0, (orbitAngleRef.current.radius || 19.0) + e.deltaY * 0.02)
+          7.0,
+          Math.min(32.0, (orbitAngleRef.current.radius || 19.0) + e.deltaY * 0.015)
         );
       } else {
         tppZoomRef.current = Math.max(0.65, Math.min(1.85, tppZoomRef.current + e.deltaY * 0.0015));
@@ -1365,6 +1774,7 @@ export function UltraRealisticEarthFlight({
 
     window.addEventListener("resize", onResize);
     container.addEventListener("mousedown", onMouseDown);
+    container.addEventListener("click", onClick);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     container.addEventListener("wheel", onWheel, { passive: false });
@@ -1373,6 +1783,7 @@ export function UltraRealisticEarthFlight({
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", onResize);
       container.removeEventListener("mousedown", onMouseDown);
+      container.removeEventListener("click", onClick);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       container.removeEventListener("wheel", onWheel);
@@ -1451,7 +1862,13 @@ export function UltraRealisticEarthFlight({
       <div className="absolute top-48 left-3 flex flex-wrap items-center gap-2 pointer-events-none z-20 max-w-sm">
         <span className="bg-void/85 backdrop-blur-md border border-cyan-500/40 px-3 py-1 rounded-full text-xs text-cyan-300 shadow-md flex items-center gap-1.5 font-bold font-mono">
           <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: "6s" }} />
-          <span>VEL: {orbitalSpeedKmS.toFixed(1)} km/s</span>
+          <span>VEL: {orbitalSpeedKmS.toFixed(1)} km/s · {satAltKm.toFixed(0)} km</span>
+        </span>
+        <span className="bg-void/85 backdrop-blur-md border border-sky-500/40 px-3 py-1 rounded-full text-[11px] text-sky-200 shadow-md font-mono">
+          📡 ISL: {activeRelayLabel}
+        </span>
+        <span className="bg-void/85 backdrop-blur-md border border-violet-500/40 px-3 py-1 rounded-full text-[11px] text-violet-200 shadow-md font-mono">
+          🧠 AI NPU: {aiActiveTops.toFixed(1)} TOPS · {satLat.toFixed(1)}°, {satLon.toFixed(1)}°
         </span>
         <span
           className={`px-3 py-1 rounded-full text-xs border backdrop-blur-md shadow-md ${
@@ -1480,6 +1897,17 @@ export function UltraRealisticEarthFlight({
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="relative w-16 h-16 opacity-35">
             <Crosshair className="w-full h-full text-accent" />
+          </div>
+        </div>
+      )}
+
+      {/* ── Selected Country Indicator ── */}
+      {selectedCountry && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+          <div className="bg-black/70 backdrop-blur-md border border-amber-400/40 px-5 py-1.5 rounded-full shadow-2xl">
+            <span className="text-amber-200 text-xs sm:text-sm font-medium tracking-wide">
+              {selectedCountry}
+            </span>
           </div>
         </div>
       )}

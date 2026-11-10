@@ -19,20 +19,24 @@ import type {
 
 export const MISSION_STORIES: Record<string, { story: string; goal: string }> = {
   wildfire: {
-    story: "Big fires are burning in Australia. Your spaceship can spot them from space and warn the firefighters!",
-    goal: "Photograph the fires and send the warnings home",
+    story:
+      "Severe crown fires are burning across eucalyptus corridors in Australia. Task your 3.9 µm SWIR sensor and onboard FireNet AI to pinpoint thermal fronts and alert Incident Command.",
+    goal: "Photograph active wildfire fronts in SWIR and downlink compressed AI perimeter alerts",
   },
   flood: {
-    story: "Heavy rain is flooding the rivers. Your spaceship's special radar can see the water even through clouds!",
-    goal: "Map the flooded areas and send the maps home",
+    story:
+      "Monsoon storm surges are inundating major river deltas beneath 98% cloud cover. Penetrate the clouds with C-Band SAR radar and run 50:1 onboard AI water-mask segmentation.",
+    goal: "Map inundated river basins with SAR radar and relay vector flood masks to ground stations",
   },
   solar_storm: {
-    story: "The Sun is throwing giant sparks at Earth! Watch it closely and warn everyone before the sparks arrive.",
-    goal: "Watch the Sun and deliver storm warnings",
+    story:
+      "An X-class solar flare and Earth-directed Coronal Mass Ejection (CME) are impacting the magnetosphere. Track Kp geomagnetic indices while scrubbing radiation SEUs in neural memory.",
+    goal: "Monitor solar coronagraph telemetry, survive proton flux peaks, and issue CME warnings",
   },
   volcano: {
-    story: "Mountains are waking up! Your spaceship can see the hot spots and the smoke clouds from orbit.",
-    goal: "Watch the volcanoes and send ash-cloud warnings",
+    story:
+      "Stratovolcano calderas are exhibiting pre-eruptive thermal spikes and stratospheric SO₂/ash plumes. Track plume dispersion and issue ICAO Aviation SIGMET advisories.",
+    goal: "Monitor caldera thermal anomalies and downlink SO₂ / volcanic ash aviation warnings",
   },
 };
 
@@ -63,29 +67,29 @@ export interface KidGauge {
 
 const STATUS_LINE: Record<KidGauge["id"], Record<GaugeStatus, string>> = {
   battery: {
-    good: "Battery is full of sunshine!",
-    warn: "Battery is getting low — maybe Save Power?",
-    bad: "Battery almost empty! Turn on Save Power now!",
+    good: "Solar arrays nominal in sunshine — battery reserve optimal!",
+    warn: "Battery SoC depleting — consider switching AI compute to Eco Mode.",
+    bad: "Battery reserve almost empty! Shed non-essential loads immediately!",
   },
   heat: {
-    good: "Temperature is just right.",
-    warn: "It's getting a bit hot in here…",
-    bad: "Too hot! The spaceship needs a break.",
+    good: "Stefan-Boltzmann radiator loop nominal.",
+    warn: "Bus thermal load rising — AI compute dissipating excess heat.",
+    bad: "Critical thermal boundary! Throttle AI compute or trim radiators.",
   },
   signal: {
-    good: "Talking to Earth right now!",
-    warn: "A ground station is coming soon…",
-    bad: "No signal yet — wait for the next pass.",
+    good: "RF Ground Station / Optical ISL link locked!",
+    warn: "Awaiting next RF ground station pass (ISL relay standby).",
+    bad: "Out of ground station cone — store vectors in SSDR buffer.",
   },
   memory: {
-    good: "Memory has plenty of room.",
-    warn: "Memory is filling up — send data home!",
-    bad: "Memory almost full! Photos may be lost!",
+    good: "NVMe SSDR flash buffer nominal.",
+    warn: "SSDR buffer filling — downlink telemetry on next pass!",
+    bad: "SSDR buffer almost full! High-rate sensor frames at overflow risk!",
   },
   health: {
-    good: "Your spaceship feels great!",
-    warn: "The spaceship took some bumps.",
-    bad: "The spaceship is in trouble!",
+    good: "Spacecraft bus & AI compute blades nominal!",
+    warn: "Minor subsystem degradation detected.",
+    bad: "Critical bus integrity alert — engage Safe Mode!",
   },
 };
 
@@ -208,58 +212,58 @@ export interface KidAction {
   hint: string;
 }
 
-/** The six kid actions — a curated subset of the engine's 24ActionTypes. */
+/** The six flight deck commands — a curated subset of the engine's 24 ActionTypes. */
 export const KID_ACTIONS: KidAction[] = [
   {
     id: "photo",
-    label: "Take Photo",
+    label: "Sensor Capture",
     icon: "camera",
     cost: 0,
     actionType: "collect_data",
-    hint: "Point the camera at Earth and snap a picture of the mission area.",
+    hint: "Trigger nadir payload capture and ingest raw scene into the Orbital AI Compute Rack.",
   },
   {
     id: "send",
-    label: "Send Data Home",
+    label: "Downlink / ISL",
     icon: "antenna",
     cost: 50,
     actionType: "downlink_data",
-    hint: "Beam your photos to a ground station. Works best when the Signal gauge is full!",
+    hint: "Transmit compressed AI vector alerts and science telemetry to Earth.",
   },
   {
     id: "save-power",
-    label: "Save Power",
+    label: "Eco AI Mode",
     icon: "leaf",
     cost: 0,
     actionType: "set_power_mode",
     params: { mode: "eco" },
-    hint: "Turn off extra stuff so the battery drains slower.",
+    hint: "Throttle neural compute blades to 15 W Eco profile to preserve battery during eclipse.",
   },
   {
     id: "full-power",
-    label: "Full Power",
+    label: "Full AI Compute",
     icon: "zap",
     cost: 0,
     actionType: "set_power_mode",
     params: { mode: "normal" },
-    hint: "Turn everything back on for the best photos.",
+    hint: "Engage full 24-TOPS neural inference and maximum payload duty cycle.",
   },
   {
     id: "safe-mode",
-    label: "Safe Mode",
+    label: "Radiation Safe",
     icon: "shield",
     cost: 0,
     actionType: "enter_safe_mode",
-    hint: "Tuck the spaceship in and keep only the important parts running. Use it in emergencies!",
+    hint: "Engage TMR radiation shielding and survival power posture during solar proton storms.",
   },
   {
     id: "boost",
-    label: "Boost Orbit",
+    label: "Prograde Burn",
     icon: "rocket",
     cost: 200,
     actionType: "fire_thruster",
     params: { delta_v_ms: 10, direction: "prograde" },
-    hint: "Fire the engine for a tiny push — nudges the spaceship higher.",
+    hint: "Fire ion thruster (+10 m/s Δv) to raise orbital altitude and widen nadir swath.",
   },
 ];
 
@@ -358,28 +362,31 @@ export function situationTip(
     };
   }
   if (inEclipse && worst?.id === "battery") {
-    return { text: "You're flying through Earth's shadow — the sun can't charge the battery at night. Hang in there!", kind: "tip" };
+    return {
+      text: "Transiting Earth's umbra shadow — solar arrays are offline; running on Li-Ion reserve.",
+      kind: "tip",
+    };
   }
   if (worst?.status === "warn") return { text: worst.line, kind: "tip" };
   if (state && state.active_event_count > 0) {
-    return { text: "Something needs your decision — check the alert card!", kind: "alert" };
+    return { text: "Orbital anomaly detected — review the Tactical Decision Card!", kind: "alert" };
   }
   if (state && state.objectives_total > 0 && state.objectives_complete === state.objectives_total) {
-    return { text: "All goals complete! Keep flying safely until mission end. 🎉", kind: "cheer" };
+    return { text: "All primary mission objectives complete! Maintain orbital stability until window end.", kind: "cheer" };
   }
-  return { text: "All systems happy. Keep taking photos and sending them home!", kind: "cheer" };
+  return { text: "All systems happy and nominal — capture target telemetry and downlink via ground pass or ISL relay.", kind: "cheer" };
 }
 
 // ── Onboarding tips ─────────────────────────────────────────────────────────
 
 const TIP_SEEN_KEY = "lumenos.cadetTipsSeen";
 const TIPS: string[] = [
-  "Tap Play ▶ to make time move — your spaceship flies around Earth by itself!",
-  "Press Take Photo 📸 when you fly over the mission area to collect science data.",
-  "Send Data Home 📡 when the Signal gauge is green — that's when a ground station can hear you.",
-  "Watch the Battery 🔋 — flying through Earth's shadow (night) drains it. Save Power 🌿 helps!",
-  "When an alert card pops up, read it and pick the choice that keeps your spaceship safe.",
-  "Lumi the robot 🤖 watches your spaceship and can do things for you — just ask!",
+  "Engage Play ▶ or time-warp (1×/2×/5×) to propagate your Sun-Synchronous Orbit around Earth.",
+  "Trigger Sensor Capture 📸 when the nadir footprint cone locks onto an active crisis zone.",
+  "Execute Downlink / ISL 📡 during ground-station contact or via the 1550 nm Optical Relay Constellation.",
+  "Monitor Battery SoC 🔋 and Radiator Temp 🌡️ — switch to Eco AI Mode 🌿 during eclipse transits.",
+  "When an orbital anomaly or solar flare occurs, evaluate the physics trade-offs in the decision card.",
+  "LumenOS Predictive AI 🤖 runs a 5-minute ODE lookahead to flag thermal or battery hazards before they hit.",
 ];
 
 /** First-flight onboarding: one tip at a time, only on the first flight. */

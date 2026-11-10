@@ -61,6 +61,7 @@ const NAV_GROUPS: { label: string; links: { to: string; label: string; end?: boo
 /** Compact kid-friendly nav for the simple experience. */
 const SIMPLE_LINKS: { to: string; label: string; end?: boolean }[] = [
   { to: "/", label: "Home", end: true },
+  { to: "/globe", label: "🌍 3D Earth" },
   { to: "/missions", label: "Missions" },
   { to: "/play", label: "🚀 Fly!" },
   { to: "/rewards", label: "Rewards" },

@@ -51,9 +51,9 @@ export function MissionsPage() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
       <PageHeader
-        kicker="Pick a mission"
+        kicker="Orbital Crisis Response Campaign"
         title="Where will you fly today?"
-        description="Choose a mission, build your ship in the hangar, and launch!"
+        description="Select a global Earth-monitoring theater, configure your Orbital AI Data Center spacecraft in the hangar, and execute real-time observation & crosslink operations."
       />
 
       {/* Onboarding flight */}
@@ -62,20 +62,21 @@ export function MissionsPage() {
           <div>
             <div className="mb-1.5 flex items-center gap-2">
               <GraduationCap className="h-4 w-4 text-accent" aria-hidden />
-              <span className="micro-label text-accent">First flight?</span>
+              <span className="micro-label text-accent">Orbital Systems Briefing</span>
             </div>
-            <h2 className="text-lg font-semibold text-ink">Sunrise Orbit — Flight Academy</h2>
+            <h2 className="text-lg font-semibold text-ink">Sunrise Orbit — Orbital Mechanics & Edge AI Primer</h2>
             <p className="mt-1 max-w-2xl text-sm text-muted">
-              Learn the basics: how your spaceship stays powered, what happens when it flies
-              through Earth's shadow, and how to keep the battery happy.
+              Master Sun-Synchronous Orbit (SSO) solar/eclipse duty cycles, Stefan-Boltzmann thermal
+              radiator rejection, and onboard neural inference compression before entering high-severity
+              space weather theaters.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 self-start md:self-center">
             <Button size="sm" variant="secondary" onClick={() => navigate("/help")}>
-              How to play
+              Systems Manual
             </Button>
             <Button size="sm" onClick={() => startFlight("wildfire", "Wildfire Scout")}>
-              Start Flying <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              Launch Wildfire Theater <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Button>
           </div>
         </div>
@@ -125,10 +126,36 @@ export function MissionsPage() {
                   {missionStory(mission.id)}
                 </p>
 
+                {/* Orbital & AI Pipeline Spec Strip */}
+                <div className="mt-3 grid grid-cols-3 gap-2 border border-edge/80 bg-void/50 p-2.5 font-mono text-[11px]">
+                  <div>
+                    <span className="block text-[9px] uppercase text-faint">Orbit Regime</span>
+                    <span className="text-ink font-semibold">
+                      {mission.orbit_altitude_km} km · {mission.orbit_inclination_deg}°
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] uppercase text-faint">Primary Sensor</span>
+                    <span className="text-accent-hi font-semibold truncate block">
+                      {mission.recommended_payload}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] uppercase text-faint">Window</span>
+                    <span className="text-ink font-semibold">{mission.duration_hours}h Ops</span>
+                  </div>
+                </div>
+
                 <div className="mt-4 flex items-center justify-between border-t border-edge pt-3">
                   <DifficultyStars level={mission.difficulty} />
                   <StatusBadge
-                    label={mission.difficulty <= 2 ? "Good for beginners" : mission.difficulty <= 3 ? "A bit tricky" : "Expert pilots"}
+                    label={
+                      mission.difficulty <= 2
+                        ? "Tier I · Nominal LEO"
+                        : mission.difficulty <= 3
+                          ? "Tier II · High Data Load"
+                          : "Tier III · Severe Hazard"
+                    }
                     variant={severityVariant(mission.difficulty)}
                   />
                 </div>
@@ -138,14 +165,14 @@ export function MissionsPage() {
                     size="sm"
                     onClick={() => startFlight(mission.id, mission.name)}
                   >
-                    🚀 Fly this mission
+                    🚀 Configure & Launch
                   </Button>
                   <button
                     type="button"
                     onClick={() => navigate(`/missions/${mission.id}/brief`)}
-                    className="text-xs text-faint hover:text-muted underline"
+                    className="text-xs font-mono text-faint hover:text-muted underline cursor-pointer"
                   >
-                    Full briefing <ArrowRight className="inline h-3 w-3" aria-hidden />
+                    Technical Briefing <ArrowRight className="inline h-3 w-3" aria-hidden />
                   </button>
                 </div>
               </Card>

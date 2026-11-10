@@ -528,7 +528,11 @@ export function OperatePage() {
  );
   }
 
-  const missionHours = 24;
+  const missionHours = Math.max(
+    1,
+    Math.round(((activeClock.max_steps || 1440) * (activeClock.time_step_seconds || 60)) / 3600)
+  );
+  const budgetTotal = Math.max(BUDGET_TOTAL, budgetRemaining);
 
   const stationTabs = myRoles.map((roleId) => {
     const RoleIcon = ROLES[roleId].Icon;
@@ -542,7 +546,7 @@ export function OperatePage() {
   const stationProps: StationProps = {
     telemetry: activeTelemetry,
     budgetRemaining,
-    budgetTotal: BUDGET_TOTAL,
+    budgetTotal,
     onAction: (type, params, label) => void dispatchAction(type, params, label),
     enabled: phase === "playing" && !isFinished(activeGameState),
   };
@@ -777,9 +781,13 @@ export function OperatePage() {
                 marks={[
                   {
                     label: "Now",
-                    fraction:
-                      ((activeGameState?.step ?? 0) / Math.max(1, activeGameState?.step ?? 1)) *
+                    fraction: Math.min(
                       0.999,
+                      Math.max(
+                        0,
+                        (activeGameState?.step ?? 0) / Math.max(1, activeClock.max_steps || 1440)
+                      )
+                    ),
                     kind: "active",
                   },
                 ]}
@@ -796,7 +804,7 @@ export function OperatePage() {
             <ObjectiveTracker objectives={objectives} />
           </Card>
           <Card title="Mission Budget" icon={<Wallet className="h-4 w-4" />}>
-            <BudgetMeter remaining={budgetRemaining} total={BUDGET_TOTAL} />
+            <BudgetMeter remaining={budgetRemaining} total={budgetTotal} />
           </Card>
           <WarningPanel warnings={warnings} />
         </div>
