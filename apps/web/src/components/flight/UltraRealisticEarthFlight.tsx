@@ -36,6 +36,16 @@ import {
   OrbitalAIDataCenterSatellite,
   createOrbitalAIDataCenterSatellite,
 } from "../../lib/orbital-ai-satellite";
+import {
+  wildfireTerrainVertexShader,
+  wildfireTerrainFragmentShader,
+  floodBasinFragmentShader,
+  volcanoConeVertexShader,
+  volcanoConeFragmentShader,
+  auroraCurtainVertexShader,
+  auroraCurtainFragmentShader,
+  createSolarStormSpaceWeatherSystem,
+} from "../../lib/mission-environment-engine";
 
 export interface UltraRealisticEarthFlightProps {
   orbital?: OrbitalTelemetry | null;
@@ -56,7 +66,7 @@ export interface UltraRealisticEarthFlightProps {
   className?: string;
 }
 
-export type CameraViewMode = "tpp" | "nadir" | "orbit" | "datacenter" | "global" | "wing" | "free";
+export type CameraViewMode = "tpp" | "nadir" | "orbit" | "datacenter" | "cinematic" | "global" | "wing" | "free";
 
 const EARTH_RADIUS = 5.0;
 
@@ -717,7 +727,9 @@ export function UltraRealisticEarthFlight({
       if (["KeyC", "KeyV"].includes(e.code)) {
         setViewMode((prev) => {
           if (prev === "tpp") return "nadir";
-          if (prev === "nadir" || prev === "wing") return "orbit";
+          if (prev === "nadir" || prev === "wing") return "cinematic";
+          if (prev === "cinematic") return "datacenter";
+          if (prev === "datacenter") return "orbit";
           return "tpp";
         });
       }
@@ -1217,10 +1229,14 @@ export function UltraRealisticEarthFlight({
       scanPackets.push(spkt);
     }
 
-    // 10. ADVANCED SPECTACULAR LIVE DISASTER ANIMATIONS ON EARTH
+    // 10. FOUR DISTINCT MISSION ENVIRONMENTAL SIMULATION SYSTEMS + SPACE WEATHER
     const flameTexture = createFlameSprite();
     const smokeTexture = createSmokeSprite();
     const rippleTexture = createRippleSprite();
+
+    // Global 3D Space-Weather System (Solar Flare Arches + Propagating Magnetized CME Cloud + Earth Magnetosphere)
+    const spaceWeatherSystem = createSolarStormSpaceWeatherSystem(sunPos, EARTH_RADIUS);
+    scene.add(spaceWeatherSystem.group);
 
     interface LiveEventVisual {
       event: GlobalEarthEvent;
@@ -1228,10 +1244,13 @@ export function UltraRealisticEarthFlight({
       group: THREE.Group;
       ringMesh: THREE.Mesh;
       shieldMesh: THREE.Mesh;
+      shaderMat?: THREE.ShaderMaterial;
       flameParticles?: THREE.Points;
       flamePosis?: Float32Array;
       smokeParticles?: THREE.Points;
       smokePosis?: Float32Array;
+      ashUmbrellaMesh?: THREE.Mesh;
+      stormAnvilMesh?: THREE.Mesh;
       light?: THREE.PointLight;
       rippleMesh?: THREE.Mesh;
       auroraRibbon?: THREE.Mesh;
@@ -1240,7 +1259,7 @@ export function UltraRealisticEarthFlight({
     const liveEvents: LiveEventVisual[] = [];
 
     GLOBAL_EARTH_EVENTS.forEach((ev) => {
-      const pos = latLonToVector3(ev.lat, ev.lon, EARTH_RADIUS + 0.02);
+      const pos = latLonToVector3(ev.lat, ev.lon, EARTH_RADIUS + 0.015);
       const normal = pos.clone().normalize();
       const group = new THREE.Group();
       group.position.copy(pos);
@@ -1248,43 +1267,28 @@ export function UltraRealisticEarthFlight({
 
       const color = new THREE.Color(ev.colorHex);
 
-      // Subtle Holographic Orbital Target Hairline Reticle + Soft Thermal Ground Glow
-      const ringGeom = new THREE.RingGeometry(0.2, 0.23, 36);
+      // Subtle Orbital Target Hairline Reticle (non-intrusive precision framing)
+      const ringGeom = new THREE.RingGeometry(0.28, 0.295, 48);
       const ringMat = new THREE.MeshBasicMaterial({
         color,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.68,
+        opacity: 0.48,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       });
       const ringMesh = new THREE.Mesh(ringGeom, ringMat);
       ringMesh.rotation.x = Math.PI / 2;
+      ringMesh.position.y = 0.006;
       group.add(ringMesh);
 
-      const groundGlow = new THREE.Mesh(
-        new THREE.CircleGeometry(0.26, 24),
-        new THREE.MeshBasicMaterial({
-          map: flameTexture,
-          color,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.42,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-        })
-      );
-      groundGlow.rotation.x = Math.PI / 2;
-      groundGlow.position.y = 0.004;
-      group.add(groundGlow);
-
       // 3D Containment Shield Dome (Appears when AI Alert is transmitted & crisis is RESOLVED)
-      const shieldGeom = new THREE.SphereGeometry(0.32, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      const shieldGeom = new THREE.SphereGeometry(0.34, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5);
       const shieldMat = new THREE.MeshBasicMaterial({
         color: 0x10b981,
         wireframe: true,
         transparent: true,
-        opacity: 0.65,
+        opacity: 0.55,
         blending: THREE.AdditiveBlending,
       });
       const shieldMesh = new THREE.Mesh(shieldGeom, shieldMat);
@@ -1294,23 +1298,46 @@ export function UltraRealisticEarthFlight({
       const visual: LiveEventVisual = { event: ev, position: pos, group, ringMesh, shieldMesh };
 
       if (ev.type === "wildfire") {
-        // 🔥 Wildfire: Natural rising thermal embers + atmospheric smoke plume + warm terrain light
-        const fCount = 65;
+        // 🔥 MISSION 1: WILDFIRE SCOUT — Custom GLSL Terrain Fire-Spread (Forest -> Flame Front -> Charred Burn Scar)
+        const wfShaderMat = new THREE.ShaderMaterial({
+          vertexShader: wildfireTerrainVertexShader,
+          fragmentShader: wildfireTerrainFragmentShader,
+          uniforms: {
+            uTime: { value: 0 },
+            uProgression: { value: 0.55 },
+            uScanActive: { value: 0.0 },
+            uContained: { value: 0.0 },
+            uWindDir: { value: new THREE.Vector2(-0.7, 0.7).normalize() },
+          },
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const terrainPatch = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.66, 16, 16), wfShaderMat);
+        terrainPatch.rotation.x = -Math.PI / 2;
+        terrainPatch.position.y = 0.005;
+        group.add(terrainPatch);
+        visual.shaderMat = wfShaderMat;
+
+        // Multi-layered active fire-front embers rising from the advancing perimeter
+        const fCount = 75;
         const fGeom = new THREE.BufferGeometry();
         const fPosis = new Float32Array(fCount * 3);
         for (let i = 0; i < fCount; i++) {
-          fPosis[i * 3] = (Math.random() - 0.5) * 0.16;
-          fPosis[i * 3 + 1] = Math.random() * 0.36;
-          fPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.16;
+          const ang = (i / fCount) * Math.PI * 2;
+          const rad = 0.12 + Math.random() * 0.1;
+          fPosis[i * 3] = Math.cos(ang) * rad;
+          fPosis[i * 3 + 1] = Math.random() * 0.24;
+          fPosis[i * 3 + 2] = Math.sin(ang) * rad;
         }
         fGeom.setAttribute("position", new THREE.BufferAttribute(fPosis, 3));
         const flameParticles = new THREE.Points(
           fGeom,
           new THREE.PointsMaterial({
             map: flameTexture,
-            size: 0.18,
+            size: 0.14,
             transparent: true,
-            opacity: 0.85,
+            opacity: 0.88,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           })
@@ -1319,78 +1346,204 @@ export function UltraRealisticEarthFlight({
         visual.flameParticles = flameParticles;
         visual.flamePosis = fPosis;
 
-        // Soft Atmospheric Smoke Plume
-        const sCount = 40;
+        // Wind-Advected Volumetric Pyrocumulus Smoke Plume (drifts NW with altitude)
+        const sCount = 55;
         const sGeom = new THREE.BufferGeometry();
         const sPosis = new Float32Array(sCount * 3);
         for (let i = 0; i < sCount; i++) {
-          sPosis[i * 3] = (Math.random() - 0.5) * 0.22;
-          sPosis[i * 3 + 1] = 0.18 + Math.random() * 0.45;
-          sPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.22;
+          const h = 0.08 + Math.random() * 0.48;
+          sPosis[i * 3] = (Math.random() - 0.5) * 0.18 - h * 0.38;
+          sPosis[i * 3 + 1] = h;
+          sPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.18 + h * 0.28;
         }
         sGeom.setAttribute("position", new THREE.BufferAttribute(sPosis, 3));
         const smokeParticles = new THREE.Points(
           sGeom,
-          new THREE.PointsMaterial({ map: smokeTexture, size: 0.26, transparent: true, opacity: 0.42, depthWrite: false })
+          new THREE.PointsMaterial({
+            map: smokeTexture,
+            size: 0.28,
+            transparent: true,
+            opacity: 0.48,
+            depthWrite: false,
+          })
         );
         group.add(smokeParticles);
         visual.smokeParticles = smokeParticles;
         visual.smokePosis = sPosis;
 
-        const fireLight = new THREE.PointLight(0xf97316, 1.8, 2.5);
-        fireLight.position.set(0, 0.2, 0);
+        const fireLight = new THREE.PointLight(0xf97316, 1.6, 2.2);
+        fireLight.position.set(0, 0.18, 0);
         group.add(fireLight);
         visual.light = fireLight;
       } else if (ev.type === "volcano") {
-        // 🌋 Volcano: Incandescent caldera + vertical ash/magma column
-        const caldera = new THREE.Mesh(
-          new THREE.CircleGeometry(0.1, 16),
-          new THREE.MeshBasicMaterial({ color: 0xff3300, side: THREE.DoubleSide })
+        // 🌋 MISSION 3: VOLCANO WATCH — 3D Displaced Stratovolcano Relief Cone + Dendritic Lava Flows + Umbrella Ash Cloud
+        const volcShaderMat = new THREE.ShaderMaterial({
+          vertexShader: volcanoConeVertexShader,
+          fragmentShader: volcanoConeFragmentShader,
+          uniforms: {
+            uTime: { value: 0 },
+            uEruptionIntensity: { value: 0.72 },
+            uScanActive: { value: 0.0 },
+            uContained: { value: 0.0 },
+          },
+          transparent: true,
+          side: THREE.DoubleSide,
+        });
+        const volcanoCone = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.58, 0.58, 36, 36),
+          volcShaderMat
         );
-        caldera.rotation.x = Math.PI / 2;
-        caldera.position.y = 0.01;
-        group.add(caldera);
+        volcanoCone.rotation.x = -Math.PI / 2;
+        volcanoCone.position.y = 0.004;
+        group.add(volcanoCone);
+        visual.shaderMat = volcShaderMat;
 
-        const vCount = 55;
+        // Vertical Plinian Tephra & Ash Eruption Column rising from the summit crater
+        const vCount = 65;
         const vGeom = new THREE.BufferGeometry();
         const vPosis = new Float32Array(vCount * 3);
         for (let i = 0; i < vCount; i++) {
-          vPosis[i * 3] = (Math.random() - 0.5) * 0.12;
-          vPosis[i * 3 + 1] = Math.random() * 0.55;
-          vPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.12;
+          const h = 0.12 + Math.random() * 0.52;
+          const spread = 0.03 + (h * 0.22);
+          vPosis[i * 3] = (Math.random() - 0.5) * spread;
+          vPosis[i * 3 + 1] = h;
+          vPosis[i * 3 + 2] = (Math.random() - 0.5) * spread;
         }
         vGeom.setAttribute("position", new THREE.BufferAttribute(vPosis, 3));
-        const flameParticles = new THREE.Points(
+        const smokeParticles = new THREE.Points(
           vGeom,
-          new THREE.PointsMaterial({ map: flameTexture, size: 0.16, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
+          new THREE.PointsMaterial({
+            map: smokeTexture,
+            size: 0.25,
+            transparent: true,
+            opacity: 0.62,
+            depthWrite: false,
+          })
         );
-        group.add(flameParticles);
-        visual.flameParticles = flameParticles;
-        visual.flamePosis = vPosis;
+        group.add(smokeParticles);
+        visual.smokeParticles = smokeParticles;
+        visual.smokePosis = vPosis;
 
-        const volcLight = new THREE.PointLight(0xef4444, 1.8, 2.5);
-        volcLight.position.set(0, 0.2, 0);
+        // Tropopause Expanding Umbrella Ash Cloud Canopy
+        const umbrellaMesh = new THREE.Mesh(
+          new THREE.CircleGeometry(0.32, 28),
+          new THREE.MeshBasicMaterial({
+            map: smokeTexture,
+            color: 0x475569,
+            transparent: true,
+            opacity: 0.58,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
+        );
+        umbrellaMesh.rotation.x = Math.PI / 2;
+        umbrellaMesh.position.set(0.06, 0.54, 0.04);
+        group.add(umbrellaMesh);
+        visual.ashUmbrellaMesh = umbrellaMesh;
+
+        const volcLight = new THREE.PointLight(0xef4444, 1.8, 2.4);
+        volcLight.position.set(0, 0.24, 0);
         group.add(volcLight);
         visual.light = volcLight;
       } else if (ev.type === "flood") {
-        // 🌊 Flood: Expanding concentric hydrographic radar ripples
+        // 🌊 MISSION 2: FLOOD SCOUT — Topographic River Basin Inundation Shader + Monsoon Storm Anvil + Rainfall Curtain
+        const floodShaderMat = new THREE.ShaderMaterial({
+          vertexShader: wildfireTerrainVertexShader,
+          fragmentShader: floodBasinFragmentShader,
+          uniforms: {
+            uTime: { value: 0 },
+            uWaterLevel: { value: 0.68 },
+            uScanActive: { value: 0.0 },
+            uContained: { value: 0.0 },
+          },
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
+        const floodBasinMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.74, 0.74, 24, 24),
+          floodShaderMat
+        );
+        floodBasinMesh.rotation.x = -Math.PI / 2;
+        floodBasinMesh.position.y = 0.005;
+        group.add(floodBasinMesh);
+        visual.shaderMat = floodShaderMat;
+
+        // Monsoon Convective Storm Cloud Deck above the flooded river basin
+        const stormAnvil = new THREE.Mesh(
+          new THREE.CircleGeometry(0.36, 28),
+          new THREE.MeshBasicMaterial({
+            map: smokeTexture,
+            color: 0x94a3b8,
+            transparent: true,
+            opacity: 0.52,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
+        );
+        stormAnvil.rotation.x = Math.PI / 2;
+        stormAnvil.position.y = 0.32;
+        group.add(stormAnvil);
+        visual.stormAnvilMesh = stormAnvil;
+
+        // Slanted Monsoon Rainfall Curtain Particles
+        const rainCount = 50;
+        const rainGeom = new THREE.BufferGeometry();
+        const rainPosis = new Float32Array(rainCount * 3);
+        for (let i = 0; i < rainCount; i++) {
+          rainPosis[i * 3] = (Math.random() - 0.5) * 0.42;
+          rainPosis[i * 3 + 1] = Math.random() * 0.3;
+          rainPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.42;
+        }
+        rainGeom.setAttribute("position", new THREE.BufferAttribute(rainPosis, 3));
+        const rainParticles = new THREE.Points(
+          rainGeom,
+          new THREE.PointsMaterial({
+            color: 0x7dd3fc,
+            size: 0.045,
+            transparent: true,
+            opacity: 0.55,
+            depthWrite: false,
+          })
+        );
+        group.add(rainParticles);
+        visual.flameParticles = rainParticles;
+        visual.flamePosis = rainPosis;
+      } else if (ev.type === "solar_storm") {
+        // ⚡ MISSION 4: SOLAR STORM — Custom GLSL Undulating Polar Auroral Curtain (557.7 nm Green -> 630 nm Violet)
+        const auroraMat = new THREE.ShaderMaterial({
+          vertexShader: auroraCurtainVertexShader,
+          fragmentShader: auroraCurtainFragmentShader,
+          uniforms: {
+            uTime: { value: 0 },
+            uStormIntensity: { value: 0.78 },
+          },
+          side: THREE.DoubleSide,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const ribbonGeom = new THREE.CylinderGeometry(0.46, 0.42, 0.44, 48, 8, true);
+        const auroraRibbon = new THREE.Mesh(ribbonGeom, auroraMat);
+        auroraRibbon.position.y = 0.22;
+        group.add(auroraRibbon);
+        visual.auroraRibbon = auroraRibbon;
+        visual.shaderMat = auroraMat;
+      } else {
+        // Cyclone vortex
         const rippleMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.6, 0.6),
-          new THREE.MeshBasicMaterial({ map: rippleTexture, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })
+          new THREE.PlaneGeometry(0.65, 0.65),
+          new THREE.MeshBasicMaterial({
+            map: rippleTexture,
+            transparent: true,
+            opacity: 0.65,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+          })
         );
         rippleMesh.rotation.x = Math.PI / 2;
         group.add(rippleMesh);
         visual.rippleMesh = rippleMesh;
-      } else if (ev.type === "solar_storm") {
-        // ⚡ Polar Aurora: Translucent green/violet ionospheric auroral curtain
-        const ribbonGeom = new THREE.CylinderGeometry(0.34, 0.34, 0.38, 24, 1, true);
-        const auroraRibbon = new THREE.Mesh(
-          ribbonGeom,
-          new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
-        );
-        auroraRibbon.position.y = 0.2;
-        group.add(auroraRibbon);
-        visual.auroraRibbon = auroraRibbon;
       }
 
       scene.add(group);
@@ -1702,7 +1855,7 @@ export function UltraRealisticEarthFlight({
       // Slow Cloud Drift
       cloudMesh.rotation.y = clockTime * 0.005;
 
-      // ── Animate Live Disaster Events on Earth ──
+      // ── Animate 4 Distinct Mission Environmental Simulations + Space Weather ──
       let acquiredTarget: string | null = null;
       let acquiredEvent: GlobalEarthEvent | null = null;
       let acquiredPos: THREE.Vector3 | null = null;
@@ -1711,13 +1864,28 @@ export function UltraRealisticEarthFlight({
       const activeScenarioClean = scenarioIdRef.current.replace(/_scout|_sentinel|_watch/g, "");
       const resolvedIds = resolvedIdsRef.current;
 
+      // Update Global Solar Storm Space-Weather System (CME Plasma Cloud + Earth Magnetosphere + Solar Flare Arches)
+      const isSolarStormMission = activeScenarioClean === "solar_storm";
+      const swState = spaceWeatherSystem.update(
+        clockTime,
+        isSolarStormMission,
+        scanningIdRef.current !== null || scanPctRef.current > 0
+      );
+
+      // Modulate inter-satellite laser mesh scintillation during severe CME magnetosphere impact
+      (constellationMeshLines.material as THREE.LineBasicMaterial).opacity =
+        swState.magnetosphereCompression > 0.35
+          ? 0.18 + 0.25 * Math.abs(Math.sin(clockTime * 28.0))
+          : 0.34;
+
       liveEvents.forEach((ev, idx) => {
         const isResolved = resolvedIds.includes(ev.event.id);
         const isAutopilotTarget = autopilotIdRef.current === ev.event.id;
+        const isBeingScanned = scanningIdRef.current === ev.event.id;
         const isMissionPrimary =
           ev.event.scenarioId === scenarioIdRef.current ||
           ev.event.type === activeScenarioClean;
-        const baseScale = isMissionPrimary ? 1.15 : 0.72;
+        const baseScale = isMissionPrimary ? 1.2 : 0.72;
         ev.group.scale.setScalar(baseScale);
 
         // Show 3D Containment Shield Dome when target is RESOLVED
@@ -1728,45 +1896,112 @@ export function UltraRealisticEarthFlight({
 
         // Subtle pulse on target reticle
         const pulse = isAutopilotTarget
-          ? 1.08 + 0.18 * Math.sin(clockTime * 6.5)
-          : 1.0 + 0.12 * Math.sin(clockTime * 3.5 + idx);
+          ? 1.06 + 0.14 * Math.sin(clockTime * 6.0)
+          : 1.0 + 0.08 * Math.sin(clockTime * 3.0 + idx);
         ev.ringMesh.scale.set(pulse, pulse, pulse);
 
-        // Animate Wildfire / Volcano Particles
+        // Update Custom GLSL Environmental Simulation Shaders (Wildfire / Flood / Volcano / Aurora)
+        if (ev.shaderMat) {
+          ev.shaderMat.uniforms.uTime.value = clockTime + idx * 1.7;
+          if (ev.shaderMat.uniforms.uScanActive !== undefined) {
+            ev.shaderMat.uniforms.uScanActive.value = isBeingScanned ? 1.0 : 0.0;
+          }
+          if (ev.shaderMat.uniforms.uContained !== undefined) {
+            ev.shaderMat.uniforms.uContained.value = isResolved ? 1.0 : 0.0;
+          }
+          if (ev.event.type === "wildfire" && ev.shaderMat.uniforms.uProgression !== undefined) {
+            // Fire perimeter expands naturally over time unless contained
+            ev.shaderMat.uniforms.uProgression.value = isResolved
+              ? 0.35
+              : 0.52 + 0.26 * (0.5 + 0.5 * Math.sin(clockTime * 0.25 + idx));
+          } else if (ev.event.type === "flood" && ev.shaderMat.uniforms.uWaterLevel !== undefined) {
+            // River basin water level rises and overflows banks progressively
+            ev.shaderMat.uniforms.uWaterLevel.value = isResolved
+              ? 0.38
+              : 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(clockTime * 0.3 + idx));
+          } else if (ev.event.type === "volcano" && ev.shaderMat.uniforms.uEruptionIntensity !== undefined) {
+            ev.shaderMat.uniforms.uEruptionIntensity.value = isResolved
+              ? 0.35
+              : 0.68 + 0.25 * (0.5 + 0.5 * Math.sin(clockTime * 0.4 + idx));
+          } else if (ev.event.type === "solar_storm" && ev.shaderMat.uniforms.uStormIntensity !== undefined) {
+            ev.shaderMat.uniforms.uStormIntensity.value =
+              0.55 + swState.magnetosphereCompression * 0.45;
+          }
+        }
+
+        // Animate Mission-Specific 3D Particles (Wildfire Embers / Flood Rainfall / Volcanic Tephra)
         if (ev.flameParticles && ev.flamePosis) {
           ev.flameParticles.visible = !isResolved;
           if (!isResolved) {
             const arr = ev.flamePosis;
             const count = arr.length / 3;
-            for (let i = 0; i < count; i++) {
-              arr[i * 3 + 1] += 0.015;
-              arr[i * 3] += Math.sin(clockTime * 7 + i) * 0.003;
-              if (arr[i * 3 + 1] > 0.45) {
-                arr[i * 3] = (Math.random() - 0.5) * 0.15;
-                arr[i * 3 + 1] = 0;
-                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.15;
+            if (ev.event.type === "flood") {
+              // Slanted Monsoon Rainfall descending from storm anvil onto river basin
+              for (let i = 0; i < count; i++) {
+                arr[i * 3 + 1] -= 0.018;
+                arr[i * 3] -= 0.004;
+                if (arr[i * 3 + 1] < 0.01) {
+                  arr[i * 3] = (Math.random() - 0.5) * 0.42;
+                  arr[i * 3 + 1] = 0.3;
+                  arr[i * 3 + 2] = (Math.random() - 0.5) * 0.42;
+                }
+              }
+            } else {
+              // Rising Wildfire Embers along the expanding fire perimeter
+              for (let i = 0; i < count; i++) {
+                arr[i * 3 + 1] += 0.012;
+                arr[i * 3] -= 0.004; // Wind-advected NW
+                if (arr[i * 3 + 1] > 0.32) {
+                  const ang = (i / count) * Math.PI * 2;
+                  const rad = 0.12 + Math.random() * 0.12;
+                  arr[i * 3] = Math.cos(ang) * rad;
+                  arr[i * 3 + 1] = 0.01;
+                  arr[i * 3 + 2] = Math.sin(ang) * rad;
+                }
               }
             }
             (ev.flameParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
           }
         }
 
+        // Animate Wind-Sheared Wildfire Smoke & Volcanic Plinian Ash Column
         if (ev.smokeParticles && ev.smokePosis) {
           ev.smokeParticles.visible = !isResolved;
           if (!isResolved) {
             const arr = ev.smokePosis;
             const count = arr.length / 3;
             for (let i = 0; i < count; i++) {
-              arr[i * 3 + 1] += 0.01;
-              arr[i * 3] += Math.cos(clockTime * 4 + i) * 0.003;
-              if (arr[i * 3 + 1] > 0.75) {
-                arr[i * 3] = (Math.random() - 0.5) * 0.2;
-                arr[i * 3 + 1] = 0.18;
-                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+              arr[i * 3 + 1] += 0.009;
+              if (ev.event.type === "wildfire") {
+                // Strong NW wind shear bending the smoke plume
+                arr[i * 3] -= 0.0065;
+                arr[i * 3 + 2] += 0.0045;
+              } else {
+                // Radial expansion at the volcanic tropopause umbrella
+                arr[i * 3] += Math.cos(clockTime * 2 + i) * 0.003;
+                arr[i * 3 + 2] += Math.sin(clockTime * 2 + i) * 0.003;
+              }
+              if (arr[i * 3 + 1] > 0.58) {
+                arr[i * 3] = (Math.random() - 0.5) * 0.08;
+                arr[i * 3 + 1] = 0.08;
+                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.08;
               }
             }
             (ev.smokeParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
           }
+        }
+
+        // Animate Volcanic Tropopause Umbrella Ash Cloud & Flood Monsoon Anvil
+        if (ev.ashUmbrellaMesh) {
+          ev.ashUmbrellaMesh.visible = !isResolved;
+          const uScale = 1.0 + 0.18 * Math.sin(clockTime * 0.8 + idx);
+          ev.ashUmbrellaMesh.scale.set(uScale, uScale, 1);
+          ev.ashUmbrellaMesh.rotation.z = clockTime * 0.12;
+        }
+        if (ev.stormAnvilMesh) {
+          const sScale = 1.0 + 0.1 * Math.sin(clockTime * 1.1 + idx);
+          ev.stormAnvilMesh.scale.set(sScale, sScale, 1);
+          ev.stormAnvilMesh.rotation.z = -clockTime * 0.08;
         }
 
         if (ev.rippleMesh) {
@@ -1778,12 +2013,11 @@ export function UltraRealisticEarthFlight({
         }
 
         if (ev.auroraRibbon) {
-          const wave = Math.sin(clockTime * 3.0 + idx) * 0.08;
-          ev.auroraRibbon.scale.set(1.0 + wave, 1.0 + wave * 1.4, 1.0 + wave);
+          ev.auroraRibbon.rotation.y = clockTime * 0.18;
         }
 
         if (ev.light) {
-          ev.light.intensity = isResolved ? 0.3 : 1.5 + 0.5 * Math.sin(clockTime * 14.0 + idx * 3.0);
+          ev.light.intensity = isResolved ? 0.25 : 1.4 + 0.45 * Math.sin(clockTime * 11.0 + idx * 3.0);
         }
 
         const evNormal = ev.position.clone().normalize();
@@ -1823,11 +2057,24 @@ export function UltraRealisticEarthFlight({
       if (acquiredTarget && acquiredPos) {
         const isActivelyScanning =
           scanningIdRef.current !== null || scanPctRef.current > 0;
-        scanConeMat.color.setHex(isActivelyScanning ? 0x10b981 : 0x22d3ee);
+        // Mission-specific multi-spectral sensor cone colors:
+        // Wildfire = SWIR Thermal Amber (0xf97316), Flood = C-Band SAR Cyan (0x06b6d4),
+        // Volcano = UV/InSAR Violet (0xe879f9), Solar Storm = Magnetometer Emerald (0x10b981)
+        const activeSensorHex =
+          activeScenarioClean === "wildfire"
+            ? 0xf97316
+            : activeScenarioClean === "flood"
+            ? 0x06b6d4
+            : activeScenarioClean === "volcano"
+            ? 0xe879f9
+            : 0x10b981;
+        scanConeMat.color.setHex(isActivelyScanning ? activeSensorHex : 0x22d3ee);
         scanConeMat.opacity = isActivelyScanning
           ? 0.28 + 0.1 * Math.sin(clockTime * 14)
           : 0.2;
-        (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(0x10b981);
+        (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(
+          isActivelyScanning ? activeSensorHex : 0x10b981
+        );
 
         scanPackets.forEach((spkt, idx) => {
           spkt.visible = true;
@@ -1852,7 +2099,7 @@ export function UltraRealisticEarthFlight({
         onTargetInRangeRef.current?.(acquiredEvent, Math.round(minTargetDistKm));
       }
 
-      // ── 12. CAMERA MODES: SCOUT CHASE (TPP), NADIR SCAN, AI DATA CENTER STATION, GLOBAL ORBIT ──
+      // ── 12. CAMERA MODES: SCOUT CHASE (TPP), NADIR SCAN, CINEMATIC EVENT CAM, AI STATION, GLOBAL ORBIT ──
       const currentMode = viewModeRef.current;
       const targetCamPos = new THREE.Vector3();
       const targetLookAt = new THREE.Vector3();
@@ -1870,6 +2117,36 @@ export function UltraRealisticEarthFlight({
           .add(forwardDir.clone().multiplyScalar(1.4))
           .add(radialDown.clone().multiplyScalar(0.45));
         targetCamUp.copy(radialOut);
+      } else if (currentMode === "cinematic") {
+        // 🎬 Cinematic Event Cam — Low-altitude oblique orbital fly-around focused directly on the active environmental simulation!
+        const zoom = tppZoomRef.current;
+        const focusEv =
+          liveEvents.find((e) => e.event.id === scanningIdRef.current) ??
+          liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
+          liveEvents.find((e) => e.event.scenarioId === activeScenarioClean) ??
+          liveEvents[0];
+        if (focusEv) {
+          const evNormal = focusEv.position.clone().normalize();
+          const arbitraryUp =
+            Math.abs(evNormal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+          const tangentA = new THREE.Vector3().crossVectors(arbitraryUp, evNormal).normalize();
+          const tangentB = new THREE.Vector3().crossVectors(evNormal, tangentA).normalize();
+          const orbitPanAngle = clockTime * 0.14;
+          const panOffset = tangentA
+            .clone()
+            .multiplyScalar(Math.cos(orbitPanAngle) * 1.35 * zoom)
+            .add(tangentB.clone().multiplyScalar(Math.sin(orbitPanAngle) * 1.35 * zoom));
+          targetCamPos
+            .copy(focusEv.position)
+            .add(evNormal.clone().multiplyScalar(1.15 * zoom))
+            .add(panOffset);
+          targetLookAt.copy(focusEv.position).add(evNormal.clone().multiplyScalar(0.08));
+          targetCamUp.copy(evNormal);
+        } else {
+          targetCamPos.copy(spacecraft.position).multiplyScalar(1.25);
+          targetLookAt.set(0, 0, 0);
+          targetCamUp.set(0, 1, 0);
+        }
       } else if (currentMode === "datacenter") {
         // 🏛️ High-Orbit AI Data Center Mother Station Camera ("LUMEN-DC-ALPHA")
         const zoom = tppZoomRef.current;
@@ -1906,7 +2183,7 @@ export function UltraRealisticEarthFlight({
         targetCamUp.set(0, 1, 0);
       }
 
-      const lerpSpeed = currentMode === "orbit" ? 0.08 : 0.12;
+      const lerpSpeed = currentMode === "orbit" ? 0.08 : currentMode === "cinematic" ? 0.09 : 0.12;
       camPosRef.current.lerp(targetCamPos, lerpSpeed);
       camLookAtRef.current.lerp(targetLookAt, lerpSpeed);
       camUpRef.current.lerp(targetCamUp, lerpSpeed);
@@ -2141,6 +2418,7 @@ export function UltraRealisticEarthFlight({
             [
               { id: "tpp", label: "Scout Chase", icon: "🚀", desc: "Third-Person Scout Satellite View" },
               { id: "nadir", label: "Nadir Scan", icon: "🛰️", desc: "Down-Looking Earth Observation" },
+              { id: "cinematic", label: "Event Cam", icon: "🎬", desc: "Cinematic Environmental Event Close-Up" },
               { id: "datacenter", label: "AI Station", icon: "🏛️", desc: "High-Orbit AI Data Center Mother Station" },
               { id: "orbit", label: "Global Orbit", icon: "🌍", desc: "3D Global Constellation View" },
             ] as const

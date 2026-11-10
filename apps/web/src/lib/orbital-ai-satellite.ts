@@ -287,7 +287,7 @@ export class OrbitalAIDataCenterSatellite {
   private readonly dishBooms: THREE.Group[] = [];
   private readonly opticalLaserHeads: THREE.Group[] = [];
   private readonly radiatorMaterials: THREE.MeshStandardMaterial[] = [];
-  private statusLedInstancedMesh: THREE.InstancedMesh | null = null;
+  public statusLedInstancedMesh: THREE.InstancedMesh | null = null;
 
   // Configurable orbital & network state
   public scale: number;
@@ -1138,11 +1138,6 @@ export class OrbitalAIDataCenterSatellite {
     this.opticalLaserHeads.forEach((oct) => {
       oct.scale.setScalar(0.35 + 0.65 * stage4);
     });
-
-    // 5. Server Blade Status LEDs Activate in Stage 5
-    if (this.statusLedInstancedMesh) {
-      this.statusLedInstancedMesh.visible = progress >= 0.85;
-    }
   }
 
   /**
@@ -1202,4 +1197,3 @@ export function createOrbitalAIDataCenterSatellite(
 ): OrbitalAIDataCenterSatellite {
   return new OrbitalAIDataCenterSatellite(config);
 }
-

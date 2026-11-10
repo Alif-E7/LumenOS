@@ -6,6 +6,18 @@ import {
   computeConstellationRelayNodes,
 } from "../lib/ai-datacenter";
 import { createOrbitalAIDataCenterSatellite } from "../lib/orbital-ai-satellite";
+import {
+  wildfireTerrainVertexShader,
+  wildfireTerrainFragmentShader,
+  floodBasinFragmentShader,
+  volcanoConeVertexShader,
+  volcanoConeFragmentShader,
+  auroraCurtainVertexShader,
+  auroraCurtainFragmentShader,
+  cmePlasmaVertexShader,
+  cmePlasmaFragmentShader,
+  createSolarStormSpaceWeatherSystem,
+} from "../lib/mission-environment-engine";
 import { GLOBAL_EARTH_EVENTS } from "../components/flight/UltraRealisticEarthFlight";
 import { DirectorStation } from "../components/StationPanels";
 import type { Telemetry, GameStateSummary } from "../types";
@@ -209,5 +221,33 @@ describe("Orbital AI Data Center & 4-Mission Phenomenology Engine", () => {
     // Verify Sun-tracking solar array orientation and thermal state update
     sat.updateOrbitalSystems(new THREE.Vector3(1, 0.2, 0.5).normalize(), 46.0);
     expect(sat.radiatorConfig.thermalLoadC).toBe(46.0);
+  });
+
+  it("provides custom GLSL environmental shaders and Solar Storm CME / Magnetosphere 3D space-weather system", () => {
+    expect(wildfireTerrainVertexShader).toContain("vUv");
+    expect(wildfireTerrainFragmentShader).toContain("uProgress");
+    expect(floodBasinFragmentShader).toContain("uScanActive");
+    expect(volcanoConeVertexShader).toContain("vElevation");
+    expect(volcanoConeFragmentShader).toContain("lavaColor");
+    expect(auroraCurtainVertexShader).toContain("vUv");
+    expect(auroraCurtainFragmentShader).toContain("lowerOxygenGreen");
+    expect(cmePlasmaVertexShader).toContain("vViewDir");
+    expect(cmePlasmaFragmentShader).toContain("plasmaColor");
+
+    const sunPos = new THREE.Vector3(60, 12, 38);
+    const spaceWeather = createSolarStormSpaceWeatherSystem(sunPos, 5.2);
+    expect(spaceWeather.group.name).toBe("solarStormSpaceWeatherSystem");
+    expect(spaceWeather.magnetosphereGroup.children.length).toBeGreaterThanOrEqual(8);
+
+    // Update in Solar Storm active mode and verify CME propagation & bow-shock response
+    const activeState = spaceWeather.update(2.5, true, true);
+    expect(activeState.cmePhase).toBeGreaterThanOrEqual(0);
+    const activeBowOpacity = (spaceWeather.bowShockMesh.material as THREE.MeshBasicMaterial).opacity;
+    expect(activeBowOpacity).toBeGreaterThan(0.08);
+
+    // Update in non-solar-storm mode and verify subtle background magnetosphere state
+    spaceWeather.update(2.5, false, false);
+    const backgroundBowOpacity = (spaceWeather.bowShockMesh.material as THREE.MeshBasicMaterial).opacity;
+    expect(backgroundBowOpacity).toBeLessThan(activeBowOpacity);
   });
 });
