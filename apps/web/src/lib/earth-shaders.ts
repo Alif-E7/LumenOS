@@ -70,47 +70,97 @@ export const earthFragmentShader = /* glsl */ `
     float waterMask = texture2D(specularTexture, vUv).r;
 
     // Refine ocean vs land appearance for physical realism
-    // Deepen ocean tones slightly for scientific satellite aesthetic
-    vec3 refinedDay = mix(dayColor * 1.04, dayColor * vec3(0.78, 0.88, 1.05), waterMask * 0.45);
+    // Deep sapphire ocean with natural coastal turquoise & lush continental contrast
+    vec3 oceanTone = mix(dayColor * vec3(0.62, 0.82, 1.08), vec3(0.03, 0.12, 0.26), 0.32);
+    vec3 landTone = pow(dayColor, vec3(0.95)) * 1.08;
+    vec3 refinedDay = mix(landTone, oceanTone, waterMask * 0.72);
 
     // Illumination geometry
     float ndotl = dot(normal, lightDir);
     float smoothNdotL = dot(baseNormal, lightDir);
 
     // Day / Night transition factor across the terminator
-    float dayFactor = smoothstep(-0.16, 0.22, smoothNdotL);
+    float dayFactor = smoothstep(-0.14, 0.24, smoothNdotL);
     float diffuse = max(ndotl, 0.0);
 
-    // Subtle warm sunset/twilight band along the terminator
-    float twilightBand = smoothstep(-0.18, 0.04, smoothNdotL) * (1.0 - smoothstep(0.04, 0.28, smoothNdotL));
-    vec3 twilightTint = vec3(0.85, 0.42, 0.18) * twilightBand * 0.28;
+    // Warm golden-amber sunset/twilight Rayleigh-Mie band along the terminator
+    float twilightBand = smoothstep(-0.18, 0.05, smoothNdotL) * (1.0 - smoothstep(0.05, 0.32, smoothNdotL));
+    vec3 twilightTint = vec3(0.95, 0.45, 0.16) * twilightBand * 0.36;
 
-    // Specular sun reflection on oceans (restrained & realistic)
+    // Realistic ocean Fresnel sun-glint & micro-facet specular reflection
     vec3 halfDir = normalize(lightDir + viewDir);
     float specAngle = max(dot(normal, halfDir), 0.0);
-    float specOcean = pow(specAngle, 48.0) * 0.42 * waterMask;
-    float specLand = pow(specAngle, 16.0) * 0.03 * (1.0 - waterMask);
-    vec3 specular = vec3(1.0, 0.96, 0.88) * (specOcean + specLand) * dayFactor;
+    float specCore = pow(specAngle, 96.0) * 0.85 * waterMask;
+    float specBroad = pow(specAngle, 22.0) * 0.24 * waterMask;
+    float specLand = pow(specAngle, 18.0) * 0.03 * (1.0 - waterMask);
+    vec3 specular = vec3(1.0, 0.95, 0.86) * (specCore + specBroad + specLand) * dayFactor;
+
+    // Subtle Rayleigh blue atmospheric scattering veil over the sunlit hemisphere
+    vec3 rayleighVeil = vec3(0.16, 0.42, 0.88) * pow(max(smoothNdotL, 0.0), 0.7) * 0.11;
 
     // Combine sunlit surface
-    vec3 litDay = refinedDay * (ambientStrength + (1.0 - ambientStrength) * pow(diffuse, 0.88)) + specular + twilightTint;
+    vec3 litDay = refinedDay * (ambientStrength + (1.0 - ambientStrength) * pow(diffuse, 0.84)) + specular + twilightTint + rayleighVeil;
 
-    // Night side: warm golden city lights + faint starlit terrain silhouette
-    vec3 warmNightLights = pow(nightColor, vec3(1.25)) * vec3(1.35, 1.05, 0.65) * 1.35;
-    vec3 darkAmbient = refinedDay * ambientStrength * 0.45;
-    vec3 nightSurface = darkAmbient + warmNightLights * (1.0 - waterMask * 0.85);
+    // Night side: warm sodium/LED city clusters + deep starlit terrain silhouette
+    vec3 warmNightLights = pow(nightColor, vec3(1.35)) * vec3(1.45, 1.08, 0.62) * 1.45;
+    vec3 darkAmbient = refinedDay * ambientStrength * 0.26;
+    vec3 nightSurface = darkAmbient + warmNightLights * (1.0 - waterMask * 0.88);
 
     // Blend day and night across the terminator
     vec3 surfaceColor = mix(nightSurface, litDay, dayFactor);
 
-    // Atmospheric Rayleigh horizon haze on the globe surface
+    // Atmospheric Rayleigh horizon haze on the globe limb
     float fresnel = 1.0 - max(dot(viewDir, baseNormal), 0.0);
-    float rim = pow(clamp(fresnel, 0.0, 1.0), 3.2);
+    float rim = pow(clamp(fresnel, 0.0, 1.0), 2.8);
     float sunFacingAtmos = smoothstep(-0.35, 0.45, smoothNdotL);
-    vec3 atmosColor = mix(vec3(0.05, 0.14, 0.32), vec3(0.28, 0.58, 0.98), sunFacingAtmos);
-    surfaceColor += atmosColor * rim * (0.18 + 0.48 * sunFacingAtmos);
+    vec3 atmosColor = mix(vec3(0.04, 0.14, 0.36), vec3(0.26, 0.62, 1.0), sunFacingAtmos);
+    surfaceColor += atmosColor * rim * (0.24 + 0.58 * sunFacingAtmos);
 
     gl_FragColor = vec4(surfaceColor, 1.0);
+  }
+`;
+
+export const cloudVertexShader = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    vUv = uv;
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
+  }
+`;
+
+export const cloudFragmentShader = /* glsl */ `
+  uniform sampler2D cloudTexture;
+  uniform vec3 sunDirection;
+
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    vec4 tex = texture2D(cloudTexture, vUv);
+    float density = max(tex.r, tex.a);
+    if (density < 0.02) discard;
+
+    vec3 normal = normalize(vWorldNormal);
+    vec3 lightDir = normalize(sunDirection);
+    float ndotl = dot(normal, lightDir);
+
+    // Clouds are brilliant white in sunlight, warm coral at sunset, and dark on the night hemisphere
+    float dayFactor = smoothstep(-0.18, 0.25, ndotl);
+    float twilight = smoothstep(-0.18, 0.02, ndotl) * (1.0 - smoothstep(0.02, 0.26, ndotl));
+    vec3 dayCloud = vec3(0.98, 0.99, 1.0);
+    vec3 sunsetCloud = vec3(1.0, 0.58, 0.36);
+    vec3 nightCloud = vec3(0.04, 0.07, 0.14);
+
+    vec3 cloudColor = mix(nightCloud, dayCloud, dayFactor) + sunsetCloud * twilight * 0.45;
+    float alpha = density * mix(0.14, 0.68, dayFactor);
+    gl_FragColor = vec4(cloudColor, clamp(alpha, 0.0, 0.78));
   }
 `;
 

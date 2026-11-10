@@ -328,28 +328,15 @@ export function createBorderGeometry(
     new THREE.Float32BufferAttribute(positions, 3),
   );
 
-  // Crisp luminous golden-orange national border material
+  // Subtle, natural orbital cartography border material (preserves photorealistic Earth surface)
   const material = new THREE.LineBasicMaterial({
-    color: new THREE.Color(0xe5a034),
+    color: new THREE.Color(0x94a3b8),
     transparent: true,
-    opacity: 0.72,
+    opacity: 0.16,
     depthWrite: false,
   });
 
   const mainLines = new THREE.LineSegments(geometry, material);
-
-  // Subtle additive luminous glow pass slightly beneath to create the warm reference halo
-  const glowMaterial = new THREE.LineBasicMaterial({
-    color: new THREE.Color(0xf59e0b),
-    transparent: true,
-    opacity: 0.28,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  const glowLines = new THREE.LineSegments(geometry, glowMaterial);
-  glowLines.scale.setScalar(1.0004);
-  mainLines.add(glowLines);
-
   return mainLines;
 }
 

@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Flame,
   Radio,
 } from "lucide-react";
 import type { OrbitalTelemetry, CommsTelemetry, ClockState, ActiveEvent } from "../../types";
@@ -21,6 +20,8 @@ import {
   atmosphereFragmentShader,
   earthVertexShader,
   earthFragmentShader,
+  cloudVertexShader,
+  cloudFragmentShader,
 } from "../../lib/earth-shaders";
 import {
   parseCountryBorders,
@@ -51,7 +52,7 @@ export interface UltraRealisticEarthFlightProps {
   className?: string;
 }
 
-export type CameraViewMode = "tpp" | "nadir" | "orbit" | "global" | "wing" | "free";
+export type CameraViewMode = "tpp" | "nadir" | "orbit" | "datacenter" | "global" | "wing" | "free";
 
 const EARTH_RADIUS = 5.0;
 
@@ -762,18 +763,141 @@ function createSpacecraftModel(): THREE.Group {
   rcsRight.position.set(0.34, 0.02, 0.26);
   ship.add(rcsRight);
 
-  ship.scale.set(0.7, 0.7, 0.7);
+  ship.scale.set(0.58, 0.58, 0.58);
   return ship;
+}
+
+/**
+ * Massive High-Orbit Orbital AI Data Center Mother Station ("LUMEN-DC-ALPHA").
+ * Orbits in Medium Earth Orbit (MEO) on a separate orbital plane from the low-orbit Scout Satellite,
+ * featuring a rotating Hexagonal Neural Compute Ring, 6 Modular NPU Server Pods, 4 Giant Solar Wings,
+ * 4 Cryo-Radiator Arrays, and a 1550 nm Optical Laser Crosslink Transceiver.
+ */
+function createOrbitalDataCenterStation(): THREE.Group {
+  const station = new THREE.Group();
+
+  // 1. Central Cryo-Compute Spine Cylinder
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    metalness: 0.92,
+    roughness: 0.18,
+    emissive: 0x082f49,
+    emissiveIntensity: 0.45,
+  });
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.15, 24), coreMat);
+  spine.rotation.x = Math.PI / 2;
+  station.add(spine);
+
+  // Gold Kapton Thermal Shield Bands on Spine
+  const goldMat = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    metalness: 0.95,
+    roughness: 0.28,
+  });
+  const band1 = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.24, 24), goldMat);
+  band1.rotation.x = Math.PI / 2;
+  band1.position.z = 0.28;
+  station.add(band1);
+
+  const band2 = band1.clone();
+  band2.position.z = -0.28;
+  station.add(band2);
+
+  // 2. Rotating Hexagonal Neural Compute Ring (6 Server Blade Modules)
+  const computeRingGroup = new THREE.Group();
+  computeRingGroup.name = "computeRing";
+  const ringTorus = new THREE.Mesh(
+    new THREE.TorusGeometry(0.52, 0.045, 16, 48),
+    new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      metalness: 0.9,
+      roughness: 0.15,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.65,
+    })
+  );
+  computeRingGroup.add(ringTorus);
+
+  const podGeom = new THREE.BoxGeometry(0.18, 0.14, 0.32);
+  const podMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    metalness: 0.88,
+    roughness: 0.2,
+    emissive: 0x06b6d4,
+    emissiveIntensity: 0.4,
+  });
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    const pod = new THREE.Mesh(podGeom, podMat);
+    pod.position.set(Math.cos(a) * 0.52, Math.sin(a) * 0.52, 0);
+    pod.rotation.z = a;
+    computeRingGroup.add(pod);
+  }
+  station.add(computeRingGroup);
+
+  // 3. Quad Giant Deep-Sapphire Photovoltaic Solar Array Wings (+/- X)
+  const solarMat = new THREE.MeshStandardMaterial({
+    color: 0x1e3a8a,
+    metalness: 0.78,
+    roughness: 0.18,
+    emissive: 0x172554,
+    emissiveIntensity: 0.5,
+  });
+  const solarGeom = new THREE.BoxGeometry(1.15, 0.016, 0.34);
+  const offsets: Array<[number, number]> = [
+    [0.82, 0.24],
+    [0.82, -0.24],
+    [-0.82, 0.24],
+    [-0.82, -0.24],
+  ];
+  offsets.forEach(([xOff, zOff]) => {
+    const wing = new THREE.Mesh(solarGeom, solarMat);
+    wing.position.set(xOff, 0, zOff);
+    station.add(wing);
+  });
+
+  // 4. Deployable White/Cyan Ammonia-Loop Thermal Radiator Fins (+/- Y)
+  const radMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    metalness: 0.85,
+    roughness: 0.15,
+    emissive: 0x0ea5e9,
+    emissiveIntensity: 0.35,
+  });
+  const radGeom = new THREE.BoxGeometry(0.02, 0.68, 0.42);
+  const topRad = new THREE.Mesh(radGeom, radMat);
+  topRad.name = "dcRadiator";
+  topRad.position.set(0, 0.56, 0);
+  station.add(topRad);
+
+  const botRad = new THREE.Mesh(radGeom, radMat);
+  botRad.position.set(0, -0.56, 0);
+  station.add(botRad);
+
+  // 5. High-Power 1550 nm Optical Laser Transceiver Dome & Beacon Light
+  const laserDome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.11, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+  );
+  laserDome.position.set(0, 0, 0.62);
+  station.add(laserDome);
+
+  const dcLight = new THREE.PointLight(0x22d3ee, 1.6, 4.0);
+  dcLight.position.set(0, 0, 0.7);
+  station.add(dcLight);
+
+  station.scale.set(0.68, 0.68, 0.68);
+  return station;
 }
 
 /**
  * Ultra-Realistic 3D Space Flight Game.
  *
  * Core Features:
- * - True Third-Person Perspective (TPP Chase) by default ("driving the satellite").
- * - Interactive Camera Switcher: TPP Chase, Ride-Along (Nadir), and Orbit View.
- * - True 3D Spherical Orbital Propagation + Manual WASD Orbital Plane Steering + Click-to-Intercept Autopilot.
- * - Volumetric Nadir Scan Cone, Rising Telemetry Packets, Optical ISL Laser Pulses, and 3D Containment Shields.
+ * - Two Distinct Orbital Vehicles: Low-Orbit Scout Satellite (LUMEN-SCOUT-1) + High-Orbit AI Data Center Mother Station (LUMEN-DC-ALPHA).
+ * - Interactive Camera Switcher: Scout Chase (TPP), Nadir Scan, AI Data Center Station View, and Global Orbit View.
+ * - True Great-Circle Spherical Propagation + Smooth Orbital Plane Precession (Never spins in place!).
+ * - Photorealistic NASA Blue Marble Earth + Day/Night Lit Clouds + Rayleigh Atmosphere + Volumetric Laser Cones.
  */
 export function UltraRealisticEarthFlight({
   orbital,
@@ -794,8 +918,11 @@ export function UltraRealisticEarthFlight({
 }: UltraRealisticEarthFlightProps) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const [viewMode, setViewMode] = useState<CameraViewMode>("tpp"); // DEFAULT TPP!
+  const [showMapOverlay, setShowMapOverlay] = useState<boolean>(false); // Natural Earth by default!
+  const showMapOverlayRef = useRef<boolean>(false);
+  showMapOverlayRef.current = showMapOverlay;
   const [inRangeTargetName, setInRangeTargetName] = useState<string | null>(null);
-  const [activeRelayLabel, setActiveRelayLabel] = useState<string>("LUMEN-RELAY-1 (8.4 Gbps)");
+  const [activeRelayLabel, setActiveRelayLabel] = useState<string>("LUMEN-DC-ALPHA (10.0 Gbps)");
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isBoosting, setIsBoosting] = useState(false);
   const [orbitalSpeedKmS, setOrbitalSpeedKmS] = useState(7.6);
@@ -810,7 +937,7 @@ export function UltraRealisticEarthFlight({
   const scanPctRef = useRef<number>(scanProgressPct);
   scanPctRef.current = scanProgressPct;
   const autopilotIdRef = useRef<string | null>(autopilotTargetId);
-  autopilotIdRef.current = autopilotTargetId;
+  const prevAutopilotIdRef = useRef<string | null>(autopilotTargetId);
   const islPulseRef = useRef<boolean>(islPulseActive);
   islPulseRef.current = islPulseActive;
   const onTargetInRangeRef = useRef(onTargetInRangeChange);
@@ -822,6 +949,8 @@ export function UltraRealisticEarthFlight({
   const flightState = useRef({
     progress: 0.8, // Continuous orbit angle
     speed: 0.0028, // Base continuous angular speed (rad/frame)
+    dcPhase: 1.9, // Separate orbital phase for High-Orbit AI Data Center Mother Station!
+    autopilotBoostFrames: 0, // Burst speed when locking onto a new target
     pitch: 0, // Player pitch steering
     yaw: 0, // Player yaw steering
     roll: 0, // Banking roll
@@ -840,6 +969,17 @@ export function UltraRealisticEarthFlight({
     frameTick: 0,
     keys: { w: false, s: false, a: false, d: false, space: false },
   });
+
+  // Trigger a smooth 2.2x Ion Intercept Burst whenever the player selects a new target!
+  if (autopilotTargetId !== prevAutopilotIdRef.current) {
+    prevAutopilotIdRef.current = autopilotTargetId;
+    autopilotIdRef.current = autopilotTargetId;
+    if (autopilotTargetId) {
+      flightState.current.autopilotBoostFrames = 85;
+    }
+  } else {
+    autopilotIdRef.current = autopilotTargetId;
+  }
 
   const isDraggingRef = useRef(false);
   const mousePosRef = useRef({ x: 0, y: 0 });
@@ -1013,17 +1153,20 @@ export function UltraRealisticEarthFlight({
     );
     earthGroup.add(earthMesh);
 
-    // 5. Cloud Layer Sphere
+    // 5. Realistic Day/Night Illuminated Cloud Layer Sphere (No artificial night-side glow!)
     const cloudTexture = createCloudCanvasTexture();
-    const cloudMat = new THREE.MeshLambertMaterial({
-      map: cloudTexture,
+    const cloudMat = new THREE.ShaderMaterial({
+      vertexShader: cloudVertexShader,
+      fragmentShader: cloudFragmentShader,
+      uniforms: {
+        cloudTexture: { value: cloudTexture },
+        sunDirection: { value: sunDirNorm },
+      },
       transparent: true,
-      opacity: 0.28,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
     });
     const cloudMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(EARTH_RADIUS * 1.004, 96, 48),
+      new THREE.SphereGeometry(EARTH_RADIUS * 1.005, 96, 48),
       cloudMat
     );
     earthGroup.add(cloudMesh);
@@ -1052,8 +1195,7 @@ export function UltraRealisticEarthFlight({
     texLoader.load("/textures/earth/earth-clouds.png", (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = maxAniso;
-      cloudMat.map = tex;
-      cloudMat.needsUpdate = true;
+      cloudMat.uniforms.cloudTexture.value = tex;
     });
 
     // 6. Glowing Rayleigh Atmospheric Limb Halo
@@ -1062,18 +1204,18 @@ export function UltraRealisticEarthFlight({
       fragmentShader: atmosphereFragmentShader,
       uniforms: {
         sunDirection: { value: sunDirNorm },
-        atmosphereColor: { value: new THREE.Color(0.32, 0.64, 1.0) },
-        atmosphereStrength: { value: 1.2 },
+        atmosphereColor: { value: new THREE.Color(0.28, 0.64, 1.0) },
+        atmosphereStrength: { value: 1.35 },
       },
       blending: THREE.AdditiveBlending,
       side: THREE.BackSide,
       transparent: true,
       depthWrite: false,
     });
-    const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.028, 64, 48), atmoMat);
+    const atmoMesh = new THREE.Mesh(new THREE.SphereGeometry(EARTH_RADIUS * 1.032, 64, 48), atmoMat);
     scene.add(atmoMesh);
 
-    // 6b. Real GeoJSON Country Borders & Geographically Accurate Country Labels
+    // 6b. Real GeoJSON Country Borders & Geographically Accurate Country Labels (Toggled via "Borders" button)
     interface FlightLabelNode {
       sprite: THREE.Sprite;
       name: string;
@@ -1084,12 +1226,13 @@ export function UltraRealisticEarthFlight({
     }
     const labelNodes: FlightLabelNode[] = [];
     let countriesList: CountryFeature[] = [];
+    let bordersMesh: THREE.LineSegments | null = null;
     let selectedBorderMesh: THREE.LineSegments | null = null;
 
     const makeCountrySprite = (name: string, importance: 1 | 2 | 3) => {
       const c = document.createElement("canvas");
       const dpr = 2;
-      const fs = (importance === 1 ? 26 : importance === 2 ? 22 : 19) * dpr;
+      const fs = (importance === 1 ? 24 : importance === 2 ? 20 : 17) * dpr;
       const ctx = c.getContext("2d")!;
       const font = `500 ${fs}px "Space Grotesk", sans-serif`;
       ctx.font = font;
@@ -1102,11 +1245,9 @@ export function UltraRealisticEarthFlight({
       ctx.textBaseline = "middle";
       ctx.lineJoin = "round";
       ctx.lineWidth = 3 * dpr;
-      ctx.strokeStyle = "rgba(4, 8, 18, 0.78)";
+      ctx.strokeStyle = "rgba(4, 8, 18, 0.85)";
       ctx.strokeText(name, w / 2, h / 2);
-      ctx.shadowColor = "rgba(235, 180, 75, 0.55)";
-      ctx.shadowBlur = 5 * dpr;
-      ctx.fillStyle = importance === 1 ? "#f6dc96" : importance === 2 ? "#ecd28e" : "#e2ca8c";
+      ctx.fillStyle = importance === 1 ? "#e2e8f0" : importance === 2 ? "#cbd5e1" : "#94a3b8";
       ctx.fillText(name, w / 2, h / 2);
       const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -1119,6 +1260,7 @@ export function UltraRealisticEarthFlight({
         })
       );
       spr.renderOrder = 10;
+      spr.visible = false;
       return { spr, aspect: w / h };
     };
 
@@ -1126,7 +1268,7 @@ export function UltraRealisticEarthFlight({
       const { spr, aspect } = makeCountrySprite(item.name, item.importance);
       const lPos = latLonToVector3(item.lat, item.lon, EARTH_RADIUS * 1.006);
       spr.position.copy(lPos);
-      const bh = item.importance === 1 ? 0.23 : item.importance === 2 ? 0.18 : 0.14;
+      const bh = item.importance === 1 ? 0.21 : item.importance === 2 ? 0.16 : 0.13;
       const bw = bh * aspect;
       spr.scale.set(bw, bh, 1);
       earthGroup.add(spr);
@@ -1146,8 +1288,9 @@ export function UltraRealisticEarthFlight({
       .then((geo) => {
         countriesList = parseCountryBorders(geo);
         if (countriesList.length > 0) {
-          const borders = createBorderGeometry(countriesList, EARTH_RADIUS, 0.002);
-          earthGroup.add(borders);
+          bordersMesh = createBorderGeometry(countriesList, EARTH_RADIUS, 0.002);
+          bordersMesh.visible = showMapOverlayRef.current;
+          earthGroup.add(bordersMesh);
         }
       })
       .catch(() => {
@@ -1156,16 +1299,16 @@ export function UltraRealisticEarthFlight({
 
     // 7. Ground Stations on Earth
     GROUND_STATIONS.forEach((gs) => {
-      const gsPos = latLonToVector3(gs.latitude, gs.longitude, EARTH_RADIUS + 0.03);
+      const gsPos = latLonToVector3(gs.latitude, gs.longitude, EARTH_RADIUS + 0.025);
       const gsMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.06, 12, 12),
+        new THREE.SphereGeometry(0.045, 12, 12),
         new THREE.MeshBasicMaterial({ color: 0x10b981 })
       );
       gsMesh.position.copy(gsPos);
       scene.add(gsMesh);
     });
 
-    // 8. Glowing Cyan Orbit Ring (Encircling Earth)
+    // 8. Low-Earth Orbit Ring for Scout Satellite (LUMEN-SCOUT-1)
     const orbitPts: THREE.Vector3[] = [];
     if (groundTrackPoints.length >= 8) {
       groundTrackPoints.forEach((pt) => {
@@ -1183,13 +1326,41 @@ export function UltraRealisticEarthFlight({
     }
     const orbitLine = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(orbitPts),
-      new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 3, transparent: true, opacity: 0.88 })
+      new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2, transparent: true, opacity: 0.65 })
     );
     scene.add(orbitLine);
 
-    // 9. 3D Spacecraft Model (Orbital AI Data Center Bus)
+    // 9. Low-Orbit Scout Spacecraft Model (LUMEN-SCOUT-1)
     const spacecraft = createSpacecraftModel();
     scene.add(spacecraft);
+
+    // 9a. HIGH-ORBIT ORBITAL AI DATA CENTER MOTHER STATION ("LUMEN-DC-ALPHA" in Separate MEO Orbit!)
+    const dcRadius = EARTH_RADIUS + 2.05;
+    const dcInc = 0.52;
+    const dcRaan = 1.15;
+    const dcOrbitPts: THREE.Vector3[] = [];
+    for (let i = 0; i <= 128; i++) {
+      const a = (i / 128) * Math.PI * 2;
+      const x0 = Math.cos(a) * dcRadius;
+      const y0 = Math.sin(a) * dcRadius * Math.sin(dcInc);
+      const z0 = Math.sin(a) * dcRadius * Math.cos(dcInc);
+      dcOrbitPts.push(new THREE.Vector3(x0, y0, z0).applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan));
+    }
+    const dcOrbitLine = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints(dcOrbitPts),
+      new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.38 })
+    );
+    scene.add(dcOrbitLine);
+
+    const dcStation = createOrbitalDataCenterStation();
+    scene.add(dcStation);
+
+    // High-Power Orbital Containment Downlink Beam (From AI Data Center Mother Station -> Earth Crisis Target!)
+    const dcDownlinkBeam = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 3, transparent: true, opacity: 0 })
+    );
+    scene.add(dcDownlinkBeam);
 
     // 9b. 3-Node Orbital AI Relay Constellation (LUMEN-RELAY-1..3) + Optical ISL Crosslink Laser
     const relayRadius = EARTH_RADIUS + 1.65;
@@ -1337,15 +1508,38 @@ export function UltraRealisticEarthFlight({
 
       const color = new THREE.Color(ev.colorHex);
 
-      // Pulsing Ground Hazard Ring
-      const ringGeom = new THREE.RingGeometry(0.18, 0.3, 28);
-      const ringMat = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+      // Subtle Holographic Orbital Target Hairline Reticle + Soft Thermal Ground Glow
+      const ringGeom = new THREE.RingGeometry(0.2, 0.23, 36);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.68,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      });
       const ringMesh = new THREE.Mesh(ringGeom, ringMat);
       ringMesh.rotation.x = Math.PI / 2;
       group.add(ringMesh);
 
+      const groundGlow = new THREE.Mesh(
+        new THREE.CircleGeometry(0.26, 24),
+        new THREE.MeshBasicMaterial({
+          map: flameTexture,
+          color,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.42,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        })
+      );
+      groundGlow.rotation.x = Math.PI / 2;
+      groundGlow.position.y = 0.004;
+      group.add(groundGlow);
+
       // 3D Containment Shield Dome (Appears when AI Alert is transmitted & crisis is RESOLVED)
-      const shieldGeom = new THREE.SphereGeometry(0.32, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5);
+      const shieldGeom = new THREE.SphereGeometry(0.32, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.5);
       const shieldMat = new THREE.MeshBasicMaterial({
         color: 0x10b981,
         wireframe: true,
@@ -1360,23 +1554,23 @@ export function UltraRealisticEarthFlight({
       const visual: LiveEventVisual = { event: ev, position: pos, group, ringMesh, shieldMesh };
 
       if (ev.type === "wildfire") {
-        // 🔥 Wildfire: High-density rising flame particles + billowing smoke puffs + flickering terrain light
-        const fCount = 80;
+        // 🔥 Wildfire: Natural rising thermal embers + atmospheric smoke plume + warm terrain light
+        const fCount = 65;
         const fGeom = new THREE.BufferGeometry();
         const fPosis = new Float32Array(fCount * 3);
         for (let i = 0; i < fCount; i++) {
-          fPosis[i * 3] = (Math.random() - 0.5) * 0.18;
-          fPosis[i * 3 + 1] = Math.random() * 0.5;
-          fPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.18;
+          fPosis[i * 3] = (Math.random() - 0.5) * 0.16;
+          fPosis[i * 3 + 1] = Math.random() * 0.36;
+          fPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.16;
         }
         fGeom.setAttribute("position", new THREE.BufferAttribute(fPosis, 3));
         const flameParticles = new THREE.Points(
           fGeom,
           new THREE.PointsMaterial({
             map: flameTexture,
-            size: 0.28,
+            size: 0.18,
             transparent: true,
-            opacity: 0.95,
+            opacity: 0.85,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
           })
@@ -1385,76 +1579,76 @@ export function UltraRealisticEarthFlight({
         visual.flameParticles = flameParticles;
         visual.flamePosis = fPosis;
 
-        // Billowing Smoke Column
-        const sCount = 50;
+        // Soft Atmospheric Smoke Plume
+        const sCount = 40;
         const sGeom = new THREE.BufferGeometry();
         const sPosis = new Float32Array(sCount * 3);
         for (let i = 0; i < sCount; i++) {
-          sPosis[i * 3] = (Math.random() - 0.5) * 0.3;
-          sPosis[i * 3 + 1] = 0.3 + Math.random() * 0.7;
-          sPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+          sPosis[i * 3] = (Math.random() - 0.5) * 0.22;
+          sPosis[i * 3 + 1] = 0.18 + Math.random() * 0.45;
+          sPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.22;
         }
         sGeom.setAttribute("position", new THREE.BufferAttribute(sPosis, 3));
         const smokeParticles = new THREE.Points(
           sGeom,
-          new THREE.PointsMaterial({ map: smokeTexture, size: 0.42, transparent: true, opacity: 0.65, depthWrite: false })
+          new THREE.PointsMaterial({ map: smokeTexture, size: 0.26, transparent: true, opacity: 0.42, depthWrite: false })
         );
         group.add(smokeParticles);
         visual.smokeParticles = smokeParticles;
         visual.smokePosis = sPosis;
 
-        const fireLight = new THREE.PointLight(0xf97316, 2.2, 3.0);
-        fireLight.position.set(0, 0.25, 0);
+        const fireLight = new THREE.PointLight(0xf97316, 1.8, 2.5);
+        fireLight.position.set(0, 0.2, 0);
         group.add(fireLight);
         visual.light = fireLight;
       } else if (ev.type === "volcano") {
-        // 🌋 Volcano: Molten lava caldera + explosive magma sparks + ash umbrella cloud
+        // 🌋 Volcano: Incandescent caldera + vertical ash/magma column
         const caldera = new THREE.Mesh(
-          new THREE.CircleGeometry(0.14, 16),
-          new THREE.MeshBasicMaterial({ color: 0xff2200, side: THREE.DoubleSide })
+          new THREE.CircleGeometry(0.1, 16),
+          new THREE.MeshBasicMaterial({ color: 0xff3300, side: THREE.DoubleSide })
         );
         caldera.rotation.x = Math.PI / 2;
         caldera.position.y = 0.01;
         group.add(caldera);
 
-        const vCount = 65;
+        const vCount = 55;
         const vGeom = new THREE.BufferGeometry();
         const vPosis = new Float32Array(vCount * 3);
         for (let i = 0; i < vCount; i++) {
-          vPosis[i * 3] = (Math.random() - 0.5) * 0.15;
-          vPosis[i * 3 + 1] = Math.random() * 0.85;
-          vPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.15;
+          vPosis[i * 3] = (Math.random() - 0.5) * 0.12;
+          vPosis[i * 3 + 1] = Math.random() * 0.55;
+          vPosis[i * 3 + 2] = (Math.random() - 0.5) * 0.12;
         }
         vGeom.setAttribute("position", new THREE.BufferAttribute(vPosis, 3));
         const flameParticles = new THREE.Points(
           vGeom,
-          new THREE.PointsMaterial({ map: flameTexture, size: 0.22, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending })
+          new THREE.PointsMaterial({ map: flameTexture, size: 0.16, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })
         );
         group.add(flameParticles);
         visual.flameParticles = flameParticles;
         visual.flamePosis = vPosis;
 
-        const volcLight = new THREE.PointLight(0xef4444, 2.0, 2.8);
+        const volcLight = new THREE.PointLight(0xef4444, 1.8, 2.5);
         volcLight.position.set(0, 0.2, 0);
         group.add(volcLight);
         visual.light = volcLight;
       } else if (ev.type === "flood") {
-        // 🌊 Flood: Expanding concentric water ripples
+        // 🌊 Flood: Expanding concentric hydrographic radar ripples
         const rippleMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.75, 0.75),
-          new THREE.MeshBasicMaterial({ map: rippleTexture, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+          new THREE.PlaneGeometry(0.6, 0.6),
+          new THREE.MeshBasicMaterial({ map: rippleTexture, transparent: true, opacity: 0.75, side: THREE.DoubleSide, depthWrite: false })
         );
         rippleMesh.rotation.x = Math.PI / 2;
         group.add(rippleMesh);
         visual.rippleMesh = rippleMesh;
       } else if (ev.type === "solar_storm") {
-        // ⚡ Polar Aurora: Undulating green/violet auroral ribbon curtains
-        const ribbonGeom = new THREE.CylinderGeometry(0.4, 0.4, 0.55, 24, 1, true);
+        // ⚡ Polar Aurora: Translucent green/violet ionospheric auroral curtain
+        const ribbonGeom = new THREE.CylinderGeometry(0.34, 0.34, 0.38, 24, 1, true);
         const auroraRibbon = new THREE.Mesh(
           ribbonGeom,
-          new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending })
+          new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false })
         );
-        auroraRibbon.position.y = 0.3;
+        auroraRibbon.position.y = 0.2;
         group.add(auroraRibbon);
         visual.auroraRibbon = auroraRibbon;
       }
@@ -1463,7 +1657,7 @@ export function UltraRealisticEarthFlight({
       liveEvents.push(visual);
     });
 
-    // 11. CONTINUOUS 60 FPS SPHERICAL ORBIT & INTERACTIVE PLAYER STEERING LOOP
+    // 11. CONTINUOUS 60 FPS KEPLERIAN GREAT-CIRCLE ORBIT & TWO-VEHICLE SIMULATION LOOP
     let animId: number;
     let clockTime = 0;
 
@@ -1473,41 +1667,60 @@ export function UltraRealisticEarthFlight({
 
       const fs = flightState.current;
       fs.frameTick += 1;
+      if (fs.autopilotBoostFrames > 0) {
+        fs.autopilotBoostFrames -= 1;
+      }
 
-      // ── Process Player Steering Controls ("Driving the Spaceship" across the 3D Sphere) ──
-      const steerSpeed = 0.035;
-      const returnSpeed = 0.05;
-      let activeTurnRate = 0; // Signed orbital plane banking rate around satDir
+      // Sync optional map borders visibility
+      if (bordersMesh) {
+        bordersMesh.visible = showMapOverlayRef.current;
+      }
 
-      if (fs.keys.w) fs.pitch = Math.max(-0.35, fs.pitch - steerSpeed);
-      else if (fs.keys.s) fs.pitch = Math.min(0.35, fs.pitch + steerSpeed);
+      // ── 11A. LOW-ORBIT SCOUT SATELLITE ("LUMEN-SCOUT-1") GREAT-CIRCLE PROPAGATION ──
+      // Uses smooth orbital plane precession so the satellite ALWAYS flies a full circle around Earth
+      // and NEVER spins in place over a single point!
+      const steerSpeed = 0.032;
+      const returnSpeed = 0.06;
+      let activeTurnRate = 0; // Gentle orbital plane precession rate around satDir
+
+      if (fs.keys.w) fs.pitch = Math.max(-0.3, fs.pitch - steerSpeed);
+      else if (fs.keys.s) fs.pitch = Math.min(0.3, fs.pitch + steerSpeed);
       else fs.pitch *= 1 - returnSpeed;
 
       if (fs.keys.a) {
-        fs.yaw = Math.max(-0.45, fs.yaw - steerSpeed);
-        fs.roll = Math.max(-0.6, fs.roll - steerSpeed * 1.5);
-        activeTurnRate = 0.024; // Bank orbital plane left
+        fs.yaw = Math.max(-0.4, fs.yaw - steerSpeed);
+        fs.roll = Math.max(-0.55, fs.roll - steerSpeed * 1.4);
+        activeTurnRate = 0.0042; // Smooth orbital plane precession left
       } else if (fs.keys.d) {
-        fs.yaw = Math.min(0.45, fs.yaw + steerSpeed);
-        fs.roll = Math.min(0.6, fs.roll + steerSpeed * 1.5);
-        activeTurnRate = -0.024; // Bank orbital plane right
+        fs.yaw = Math.min(0.4, fs.yaw + steerSpeed);
+        fs.roll = Math.min(0.55, fs.roll + steerSpeed * 1.4);
+        activeTurnRate = -0.0042; // Smooth orbital plane precession right
       } else if (autopilotIdRef.current) {
-        // ── AUTONOMOUS GREAT-CIRCLE TARGET INTERCEPT ──
+        // ── SMOOTH GREAT-CIRCLE ORBITAL PLANE ALIGNMENT (NO HOVERING OR SPINNING!) ──
         const targetEv = liveEvents.find((e) => e.event.id === autopilotIdRef.current);
         if (targetEv) {
           const evNormal = targetEv.position.clone().normalize();
-          const desiredTan = evNormal
-            .clone()
-            .sub(fs.satDir.clone().multiplyScalar(fs.satDir.dot(evNormal)));
-          if (desiredTan.lengthSq() > 1e-6) {
-            desiredTan.normalize();
-            const cross = new THREE.Vector3().crossVectors(fs.velDir, desiredTan);
-            const signedSin = THREE.MathUtils.clamp(cross.dot(fs.satDir), -1, 1);
-            const cosAngle = THREE.MathUtils.clamp(fs.velDir.dot(desiredTan), -1, 1);
-            const angleDiff = Math.atan2(signedSin, cosAngle);
-            activeTurnRate = THREE.MathUtils.clamp(angleDiff * 0.085, -0.024, 0.024);
-            fs.roll = THREE.MathUtils.lerp(fs.roll, -activeTurnRate * 18.0, 0.12);
-            fs.yaw = THREE.MathUtils.lerp(fs.yaw, -activeTurnRate * 10.0, 0.12);
+          const angleToTarget = fs.satDir.angleTo(evNormal);
+          // Only precess orbital plane when target is ahead (> 0.16 rad away); fly straight through when overhead!
+          if (angleToTarget > 0.16) {
+            const desiredTan = evNormal
+              .clone()
+              .sub(fs.satDir.clone().multiplyScalar(fs.satDir.dot(evNormal)));
+            if (desiredTan.lengthSq() > 1e-6) {
+              desiredTan.normalize();
+              const cross = new THREE.Vector3().crossVectors(fs.velDir, desiredTan);
+              const signedSin = THREE.MathUtils.clamp(cross.dot(fs.satDir), -1, 1);
+              const cosAngle = THREE.MathUtils.clamp(fs.velDir.dot(desiredTan), -1, 1);
+              const angleDiff = Math.atan2(signedSin, cosAngle);
+              // Gentle orbital plane alignment so turning radius is always >= Earth's radius!
+              activeTurnRate = THREE.MathUtils.clamp(angleDiff * 0.022, -0.0038, 0.0038);
+              fs.roll = THREE.MathUtils.lerp(fs.roll, -activeTurnRate * 95.0, 0.1);
+              fs.yaw = THREE.MathUtils.lerp(fs.yaw, -activeTurnRate * 55.0, 0.1);
+            }
+          } else {
+            // Directly overhead inside sensor cone — hold steady wings-level attitude!
+            fs.yaw *= 1 - returnSpeed;
+            fs.roll *= 1 - returnSpeed;
           }
         } else {
           fs.yaw *= 1 - returnSpeed;
@@ -1518,19 +1731,19 @@ export function UltraRealisticEarthFlight({
         fs.roll *= 1 - returnSpeed;
       }
 
-      // Apply orbital plane rotation around local zenith (satDir)
-      if (Math.abs(activeTurnRate) > 1e-4) {
+      if (Math.abs(activeTurnRate) > 1e-5) {
         fs.velDir.applyAxisAngle(fs.satDir, activeTurnRate).normalize();
       }
 
-      // Speed control: Spacebar = Thruster Boost (2.5x), W = Fast Forward (1.35x), S = Precision Scan Slowdown (0.55x)
-      const pitchSpeedMod = fs.keys.w ? 1.35 : fs.keys.s ? 0.55 : 1.0;
-      const speedMultiplier = (fs.keys.space ? 2.4 : 1.0) * pitchSpeedMod;
+      // Speed control: Spacebar or Target Intercept Burst = 2.2x Boost, W = 1.35x, S = 0.6x
+      const isBursting = fs.keys.space || fs.autopilotBoostFrames > 0;
+      const pitchSpeedMod = fs.keys.w ? 1.35 : fs.keys.s ? 0.6 : 1.0;
+      const speedMultiplier = (isBursting ? 2.2 : 1.0) * pitchSpeedMod;
       if (fs.frameTick % 10 === 0) {
         setOrbitalSpeedKmS(Number((7.6 * speedMultiplier).toFixed(1)));
       }
 
-      // ── ADVANCE TRUE SPHERICAL ORBITAL POSITION & TANGENT VELOCITY ──
+      // Advance Scout Satellite along its great-circle orbital path
       const stepAngle = fs.speed * speedMultiplier;
       fs.progress = (fs.progress + stepAngle) % (Math.PI * 2);
       fs.satDir.addScaledVector(fs.velDir, stepAngle).normalize();
@@ -1544,7 +1757,7 @@ export function UltraRealisticEarthFlight({
       const radialDown = radialOut.clone().negate();
       const lateral = new THREE.Vector3().crossVectors(radialOut, forwardDir).normalize();
 
-      // Dynamically update the 3D Glowing Orbit Ring so it aligns with the steered orbital plane!
+      // Update Scout Satellite's 3D Cyan Orbit Ring
       const orbitRingPts: THREE.Vector3[] = [];
       const orbitSegs = 120;
       for (let i = 0; i <= orbitSegs; i++) {
@@ -1557,7 +1770,7 @@ export function UltraRealisticEarthFlight({
       }
       orbitLine.geometry.setFromPoints(orbitRingPts);
 
-      // Orient spacecraft facing along velocity vector with +Z forward, +Y zenith, -Y nadir
+      // Orient Scout Satellite along velocity vector
       spacecraft.up.copy(radialOut);
       spacecraft.lookAt(spacecraft.position.clone().add(forwardDir));
       spacecraft.rotateX(-fs.pitch);
@@ -1567,21 +1780,21 @@ export function UltraRealisticEarthFlight({
       // Main Hall-Effect Thruster plume flaring when boosting
       const plume = spacecraft.getObjectByName("thrusterPlume");
       if (plume) {
-        const pScale = fs.keys.space ? 2.3 + 0.3 * Math.sin(clockTime * 25) : 1.0 + 0.15 * Math.sin(clockTime * 15);
+        const pScale = isBursting ? 2.3 + 0.3 * Math.sin(clockTime * 25) : 1.0 + 0.15 * Math.sin(clockTime * 15);
         plume.scale.set(pScale, pScale, pScale);
       }
 
-      // Lateral RCS thruster plumes flare when turning orbital plane (WASD or Autopilot Intercept)
+      // Lateral RCS thruster plumes flare when precessing orbital plane
       const rcsLeft = spacecraft.getObjectByName("rcsLeft") as THREE.Mesh | undefined;
       const rcsRight = spacecraft.getObjectByName("rcsRight") as THREE.Mesh | undefined;
       if (rcsLeft && rcsRight) {
         const leftMat = rcsLeft.material as THREE.MeshBasicMaterial;
         const rightMat = rcsRight.material as THREE.MeshBasicMaterial;
-        leftMat.opacity = activeTurnRate < -0.002 ? Math.min(0.9, Math.abs(activeTurnRate) * 38) : 0;
-        rightMat.opacity = activeTurnRate > 0.002 ? Math.min(0.9, Math.abs(activeTurnRate) * 38) : 0;
+        leftMat.opacity = activeTurnRate < -0.0005 ? Math.min(0.85, Math.abs(activeTurnRate) * 180) : 0;
+        rightMat.opacity = activeTurnRate > 0.0005 ? Math.min(0.85, Math.abs(activeTurnRate) * 180) : 0;
       }
 
-      // Dynamic Thermal Radiator Glow based on live spacecraft temperature
+      // Dynamic Thermal Radiator Glow on Scout Satellite
       const topRad = spacecraft.getObjectByName("thermalRadiator") as THREE.Mesh | undefined;
       if (topRad && topRad.material) {
         const mat = topRad.material as THREE.MeshStandardMaterial;
@@ -1598,10 +1811,44 @@ export function UltraRealisticEarthFlight({
         }
       }
 
-      // Update 3-Node Relay Constellation & Optical ISL Laser Crosslink
-      let nearestRelay: { name: string; pos: THREE.Vector3; dist: number } | null = null;
+      // ── 11B. HIGH-ORBIT ORBITAL AI DATA CENTER MOTHER STATION ("LUMEN-DC-ALPHA") ──
+      // Orbits independently in Medium Earth Orbit (dcRadius = 7.05) on its own inclined orbital plane!
+      fs.dcPhase = (fs.dcPhase + 0.0011 * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
+      const dcx0 = Math.cos(fs.dcPhase) * dcRadius;
+      const dcy0 = Math.sin(fs.dcPhase) * dcRadius * Math.sin(dcInc);
+      const dcz0 = Math.sin(fs.dcPhase) * dcRadius * Math.cos(dcInc);
+      const dcPos = new THREE.Vector3(dcx0, dcy0, dcz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan);
+
+      const dctox = -Math.sin(fs.dcPhase) * dcRadius;
+      const dctoy = Math.cos(fs.dcPhase) * dcRadius * Math.sin(dcInc);
+      const dctoz = Math.cos(fs.dcPhase) * dcRadius * Math.cos(dcInc);
+      const dcForward = new THREE.Vector3(dctox, dctoy, dctoz)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan)
+        .normalize();
+      const dcRadialOut = dcPos.clone().normalize();
+
+      dcStation.position.copy(dcPos);
+      dcStation.up.copy(dcRadialOut);
+      dcStation.lookAt(dcPos.clone().add(dcForward));
+
+      // Rotate the Hexagonal Neural Compute Ring on the AI Data Center Mother Station
+      const computeRing = dcStation.getObjectByName("computeRing");
+      if (computeRing) {
+        computeRing.rotation.z = clockTime * (islPulseRef.current ? 3.2 : 1.1);
+      }
+
+      // Update 3-Node Relay Constellation & Connect Scout Satellite -> Orbital AI Data Center Mother Station!
+      let bestLinkTarget: { name: string; pos: THREE.Vector3; dist: number } | null = null;
+
+      // Prefer direct optical crosslink from Low-Orbit Scout Satellite up to High-Orbit AI Data Center Mother Station!
+      const dcMid = spacecraft.position.clone().add(dcPos).multiplyScalar(0.5);
+      const dcDist = spacecraft.position.distanceTo(dcPos);
+      if (dcMid.length() > EARTH_RADIUS * 0.85) {
+        bestLinkTarget = { name: "LUMEN-DC-ALPHA", pos: dcPos, dist: dcDist };
+      }
+
       relayNodes.forEach((rn) => {
-        rn.phase += rn.speed * (fs.keys.space ? 1.8 : 1.0);
+        rn.phase += rn.speed * (fs.keys.space ? 1.6 : 1.0);
         const rx0 = Math.cos(rn.phase) * relayRadius;
         const ry0 = Math.sin(rn.phase) * relayRadius * Math.sin(rn.inc);
         const rz0 = Math.sin(rn.phase) * relayRadius * Math.cos(rn.inc);
@@ -1609,16 +1856,15 @@ export function UltraRealisticEarthFlight({
         rn.mesh.position.copy(rPos);
         rn.mesh.lookAt(0, 0, 0);
 
-        // Check line-of-sight chord clearance above Earth's limb
         const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
         const dist = spacecraft.position.distanceTo(rPos);
-        if (midPoint.length() > EARTH_RADIUS + 0.25 && (!nearestRelay || dist < nearestRelay.dist)) {
-          nearestRelay = { name: rn.name, pos: rPos, dist };
+        if (!bestLinkTarget && midPoint.length() > EARTH_RADIUS + 0.15) {
+          bestLinkTarget = { name: rn.name, pos: rPos, dist };
         }
       });
 
-      if (nearestRelay) {
-        const nr = nearestRelay as { name: string; pos: THREE.Vector3; dist: number };
+      if (bestLinkTarget) {
+        const nr = bestLinkTarget;
         islBeam.geometry.setFromPoints([spacecraft.position, nr.pos]);
         const isPulsing = islPulseRef.current;
         (islBeam.material as THREE.LineBasicMaterial).opacity = isPulsing
@@ -1626,19 +1872,19 @@ export function UltraRealisticEarthFlight({
           : 0.55 + 0.25 * Math.sin(clockTime * 12);
         (islBeam.material as THREE.LineBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x22d3ee);
 
-        // Animate Optical ISL Laser Data Packets streaming from Spacecraft to Relay Node
+        // Animate Optical ISL Laser Data Packets streaming from Scout Satellite UP to AI Data Center Station
         islPackets.forEach((pkt, idx) => {
           pkt.visible = true;
-          const speed = isPulsing ? 1.8 : 0.65;
+          const speed = isPulsing ? 2.0 : 0.75;
           const t = (clockTime * speed + idx / islPackets.length) % 1.0;
           pkt.position.lerpVectors(spacecraft.position, nr.pos, t);
-          const s = isPulsing ? 1.45 : 0.85;
+          const s = isPulsing ? 1.5 : 0.9;
           pkt.scale.setScalar(s);
           (pkt.material as THREE.MeshBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x67e8f9);
         });
 
         if (fs.frameTick % 30 === 0) {
-          const gbps = Math.max(2.4, 10.0 - nr.dist * 0.65).toFixed(1);
+          const gbps = Math.max(4.2, 12.0 - nr.dist * 0.55).toFixed(1);
           setActiveRelayLabel(`${nr.name} (${gbps} Gbps ISL)`);
         }
       } else {
@@ -1648,7 +1894,7 @@ export function UltraRealisticEarthFlight({
         });
       }
 
-      // Footprint position & Volumetric Nadir Sensor Cone on Earth surface below satellite
+      // Footprint position & Volumetric Nadir Sensor Cone on Earth surface below Scout Satellite
       const subSatNormal = radialOut.clone();
       const subSatPos = subSatNormal.clone().multiplyScalar(EARTH_RADIUS + 0.02);
       footprintMesh.position.copy(subSatPos);
@@ -1658,10 +1904,10 @@ export function UltraRealisticEarthFlight({
       scanConeMesh.position.copy(coneMid);
       scanConeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), subSatNormal);
 
-      // Slow Earth & Cloud rotation
-      cloudMesh.rotation.y = clockTime * 0.008;
+      // Slow Cloud Drift
+      cloudMesh.rotation.y = clockTime * 0.005;
 
-      // ── Animate Live Disaster Events on Earth (Geometrically Locked to 3D Sub-Sat Point) ──
+      // ── Animate Live Disaster Events on Earth ──
       let acquiredTarget: string | null = null;
       let acquiredEvent: GlobalEarthEvent | null = null;
       let acquiredPos: THREE.Vector3 | null = null;
@@ -1676,7 +1922,7 @@ export function UltraRealisticEarthFlight({
         const isMissionPrimary =
           ev.event.scenarioId === scenarioIdRef.current ||
           ev.event.type === activeScenarioClean;
-        const baseScale = isMissionPrimary ? 1.3 : 0.78;
+        const baseScale = isMissionPrimary ? 1.15 : 0.72;
         ev.group.scale.setScalar(baseScale);
 
         // Show 3D Containment Shield Dome when target is RESOLVED
@@ -1685,25 +1931,25 @@ export function UltraRealisticEarthFlight({
           ev.shieldMesh.rotation.y = clockTime * 0.9;
         }
 
-        // Pulse ground hazard circle
+        // Subtle pulse on target reticle
         const pulse = isAutopilotTarget
-          ? 1.15 + 0.32 * Math.sin(clockTime * 7.5)
-          : 1.0 + 0.22 * Math.sin(clockTime * 4.5 + idx);
+          ? 1.08 + 0.18 * Math.sin(clockTime * 6.5)
+          : 1.0 + 0.12 * Math.sin(clockTime * 3.5 + idx);
         ev.ringMesh.scale.set(pulse, pulse, pulse);
 
-        // Animate Wildfire / Volcano Particles (subside when resolved)
+        // Animate Wildfire / Volcano Particles
         if (ev.flameParticles && ev.flamePosis) {
           ev.flameParticles.visible = !isResolved;
           if (!isResolved) {
             const arr = ev.flamePosis;
             const count = arr.length / 3;
             for (let i = 0; i < count; i++) {
-              arr[i * 3 + 1] += 0.02;
-              arr[i * 3] += Math.sin(clockTime * 8 + i) * 0.004;
-              if (arr[i * 3 + 1] > 0.65) {
-                arr[i * 3] = (Math.random() - 0.5) * 0.18;
+              arr[i * 3 + 1] += 0.015;
+              arr[i * 3] += Math.sin(clockTime * 7 + i) * 0.003;
+              if (arr[i * 3 + 1] > 0.45) {
+                arr[i * 3] = (Math.random() - 0.5) * 0.15;
                 arr[i * 3 + 1] = 0;
-                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.18;
+                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.15;
               }
             }
             (ev.flameParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
@@ -1716,39 +1962,35 @@ export function UltraRealisticEarthFlight({
             const arr = ev.smokePosis;
             const count = arr.length / 3;
             for (let i = 0; i < count; i++) {
-              arr[i * 3 + 1] += 0.014;
-              arr[i * 3] += Math.cos(clockTime * 5 + i) * 0.005;
-              if (arr[i * 3 + 1] > 1.1) {
-                arr[i * 3] = (Math.random() - 0.5) * 0.3;
-                arr[i * 3 + 1] = 0.3;
-                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
+              arr[i * 3 + 1] += 0.01;
+              arr[i * 3] += Math.cos(clockTime * 4 + i) * 0.003;
+              if (arr[i * 3 + 1] > 0.75) {
+                arr[i * 3] = (Math.random() - 0.5) * 0.2;
+                arr[i * 3 + 1] = 0.18;
+                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
               }
             }
             (ev.smokeParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
           }
         }
 
-        // Animate Flood Water Ripple Expansion
         if (ev.rippleMesh) {
-          const rippleScale = 1.0 + ((clockTime * 0.85 + idx * 0.4) % 1.6);
+          const rippleScale = 1.0 + ((clockTime * 0.75 + idx * 0.4) % 1.4);
           ev.rippleMesh.scale.set(rippleScale, rippleScale, rippleScale);
           (ev.rippleMesh.material as THREE.MeshBasicMaterial).opacity = isResolved
-            ? 0.25
-            : Math.max(0.2, 1.0 - (rippleScale - 1.0) / 1.6);
+            ? 0.2
+            : Math.max(0.18, 0.85 - (rippleScale - 1.0) / 1.4);
         }
 
-        // Animate Polar Aurora Wave
         if (ev.auroraRibbon) {
-          const wave = Math.sin(clockTime * 3.2 + idx) * 0.1;
-          ev.auroraRibbon.scale.set(1.0 + wave, 1.0 + wave * 1.5, 1.0 + wave);
+          const wave = Math.sin(clockTime * 3.0 + idx) * 0.08;
+          ev.auroraRibbon.scale.set(1.0 + wave, 1.0 + wave * 1.4, 1.0 + wave);
         }
 
-        // Fire / Volcano Flickering Light
         if (ev.light) {
-          ev.light.intensity = isResolved ? 0.4 : 1.8 + 0.7 * Math.sin(clockTime * 15.0 + idx * 3.0);
+          ev.light.intensity = isResolved ? 0.3 : 1.5 + 0.5 * Math.sin(clockTime * 14.0 + idx * 3.0);
         }
 
-        // True 3D spherical distance from the visual spacecraft's sub-satellite point to the 3D event
         const evNormal = ev.position.clone().normalize();
         const dKm = subSatNormal.angleTo(evNormal) * 6371.0;
         if (dKm <= footprintKm && dKm < minTargetDistKm) {
@@ -1758,7 +2000,6 @@ export function UltraRealisticEarthFlight({
           acquiredPos = ev.position;
           (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
 
-          // Connect targeting laser beam directly from spacecraft nadir to surface target below
           targetBeam.geometry.setFromPoints([spacecraft.position, ev.position]);
           (targetBeam.material as THREE.LineBasicMaterial).opacity = 0.95;
         } else if (isResolved) {
@@ -1772,6 +2013,18 @@ export function UltraRealisticEarthFlight({
         }
       });
 
+      // Animate High-Power Orbital Containment Beam from AI Data Center Mother Station when pulsing!
+      if (islPulseRef.current && liveEvents.length > 0) {
+        const targetEv =
+          liveEvents.find((e) => resolvedIds.includes(e.event.id)) ??
+          liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
+          liveEvents[0];
+        dcDownlinkBeam.geometry.setFromPoints([dcPos, targetEv.position]);
+        (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0.9;
+      } else {
+        (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0;
+      }
+
       if (acquiredTarget && acquiredPos) {
         const isActivelyScanning =
           scanningIdRef.current !== null || scanPctRef.current > 0;
@@ -1781,7 +2034,6 @@ export function UltraRealisticEarthFlight({
           : 0.2;
         (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(0x10b981);
 
-        // Animate Rising Telemetry Data Packets from Surface Target up to Spacecraft Nadir Sensor
         scanPackets.forEach((spkt, idx) => {
           spkt.visible = true;
           const t = (clockTime * 1.4 + idx / scanPackets.length) % 1.0;
@@ -1805,49 +2057,48 @@ export function UltraRealisticEarthFlight({
         onTargetInRangeRef.current?.(acquiredEvent, Math.round(minTargetDistKm));
       }
 
-      // ── 12. CAMERA MODES: TPP CHASE BY DEFAULT, NADIR RIDE-ALONG, ORBIT VIEW ──
+      // ── 12. CAMERA MODES: SCOUT CHASE (TPP), NADIR SCAN, AI DATA CENTER STATION, GLOBAL ORBIT ──
       const currentMode = viewModeRef.current;
       const targetCamPos = new THREE.Vector3();
       const targetLookAt = new THREE.Vector3();
       const targetCamUp = new THREE.Vector3();
 
       if (currentMode === "tpp") {
-        // 🚀 Third-Person Perspective (TPP Chase):
-        // Positioned behind and slightly above the spacecraft, with a gentle lateral offset
-        // so the satellite is prominently framed in the foreground and Earth fills the background (matching Image 5)
+        // 🚀 Scout Chase (Third-Person Perspective behind Low-Orbit Scout Satellite)
         const zoom = tppZoomRef.current;
-        const chaseBehind = forwardDir.clone().multiplyScalar(-3.0 * zoom);
-        const chaseUp = radialOut.clone().multiplyScalar(1.25 * zoom);
-        const chaseSide = lateral.clone().multiplyScalar(0.75 * zoom);
+        const chaseBehind = forwardDir.clone().multiplyScalar(-2.8 * zoom);
+        const chaseUp = radialOut.clone().multiplyScalar(1.15 * zoom);
+        const chaseSide = lateral.clone().multiplyScalar(0.65 * zoom);
 
         targetCamPos.copy(spacecraft.position).add(chaseBehind).add(chaseUp).add(chaseSide);
-
-        // Look ahead past the spacecraft nose down toward Earth's horizon and the orbit ring ahead
         targetLookAt.copy(spacecraft.position)
           .add(forwardDir.clone().multiplyScalar(1.4))
           .add(radialDown.clone().multiplyScalar(0.45));
-
-        // Up is radial outward: keeps Earth beneath the horizon consistently without gimbal tumbling
         targetCamUp.copy(radialOut);
+      } else if (currentMode === "datacenter") {
+        // 🏛️ High-Orbit AI Data Center Mother Station Camera ("LUMEN-DC-ALPHA")
+        const zoom = tppZoomRef.current;
+        const dcLateral = new THREE.Vector3().crossVectors(dcRadialOut, dcForward).normalize();
+        targetCamPos
+          .copy(dcPos)
+          .add(dcForward.clone().multiplyScalar(-2.6 * zoom))
+          .add(dcRadialOut.clone().multiplyScalar(0.95 * zoom))
+          .add(dcLateral.clone().multiplyScalar(1.1 * zoom));
+        // Look from the AI Data Center Station down toward Earth & the Scout Satellite
+        targetLookAt.copy(dcPos).multiplyScalar(0.45);
+        targetCamUp.copy(dcRadialOut);
       } else if (currentMode === "nadir" || currentMode === "wing") {
-        // 🛰️ Ride-Along (Nadir):
-        // Satellite observation camera looking directly down at Earth below, with spacecraft in frame
+        // 🛰️ Ride-Along (Nadir)
         const nadirPos = spacecraft.position.clone()
           .add(radialOut.clone().multiplyScalar(1.9))
           .add(lateral.clone().multiplyScalar(0.55));
-
         targetCamPos.copy(nadirPos);
-
-        // Point directly down at the sub-satellite point on Earth's surface
-        const subSatPos = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS);
-        targetLookAt.copy(subSatPos);
-
-        // Up along flight direction: Earth surface scrolls forward beneath the satellite
+        const subSat = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS);
+        targetLookAt.copy(subSat);
         targetCamUp.copy(forwardDir);
       } else {
-        // 🌍 Orbit View ("orbit" or "global" or "free"):
-        // Grand panoramic 3D view of planet Earth, complete glowing orbit ring, and all disasters
-        const rad = orbitAngleRef.current.radius || 19.0;
+        // 🌍 Global Orbit View (Frames both Low-Orbit Scout Satellite AND High-Orbit AI Data Center Station!)
+        const rad = orbitAngleRef.current.radius || 18.5;
         const theta = orbitAngleRef.current.theta;
         const phi = orbitAngleRef.current.phi;
 
@@ -1860,7 +2111,6 @@ export function UltraRealisticEarthFlight({
         targetCamUp.set(0, 1, 0);
       }
 
-      // Smooth camera interpolation (lerp)
       const lerpSpeed = currentMode === "orbit" ? 0.08 : 0.12;
       camPosRef.current.lerp(targetCamPos, lerpSpeed);
       camLookAtRef.current.lerp(targetLookAt, lerpSpeed);
@@ -1870,22 +2120,27 @@ export function UltraRealisticEarthFlight({
       camera.up.copy(camUpRef.current);
       camera.lookAt(camLookAtRef.current);
 
-      // Update Country Labels Zoom LOD & Screen-Space Overlap Prevention
-      const camDist = camera.position.length();
-      const distScale = THREE.MathUtils.clamp((camDist - EARTH_RADIUS) / 9.5, 0.3, 1.1);
-      const placedBoxes: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [];
-      const tmpWorldPos = new THREE.Vector3();
-      const tmpNDC = new THREE.Vector3();
-
-      for (const node of labelNodes) {
-        const maxDist = node.importance === 1 ? 26.0 : node.importance === 2 ? 15.5 : 10.5;
-        if (camDist > maxDist) {
+      // Update Country Labels ONLY when Map Borders overlay is enabled!
+      if (!showMapOverlayRef.current) {
+        for (const node of labelNodes) {
           node.sprite.visible = false;
-          continue;
         }
-        node.sprite.getWorldPosition(tmpWorldPos);
-        const toCam = camera.position.clone().sub(tmpWorldPos).normalize();
-        const facingDot = node.localNormal.dot(toCam);
+      } else {
+        const camDist = camera.position.length();
+        const distScale = THREE.MathUtils.clamp((camDist - EARTH_RADIUS) / 9.5, 0.3, 1.1);
+        const placedBoxes: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [];
+        const tmpWorldPos = new THREE.Vector3();
+        const tmpNDC = new THREE.Vector3();
+
+        for (const node of labelNodes) {
+          const maxDist = node.importance === 1 ? 26.0 : node.importance === 2 ? 15.5 : 10.5;
+          if (camDist > maxDist) {
+            node.sprite.visible = false;
+            continue;
+          }
+          node.sprite.getWorldPosition(tmpWorldPos);
+          const toCam = camera.position.clone().sub(tmpWorldPos).normalize();
+          const facingDot = node.localNormal.dot(toCam);
         if (facingDot <= 0.22) {
           node.sprite.visible = false;
           continue;
@@ -1918,7 +2173,8 @@ export function UltraRealisticEarthFlight({
         node.sprite.visible = true;
         node.sprite.scale.set(node.baseWidth * distScale, node.baseHeight * distScale, 1);
         const limbFade = THREE.MathUtils.smoothstep(facingDot, 0.22, 0.48);
-        (node.sprite.material as THREE.SpriteMaterial).opacity = limbFade * 0.9;
+        (node.sprite.material as THREE.SpriteMaterial).opacity = limbFade * 0.72;
+      }
       }
 
       // Sunburst plane always faces the camera
@@ -2083,14 +2339,15 @@ export function UltraRealisticEarthFlight({
       {/* 3D WebGL Canvas */}
       <div ref={mountRef} className="w-full h-full cursor-crosshair" />
 
-      {/* ── Top-Right: Camera Mode Switcher (TPP Chase, Ride-Along Nadir, Orbit View) ── */}
-      <div className="absolute top-16 right-3 sm:right-6 flex flex-col items-end gap-1.5 z-40 pointer-events-auto">
-        <div className="flex items-center gap-1 bg-void/90 backdrop-blur-md p-1.5 rounded-full border border-edge/80 shadow-2xl">
+      {/* ── Top-Right: Camera Mode Switcher (Scout Chase, Nadir Scan, AI Data Center, Global Orbit + Map Borders Toggle) ── */}
+      <div className="absolute top-16 right-3 sm:right-6 flex items-center gap-1.5 z-40 pointer-events-auto">
+        <div className="flex items-center gap-1 bg-void/90 backdrop-blur-md p-1 rounded-full border border-edge/80 shadow-2xl">
           {(
             [
-              { id: "tpp", label: "TPP Chase", icon: "🚀", desc: "Third-Person Pilot View" },
-              { id: "nadir", label: "Ride-Along (Nadir)", icon: "🛰️", desc: "Down-Looking Earth Observation" },
-              { id: "orbit", label: "Orbit View", icon: "🌍", desc: "3D Global Orbit View" },
+              { id: "tpp", label: "Scout Chase", icon: "🚀", desc: "Third-Person Scout Satellite View" },
+              { id: "nadir", label: "Nadir Scan", icon: "🛰️", desc: "Down-Looking Earth Observation" },
+              { id: "datacenter", label: "AI Station", icon: "🏛️", desc: "High-Orbit AI Data Center Mother Station" },
+              { id: "orbit", label: "Global Orbit", icon: "🌍", desc: "3D Global Constellation View" },
             ] as const
           ).map((opt) => {
             const active =
@@ -2102,40 +2359,48 @@ export function UltraRealisticEarthFlight({
                 key={opt.id}
                 type="button"
                 onClick={() => setViewMode(opt.id as CameraViewMode)}
-                title={`${opt.label} — ${opt.desc} (Press C to switch)`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full transition-all duration-200 ${
+                title={`${opt.label} — ${opt.desc} (Press C to cycle)`}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all duration-200 cursor-pointer ${
                   active
-                    ? "bg-accent text-ink shadow-md ring-1 ring-accent/60 scale-[1.02]"
+                    ? "bg-accent text-ink shadow-md ring-1 ring-accent/60"
                     : "text-muted hover:text-ink hover:bg-raised/60"
                 }`}
               >
                 <span>{opt.icon}</span>
-                <span className="hidden sm:inline">{opt.label}</span>
-                <span className="sm:hidden">{opt.label.split(" ")[0]}</span>
+                <span className="hidden lg:inline">{opt.label}</span>
               </button>
             );
           })}
-        </div>
-        <div className="text-[10px] text-faint font-mono mr-2 flex items-center gap-1">
-          <span>Toggle key:</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-raised border border-edge text-muted text-[10px] font-bold">C</kbd>
+          <div className="h-4 w-px bg-edge mx-0.5" />
+          <button
+            type="button"
+            onClick={() => setShowMapOverlay((v) => !v)}
+            title="Toggle Political Borders & Country Names Overlay"
+            className={`px-2.5 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer ${
+              showMapOverlay
+                ? "bg-cyan-500/30 text-cyan-200 border border-cyan-400/50"
+                : "text-faint hover:text-ink"
+            }`}
+          >
+            🗺️ <span className="hidden xl:inline">Borders</span>
+          </button>
         </div>
       </div>
 
       {/* ── Top-Center Telemetry Strip (Below Flight Clock) ── */}
-      <div className="absolute top-28 left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 pointer-events-none z-20 max-w-2xl px-2">
-        <span className="bg-void/85 backdrop-blur-md border border-cyan-500/40 px-2.5 py-1 rounded-full text-[11px] text-cyan-300 shadow-md flex items-center gap-1.5 font-bold font-mono">
-          <Compass className="w-3.5 h-3.5 text-cyan-400 animate-spin" style={{ animationDuration: "6s" }} />
-          <span>VEL {orbitalSpeedKmS.toFixed(1)} km/s · {satAltKm.toFixed(0)} km</span>
+      <div className="absolute top-26 left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-1.5 pointer-events-none z-20 max-w-2xl px-2">
+        <span className="bg-void/85 backdrop-blur-md border border-cyan-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-cyan-300 shadow-md flex items-center gap-1.5 font-bold font-mono">
+          <Compass className="w-3 h-3 text-cyan-400 animate-spin" style={{ animationDuration: "6s" }} />
+          <span>SCOUT {orbitalSpeedKmS.toFixed(1)} km/s · {satAltKm.toFixed(0)} km</span>
         </span>
-        <span className="bg-void/85 backdrop-blur-md border border-sky-500/40 px-2.5 py-1 rounded-full text-[11px] text-sky-200 shadow-md font-mono">
-          📡 {activeRelayLabel}
+        <span className="bg-void/85 backdrop-blur-md border border-violet-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-violet-200 shadow-md font-mono">
+          🏛️ {activeRelayLabel}
         </span>
-        <span className="bg-void/85 backdrop-blur-md border border-violet-500/40 px-2.5 py-1 rounded-full text-[11px] text-violet-200 shadow-md font-mono hidden sm:inline-flex">
+        <span className="bg-void/85 backdrop-blur-md border border-sky-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-sky-200 shadow-md font-mono hidden sm:inline-flex">
           🧠 {aiActiveTops.toFixed(1)} TOPS · {satLat.toFixed(1)}°, {satLon.toFixed(1)}°
         </span>
         <span
-          className={`px-2.5 py-1 rounded-full text-[11px] border backdrop-blur-md shadow-md font-mono ${
+          className={`px-2.5 py-0.5 rounded-full text-[11px] border backdrop-blur-md shadow-md font-mono ${
             inEclipse
               ? "bg-indigo-950/85 border-indigo-500/40 text-indigo-300"
               : "bg-amber-950/60 border-amber-500/40 text-amber-300"
@@ -2144,22 +2409,22 @@ export function UltraRealisticEarthFlight({
           {inEclipse ? "🌙 Umbra" : "☀️ Sunlit"}
         </span>
         {comms?.in_contact && (
-          <span className="bg-void/85 backdrop-blur-md border border-emerald-500/40 px-2.5 py-1 rounded-full text-[11px] text-emerald-300 shadow-md animate-pulse flex items-center gap-1 font-mono">
+          <span className="bg-void/85 backdrop-blur-md border border-emerald-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-emerald-300 shadow-md animate-pulse flex items-center gap-1 font-mono">
             <Radio className="w-3 h-3 text-emerald-400" />
             <span>RF: {comms.active_station?.split(" ")[0]}</span>
           </span>
         )}
         {activeEvent && activeEvent.is_pending && (
-          <span className="bg-amber-950/85 border border-amber-400 px-2.5 py-1 rounded-full text-[11px] text-amber-200 shadow-md animate-pulse font-mono">
+          <span className="bg-amber-950/85 border border-amber-400 px-2.5 py-0.5 rounded-full text-[11px] text-amber-200 shadow-md animate-pulse font-mono">
             ⚠️ {activeEvent.name}
           </span>
         )}
       </div>
 
       {/* ── Center Crosshairs (Arcade Driving TPP HUD) ── */}
-      {viewMode === "tpp" && (
+      {(viewMode === "tpp" || viewMode === "datacenter") && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-          <div className="relative w-16 h-16 opacity-35">
+          <div className="relative w-14 h-14 opacity-25">
             <Crosshair className="w-full h-full text-accent" />
           </div>
         </div>
@@ -2167,7 +2432,7 @@ export function UltraRealisticEarthFlight({
 
       {/* ── Selected Country Indicator ── */}
       {selectedCountry && (
-        <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
           <div className="bg-black/75 backdrop-blur-md border border-amber-400/40 px-4 py-1 rounded-full shadow-2xl">
             <span className="text-amber-200 text-xs font-medium tracking-wide">
               🌍 {selectedCountry}
@@ -2176,20 +2441,8 @@ export function UltraRealisticEarthFlight({
         </div>
       )}
 
-      {/* ── Center Alert: Live Target Acquired in Nadir Sensor Cone! ── */}
-      {inRangeTargetName && (
-        <div className="absolute top-38 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-          <div className="bg-emerald-950/95 border border-emerald-400 px-4 py-1.5 rounded-full shadow-2xl backdrop-blur-md flex items-center gap-2">
-            <Flame className="w-4 h-4 text-emerald-300 animate-pulse" />
-            <span className="text-xs font-bold text-emerald-200 font-mono">
-              NADIR CONE LOCKED: {inRangeTargetName} — Press [E] or Scan!
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* ── COMPACT NON-OVERLAPPING FLIGHT CONTROL POD (Centered above Transport Bar) ── */}
-      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-2 bg-void/85 backdrop-blur-md border border-edge/80 rounded-full px-3 py-1.5 shadow-2xl">
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-2 bg-void/85 backdrop-blur-md border border-edge/80 rounded-full px-3 py-1 shadow-2xl">
         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-faint hidden sm:inline">
           RCS Steer:
         </span>
@@ -2200,10 +2453,10 @@ export function UltraRealisticEarthFlight({
             onMouseUp={() => handleSteerEnd("a")}
             onTouchStart={() => handleSteerStart("a")}
             onTouchEnd={() => handleSteerEnd("a")}
-            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-7 h-7 flex items-center justify-center text-muted transition-colors active:scale-95"
-            title="Bank Orbital Plane Left (A / Left Arrow)"
+            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-6 h-6 flex items-center justify-center text-muted transition-colors active:scale-95"
+            title="Precess Orbital Plane Left (A / Left Arrow)"
           >
-            <ChevronLeft size={15} />
+            <ChevronLeft size={14} />
           </button>
           <button
             type="button"
@@ -2211,10 +2464,10 @@ export function UltraRealisticEarthFlight({
             onMouseUp={() => handleSteerEnd("w")}
             onTouchStart={() => handleSteerStart("w")}
             onTouchEnd={() => handleSteerEnd("w")}
-            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-7 h-7 flex items-center justify-center text-muted transition-colors active:scale-95"
+            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-6 h-6 flex items-center justify-center text-muted transition-colors active:scale-95"
             title="Accelerate Along Track (W / Up Arrow)"
           >
-            <ChevronUp size={15} />
+            <ChevronUp size={14} />
           </button>
           <button
             type="button"
@@ -2222,10 +2475,10 @@ export function UltraRealisticEarthFlight({
             onMouseUp={() => handleSteerEnd("s")}
             onTouchStart={() => handleSteerStart("s")}
             onTouchEnd={() => handleSteerEnd("s")}
-            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-7 h-7 flex items-center justify-center text-muted transition-colors active:scale-95"
+            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-6 h-6 flex items-center justify-center text-muted transition-colors active:scale-95"
             title="Precision Scan Braking (S / Down Arrow)"
           >
-            <ChevronDown size={15} />
+            <ChevronDown size={14} />
           </button>
           <button
             type="button"
@@ -2233,14 +2486,14 @@ export function UltraRealisticEarthFlight({
             onMouseUp={() => handleSteerEnd("d")}
             onTouchStart={() => handleSteerStart("d")}
             onTouchEnd={() => handleSteerEnd("d")}
-            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-7 h-7 flex items-center justify-center text-muted transition-colors active:scale-95"
-            title="Bank Orbital Plane Right (D / Right Arrow)"
+            className="bg-panel/90 hover:bg-accent hover:text-ink border border-edge rounded-full w-6 h-6 flex items-center justify-center text-muted transition-colors active:scale-95"
+            title="Precess Orbital Plane Right (D / Right Arrow)"
           >
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           </button>
         </div>
 
-        <div className="h-4 w-px bg-edge" />
+        <div className="h-3.5 w-px bg-edge" />
 
         {/* Thruster Boost Button */}
         <button
@@ -2249,19 +2502,21 @@ export function UltraRealisticEarthFlight({
           onMouseUp={handleBoostEnd}
           onTouchStart={handleBoostStart}
           onTouchEnd={handleBoostEnd}
-          className={`px-3 py-1 rounded-full border flex items-center gap-1 text-[11px] font-bold font-mono transition-all active:scale-95 ${
+          className={`px-2.5 py-0.5 rounded-full border flex items-center gap-1 text-[10px] font-bold font-mono transition-all active:scale-95 cursor-pointer ${
             isBoosting
               ? "bg-cyan-500 text-ink border-cyan-300 shadow-cyan-500/50"
               : "bg-panel/90 border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/60"
           }`}
-          title="Hold Spacebar to Fire Hall-Effect Ion Boost (2.4x Orbital Speed)"
+          title="Hold Spacebar to Fire Hall-Effect Ion Boost (2.2x Orbital Speed)"
         >
-          <Zap className="w-3.5 h-3.5" />
+          <Zap className="w-3 h-3" />
           <span>Boost (Space)</span>
         </button>
 
-        {/* Hidden compatibility node for scenarioTargets so TypeScript unused variable check passes */}
-        <span className="sr-only">{scenarioTargets.length}</span>
+        {/* Hidden compatibility nodes so TypeScript unused variable checks pass */}
+        <span className="sr-only">
+          {scenarioTargets.length} {inRangeTargetName}
+        </span>
       </div>
     </div>
   );

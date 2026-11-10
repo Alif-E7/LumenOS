@@ -10,7 +10,6 @@ import {
   Play,
   Pause,
   Coins,
-  X,
   Crosshair,
   Cpu,
   CheckCircle2,
@@ -69,6 +68,51 @@ const SPEEDS = [
   { label: "2×", steps: 1, delayMs: 600 },
   { label: "5×", steps: 1, delayMs: 240 },
 ] as const;
+
+interface FloatingReward {
+  id: number;
+  label: string;
+  sublabel: string;
+  tone: "emerald" | "violet" | "cyan" | "amber";
+}
+
+/** Synthesize crisp Web Audio API sci-fi tactical sound effects (safe in browser & headless tests). */
+function playSciFiSfx(kind: "lock" | "scan" | "ai" | "contain" | "boost") {
+  try {
+    if (typeof window === "undefined") return;
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const notes =
+      kind === "contain"
+        ? [523.25, 659.25, 783.99, 1046.5]
+        : kind === "ai"
+          ? [440, 659.25, 880]
+          : kind === "scan"
+            ? [587.33, 880]
+            : kind === "boost"
+              ? [220, 440]
+              : [660, 990];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = kind === "contain" ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(freq, now + idx * 0.055);
+      gain.gain.setValueAtTime(0.06, now + idx * 0.055);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.055 + 0.24);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.055);
+      osc.stop(now + idx * 0.055 + 0.25);
+    });
+    setTimeout(() => {
+      void ctx.close().catch(() => undefined);
+    }, 600);
+  } catch {
+    /* ignore audio context restrictions */
+  }
+}
 
 /**
  * Cadet flight screen — the simple, immersive gameplay surface.
@@ -279,6 +323,20 @@ export function PlayPage() {
   const [islPulseActive, setIslPulseActive] = useState<boolean>(false);
   const [computeHeatBonusC, setComputeHeatBonusC] = useState<number>(0);
   const [tacticalScoreBonus, setTacticalScoreBonus] = useState<number>(0);
+  const [comboStreak, setComboStreak] = useState<number>(0);
+  const [rewardPopups, setRewardPopups] = useState<FloatingReward[]>([]);
+  const rewardSeq = useRef(0);
+
+  const pushReward = useCallback(
+    (label: string, sublabel: string, tone: FloatingReward["tone"] = "emerald") => {
+      const id = ++rewardSeq.current;
+      setRewardPopups((prev) => [...prev.slice(-2), { id, label, sublabel, tone }]);
+      setTimeout(() => {
+        setRewardPopups((prev) => prev.filter((r) => r.id !== id));
+      }, 2200);
+    },
+    []
+  );
 
   // Default Autopilot Intercept to the first unresolved mission target
   useEffect(() => {
@@ -307,7 +365,12 @@ export function PlayPage() {
 
   const handleTargetInRangeChange = useCallback(
     (target: GlobalEarthEvent | null, distanceKm: number) => {
-      setInRangeTarget(target);
+      setInRangeTarget((prev) => {
+        if (target && prev?.id !== target.id) {
+          playSciFiSfx("lock");
+        }
+        return target;
+      });
       setInRangeDistKm(distanceKm);
     },
     []
@@ -316,7 +379,8 @@ export function PlayPage() {
   const handleSelectTarget = useCallback(
     (target: GlobalEarthEvent) => {
       setAutopilotTargetId(target.id);
-      pushToast(`🎯 Intercept locked: ${target.name} — Banking orbital plane!`);
+      playSciFiSfx("boost");
+      pushToast(`🎯 Intercept locked: ${target.name} — Ion Thruster Burst Engaged!`);
     },
     [pushToast]
   );
@@ -324,6 +388,9 @@ export function PlayPage() {
   // ── Stage 1: Automatic & Manual Nadir Laser Scan when over a Crisis Target ──
   const triggerBackendCollect = useCallback(
     async (targetName: string) => {
+      playSciFiSfx("scan");
+      setTacticalScoreBonus((s) => s + 100);
+      pushReward("+100 PTS · SWATH LOCKED!", `${targetName} Raw Frame Captured`, "emerald");
       if (!sessionId) return;
       try {
         await performAction(sessionId, {
@@ -335,9 +402,9 @@ export function PlayPage() {
       } catch {
         /* ignore transient backend error */
       }
-      pushToast(`📸 100% Nadir Scan: ${targetName} captured (180 MB Raw Frame)! Press [R] for Edge AI.`);
+      pushToast(`📸 100% Nadir Scan: ${targetName} captured! Press [R] to ignite 24-TOPS Neural AI.`);
     },
-    [sessionId, session, refresh, pushToast]
+    [sessionId, session, refresh, pushToast, pushReward]
   );
 
   useEffect(() => {
@@ -349,14 +416,14 @@ export function PlayPage() {
     const timer = setInterval(() => {
       setTargetScanPct((prev) => {
         const cur = prev[tid] ?? 0;
-        const next = Math.min(100, cur + 14);
+        const next = Math.min(100, cur + 16);
         if (next >= 100 && cur < 100) {
           setTargetStages((st) => ({ ...st, [tid]: "RAW_CAPTURED" }));
           void triggerBackendCollect(inRangeTarget.name);
         }
         return { ...prev, [tid]: next };
       });
-    }, 220);
+    }, 200);
 
     return () => clearInterval(timer);
   }, [inRangeTarget, targetStages, triggerBackendCollect]);
@@ -364,7 +431,14 @@ export function PlayPage() {
   // Manual Boost Scan ([E] or Scan Button)
   const handleManualScanBurst = useCallback(() => {
     if (!inRangeTarget) {
-      pushToast("⚠️ No crisis target in Nadir Sensor Cone! Click a target to Intercept or steer with WASD.", "error");
+      const nextTarget = missionTargets.find((t) => targetStages[t.id] !== "RESOLVED");
+      if (nextTarget) {
+        setAutopilotTargetId(nextTarget.id);
+        playSciFiSfx("boost");
+        pushToast(`🚀 Ion Intercept locked onto ${nextTarget.name}! Flying into Nadir Cone...`);
+      } else {
+        pushToast("⚠️ All crisis targets in this theater are already contained!", "ok");
+      }
       return;
     }
     const tid = inRangeTarget.id;
@@ -373,8 +447,9 @@ export function PlayPage() {
       pushToast(`✅ ${inRangeTarget.name} already scanned! Run Edge AI [R] or Transmit [F].`);
       return;
     }
+    playSciFiSfx("lock");
     const cur = targetScanPct[tid] ?? 0;
-    const next = Math.min(100, cur + 45);
+    const next = Math.min(100, cur + 50);
     setTargetScanPct((prev) => ({ ...prev, [tid]: next }));
     if (next >= 100) {
       setTargetStages((st) => ({ ...st, [tid]: "RAW_CAPTURED" }));
@@ -382,7 +457,7 @@ export function PlayPage() {
     } else {
       pushToast(`🔍 Laser Swath Scanning ${inRangeTarget.name}: ${next}%`);
     }
-  }, [inRangeTarget, targetStages, targetScanPct, triggerBackendCollect, pushToast]);
+  }, [inRangeTarget, missionTargets, targetStages, targetScanPct, triggerBackendCollect, pushToast]);
 
   // ── Stage 2: 24-TOPS Neural Edge AI Inference ([R] or Process AI Button) ──
   const handleRunEdgeAi = useCallback(() => {
@@ -391,8 +466,9 @@ export function PlayPage() {
       pushToast("⚠️ No Raw Sensor Frames queued! Fly over a crisis target and scan it to 100% first.", "error");
       return;
     }
+    playSciFiSfx("ai");
     setIsRunningAi(true);
-    setAiInferencePct(15);
+    setAiInferencePct(20);
     setComputeHeatBonusC((h) => Math.min(26, h + 8.5));
 
     if (sessionId) {
@@ -403,13 +479,14 @@ export function PlayPage() {
       }).catch(() => undefined);
     }
 
-    let pct = 15;
+    let pct = 20;
     const timer = setInterval(() => {
-      pct += 28;
+      pct += 30;
       if (pct >= 100) {
         clearInterval(timer);
         setAiInferencePct(0);
         setIsRunningAi(false);
+        const count = rawCapturedIds.length;
         setTargetStages((prev) => {
           const updated = { ...prev };
           rawCapturedIds.forEach((id) => {
@@ -417,14 +494,20 @@ export function PlayPage() {
           });
           return updated;
         });
+        setTacticalScoreBonus((s) => s + count * 150);
+        pushReward(
+          `+${count * 150} PTS · 24-TOPS NEURAL AI!`,
+          `${count} Alert Vector(s) Compressed at Data Center`,
+          "violet"
+        );
         pushToast(
-          `🧠 24-TOPS Edge AI Complete! ${rawCapturedIds.length} Alert Vector(s) compressed. Press [F] to Transmit!`
+          `🧠 24-TOPS Edge AI Complete! ${count} Alert Vector(s) ready. Press [F] to Fire Orbital Beam!`
         );
       } else {
         setAiInferencePct(pct);
       }
-    }, 180);
-  }, [isRunningAi, rawCapturedIds, sessionId, session, pushToast]);
+    }, 150);
+  }, [isRunningAi, rawCapturedIds, sessionId, session, pushToast, pushReward]);
 
   // ── Stage 3: Optical ISL / RF Alert Transmission ([F] or Transmit Button) ──
   const handleTransmitAlert = useCallback(async () => {
@@ -437,10 +520,16 @@ export function PlayPage() {
       return;
     }
 
+    playSciFiSfx("contain");
     setIslPulseActive(true);
-    setTimeout(() => setIslPulseActive(false), 2400);
+    setTimeout(() => setIslPulseActive(false), 2600);
 
     const resolvedCount = aiProcessedIds.length;
+    const nextStreak = comboStreak + resolvedCount;
+    setComboStreak(nextStreak);
+    const streakMultiplier = Math.min(3, nextStreak);
+    const earnedPts = resolvedCount * 300 * streakMultiplier;
+
     setTargetStages((prev) => {
       const updated = { ...prev };
       aiProcessedIds.forEach((id) => {
@@ -448,7 +537,12 @@ export function PlayPage() {
       });
       return updated;
     });
-    setTacticalScoreBonus((s) => s + resolvedCount * 250);
+    setTacticalScoreBonus((s) => s + earnedPts);
+    pushReward(
+      `🔥 ${streakMultiplier}× STREAK! +${earnedPts} PTS`,
+      `${resolvedCount} Crisis Target(s) CONTAINED via Mother Station!`,
+      "cyan"
+    );
 
     if (sessionId) {
       try {
@@ -464,13 +558,16 @@ export function PlayPage() {
     }
 
     pushToast(
-      `📡 Optical ISL Crosslink Fired! ${resolvedCount} Crisis Target(s) CONTAINED (+${resolvedCount * 250} pts)!`
+      `📡 Optical ISL Crosslink Fired! ${resolvedCount} Crisis Target(s) CONTAINED (+${earnedPts} pts)!`
     );
-  }, [aiProcessedIds, rawCapturedIds, sessionId, session, refresh, pushToast]);
+  }, [aiProcessedIds, rawCapturedIds, comboStreak, sessionId, session, refresh, pushToast, pushReward]);
 
   // ── Radiator Coolant Purge ([T]) ──
   const handleCoolantPurge = useCallback(() => {
+    playSciFiSfx("lock");
     setComputeHeatBonusC((h) => Math.max(-6, h - 10));
+    setTacticalScoreBonus((s) => s + 50);
+    pushReward("+50 PTS · CRYO RADIATOR PURGE", "Ammonia Loop Louvers Vented (-10°C)", "amber");
     if (sessionId) {
       void performAction(sessionId, {
         player_id: session?.playerId ?? "cadet",
@@ -479,7 +576,7 @@ export function PlayPage() {
       }).catch(() => undefined);
     }
     pushToast("❄️ Ammonia Loop Louvers 100% Open — Venting NPU heat to deep space (-10°C)!");
-  }, [sessionId, session, pushToast]);
+  }, [sessionId, session, pushToast, pushReward]);
 
   // Keyboard shortcuts for Interactive 3-Stage Pipeline: [E] Scan, [R] Edge AI, [F] Transmit, [T] Coolant
   useEffect(() => {
@@ -606,6 +703,16 @@ export function PlayPage() {
   const [showAiPanel, setShowAiPanel] = useState(true);
   const effectiveThermalTempC = Math.round(((telemetry?.thermal?.temperature_c ?? 22.0) + computeHeatBonusC) * 10) / 10;
   const activeScanPct = inRangeTarget ? (targetScanPct[inRangeTarget.id] ?? 0) : 0;
+  const displayScore = Math.round((state?.current_score ?? 0) + tacticalScoreBonus);
+  const missionCompletionPct = Math.min(
+    100,
+    Math.round(
+      ((resolvedTargetIds.length * 1.0 + aiProcessedIds.length * 0.65 + rawCapturedIds.length * 0.35) /
+        Math.max(1, missionTargets.length)) *
+        100
+    )
+  );
+  const nextUnresolvedTarget = missionTargets.find((t) => targetStages[t.id] !== "RESOLVED") ?? null;
 
   if (!sessionId) return null;
 
@@ -630,16 +737,44 @@ export function PlayPage() {
         onSelectTarget={handleSelectTarget}
       />
 
+      {/* ── High-Dopamine Floating Score & Combo Popups (Center Screen) ── */}
+      {rewardPopups.length > 0 && (
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-40 pointer-events-none flex flex-col items-center gap-1.5">
+          {rewardPopups.map((r) => (
+            <div
+              key={r.id}
+              className={`px-4 py-1.5 rounded-2xl border backdrop-blur-md shadow-2xl font-mono text-center animate-bounce ${
+                r.tone === "cyan"
+                  ? "bg-cyan-950/90 border-cyan-400 text-cyan-200 shadow-cyan-500/30"
+                  : r.tone === "violet"
+                    ? "bg-violet-950/90 border-violet-400 text-violet-200 shadow-violet-500/30"
+                    : r.tone === "amber"
+                      ? "bg-amber-950/90 border-amber-400 text-amber-200 shadow-amber-500/30"
+                      : "bg-emerald-950/90 border-emerald-400 text-emerald-200 shadow-emerald-500/30"
+              }`}
+            >
+              <div className="text-xs font-extrabold tracking-wide">{r.label}</div>
+              <div className="text-[10px] opacity-90">{r.sublabel}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Top-left: Mission Objectives + Interactive 3-Stage Orbital AI Data Center ── */}
-      <div className="absolute top-16 left-3 z-30 w-84 max-w-[calc(100vw-1.5rem)] pointer-events-auto space-y-2">
-        <div className="bg-void/88 backdrop-blur-md rounded-2xl border border-edge px-3.5 py-2.5 shadow-lg">
+      <div className="absolute top-14 left-3 z-30 w-82 max-w-[calc(100vw-1.5rem)] pointer-events-auto space-y-1.5">
+        <div className="bg-void/88 backdrop-blur-md rounded-2xl border border-edge px-3 py-2 shadow-lg">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-accent font-mono">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-accent font-mono truncate">
               Theater: {session?.missionName ?? missionId}
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold">
-                Score {(state?.current_score ?? 0) + tacticalScoreBonus}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {comboStreak > 1 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-400/60 text-amber-300 font-bold animate-pulse">
+                  🔥 {Math.min(3, comboStreak)}×
+                </span>
+              )}
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold tabular-nums">
+                Score {displayScore}
               </span>
               <button
                 type="button"
@@ -650,25 +785,53 @@ export function PlayPage() {
               </button>
             </div>
           </div>
-          <p className="text-xs text-ink mt-0.5 font-semibold leading-snug">
+          <p className="text-[11px] text-ink mt-0.5 font-semibold leading-snug">
             {missionGoal(missionId)}
           </p>
+
+          {/* Live Theater Containment Bar */}
+          <div className="mt-1.5">
+            <div className="flex items-center justify-between text-[9px] font-mono text-faint mb-0.5">
+              <span>THEATER CONTAINMENT PROGRESS</span>
+              <span className="text-emerald-300 font-bold">{missionCompletionPct}%</span>
+            </div>
+            <div className="w-full h-1.5 bg-panel rounded-full overflow-hidden border border-edge/60">
+              <div
+                className="h-full bg-gradient-to-r from-cyan-400 via-violet-400 to-emerald-400 transition-all duration-300"
+                style={{ width: `${missionCompletionPct}%` }}
+              />
+            </div>
+          </div>
+
           {goals.length > 0 && (
-            <div className="mt-1.5 space-y-1">
-              {goals.map((g) => (
-                <div key={g.id} className="flex items-center gap-2">
-                  <span
-                    className={`text-xs ${g.done ? "text-emerald-300" : "text-muted"}`}
-                    aria-hidden
-                  >
-                    {g.done ? "✅" : "⬜"}
-                  </span>
-                  <span className={`text-[11px] flex-1 truncate ${g.done ? "text-emerald-200 line-through" : "text-muted"}`}>
-                    {g.text}
-                  </span>
-                  <span className="text-[10px] text-faint tabular-nums font-mono">{g.progress}%</span>
-                </div>
-              ))}
+            <div className="mt-1.5 space-y-0.5">
+              {goals.map((g, idx) => {
+                const boostedProgress =
+                  idx === 0
+                    ? Math.min(100, Math.max(g.progress, missionCompletionPct))
+                    : idx === 1
+                      ? Math.min(100, Math.max(g.progress, resolvedTargetIds.length * 50))
+                      : g.progress;
+                const isGoalDone = g.done || boostedProgress >= 100;
+                return (
+                  <div key={g.id} className="flex items-center gap-1.5">
+                    <span
+                      className={`text-[11px] ${isGoalDone ? "text-emerald-300" : "text-muted"}`}
+                      aria-hidden
+                    >
+                      {isGoalDone ? "✅" : "⬜"}
+                    </span>
+                    <span
+                      className={`text-[10px] flex-1 truncate ${
+                        isGoalDone ? "text-emerald-200 line-through" : "text-muted"
+                      }`}
+                    >
+                      {g.text}
+                    </span>
+                    <span className="text-[10px] text-faint tabular-nums font-mono">{boostedProgress}%</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -677,9 +840,9 @@ export function PlayPage() {
         {showAiPanel && (
           <div
             data-testid="orbital-ai-datacenter-hud"
-            className="bg-void/90 backdrop-blur-md rounded-2xl border border-cyan-500/35 px-3.5 py-2.5 shadow-xl text-xs space-y-2"
+            className="bg-void/90 backdrop-blur-md rounded-2xl border border-cyan-500/35 px-3 py-2 shadow-xl text-xs space-y-1.5"
           >
-            <div className="flex items-center justify-between border-b border-edge/70 pb-1.5">
+            <div className="flex items-center justify-between border-b border-edge/70 pb-1">
               <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
                 <Cpu className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Orbital AI Data Center</span>
@@ -694,7 +857,7 @@ export function PlayPage() {
               <button
                 type="button"
                 onClick={handleManualScanBurst}
-                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                className={`rounded-xl border px-2 py-1 text-left transition-all cursor-pointer ${
                   inRangeTarget
                     ? "border-emerald-400 bg-emerald-950/70 text-emerald-200 shadow-sm shadow-emerald-500/30 animate-pulse"
                     : "border-edge bg-panel/70 text-muted hover:border-cyan-500/50"
@@ -713,7 +876,7 @@ export function PlayPage() {
               <button
                 type="button"
                 onClick={handleRunEdgeAi}
-                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                className={`rounded-xl border px-2 py-1 text-left transition-all cursor-pointer ${
                   rawCapturedIds.length > 0 || isRunningAi
                     ? "border-violet-400 bg-violet-950/75 text-violet-200 shadow-sm shadow-violet-500/30 animate-pulse"
                     : "border-edge bg-panel/70 text-muted hover:border-violet-500/50"
@@ -732,7 +895,7 @@ export function PlayPage() {
               <button
                 type="button"
                 onClick={() => void handleTransmitAlert()}
-                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                className={`rounded-xl border px-2 py-1 text-left transition-all cursor-pointer ${
                   aiProcessedIds.length > 0
                     ? "border-cyan-400 bg-cyan-950/80 text-cyan-200 shadow-sm shadow-cyan-500/30 animate-bounce"
                     : "border-edge bg-panel/70 text-muted hover:border-cyan-500/50"
@@ -749,7 +912,7 @@ export function PlayPage() {
               </button>
             </div>
 
-            <div className="space-y-1 font-mono text-[10px]">
+            <div className="space-y-0.5 font-mono text-[10px]">
               <div className="flex items-center justify-between text-muted">
                 <span className="truncate pr-2">Model: {aiState.activePipelineName}</span>
                 <span className="text-violet-300 shrink-0">{aiState.compressionRatio}:1 Vec</span>
@@ -772,7 +935,7 @@ export function PlayPage() {
                 </button>
               </div>
               <div className="flex items-center justify-between text-faint">
-                <span>
+                <span className="truncate pr-1">
                   ISL Relay:{" "}
                   <strong className={aiState.opticalCrosslinkActive ? "text-cyan-300" : "text-muted"}>
                     {aiState.activeRelayNode
@@ -780,18 +943,18 @@ export function PlayPage() {
                       : "Searching Limb…"}
                   </strong>
                 </span>
-                <span className="text-emerald-300">EDAC: {aiState.edacSeuScrubbed} SEU</span>
+                <span className="text-emerald-300 shrink-0">EDAC: {aiState.edacSeuScrubbed} SEU</span>
               </div>
             </div>
 
             {/* Mission-Specific Scientific Phenomenology Mini-Grid */}
-            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-edge/60 font-mono">
+            <div className="grid grid-cols-2 gap-1 pt-1 border-t border-edge/60 font-mono">
               {aiState.metrics.map((m) => (
                 <div
                   key={m.label}
-                  className="rounded-lg bg-panel/70 border border-edge/70 px-2 py-1"
+                  className="rounded-lg bg-panel/70 border border-edge/70 px-2 py-0.5"
                 >
-                  <div className="text-[9px] text-faint uppercase truncate">{m.label}</div>
+                  <div className="text-[8px] text-faint uppercase truncate">{m.label}</div>
                   <div
                     className={`text-[10px] font-bold truncate ${
                       m.status === "critical"
@@ -813,8 +976,8 @@ export function PlayPage() {
       </div>
 
       {/* ── Top-center: mission clock ── */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-        <div className="bg-void/85 backdrop-blur-md rounded-full border border-edge px-4 py-1.5 shadow-lg text-center">
+      <div className="absolute top-14 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        <div className="bg-void/85 backdrop-blur-md rounded-full border border-edge px-4 py-1 shadow-lg text-center">
           <span className="text-xs text-faint mr-1">Flight time</span>
           <span className="text-sm font-bold text-ink tabular-nums">{missionClock(elapsed)}</span>
         </div>
@@ -823,7 +986,7 @@ export function PlayPage() {
       {/* ── Top-Right Dock (Below Camera Switcher): Tactical Crisis Target Intercept Queue ── */}
       <div
         data-testid="target-intercept-queue"
-        className="absolute top-30 right-3 sm:right-6 z-30 w-68 pointer-events-auto hidden md:block"
+        className="absolute top-28 right-3 sm:right-6 z-30 w-68 pointer-events-auto hidden md:block"
       >
         <div className="bg-void/88 backdrop-blur-md border border-edge rounded-2xl p-3 shadow-xl space-y-2">
           <div className="flex items-center justify-between border-b border-edge/70 pb-1.5">
@@ -847,9 +1010,10 @@ export function PlayPage() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() =>
-                    setAutopilotTargetId((prev) => (prev === t.id ? null : t.id))
-                  }
+                  onClick={() => {
+                    setAutopilotTargetId((prev) => (prev === t.id ? null : t.id));
+                    playSciFiSfx("boost");
+                  }}
                   className={`w-full text-left rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer ${
                     stage === "RESOLVED"
                       ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-200"
@@ -904,7 +1068,7 @@ export function PlayPage() {
               {inRangeTarget
                 ? `🟢 In Cone (${inRangeDistKm} km)`
                 : autopilotTargetId
-                  ? "🧭 Auto-Banking Orbit"
+                  ? "🧭 Orbiting to Target"
                   : "🕹️ Manual WASD Flight"}
             </span>
             <button
@@ -918,30 +1082,77 @@ export function PlayPage() {
         </div>
       </div>
 
+      {/* ── Center-Bottom High-Dopamine Tactical Action Prompt (Above RCS Steer Bar) ── */}
+      <div
+        data-testid="tactical-primary-cta"
+        className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 pointer-events-auto"
+      >
+        {aiProcessedIds.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => void handleTransmitAlert()}
+            className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-cyan-950/90 border-2 border-cyan-400 text-cyan-100 font-mono text-xs font-extrabold shadow-xl shadow-cyan-500/30 hover:bg-cyan-900 cursor-pointer animate-bounce"
+          >
+            <span>⚡ FIRE ORBITAL CONTAINMENT BEAM [F]</span>
+            <span className="px-2 py-0.5 rounded-full bg-cyan-400/20 text-emerald-300 text-[10px]">
+              +{aiProcessedIds.length * 300 * Math.min(3, comboStreak + 1)} PTS
+            </span>
+          </button>
+        ) : rawCapturedIds.length > 0 || isRunningAi ? (
+          <button
+            type="button"
+            onClick={handleRunEdgeAi}
+            className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-violet-950/90 border-2 border-violet-400 text-violet-100 font-mono text-xs font-extrabold shadow-xl shadow-violet-500/30 hover:bg-violet-900 cursor-pointer animate-pulse"
+          >
+            <span>
+              {isRunningAi
+                ? `🧠 24-TOPS NEURAL NPU CRUNCHING (${aiInferencePct}%)...`
+                : `🧠 IGNITE 24-TOPS NEURAL AI [R] (${rawCapturedIds.length} RAW)`}
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-violet-400/20 text-violet-200 text-[10px]">
+              +150 PTS
+            </span>
+          </button>
+        ) : inRangeTarget && (targetStages[inRangeTarget.id] ?? "UNSCANNED") === "UNSCANNED" ? (
+          <button
+            type="button"
+            onClick={handleManualScanBurst}
+            className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-950/90 border-2 border-emerald-400 text-emerald-100 font-mono text-xs font-extrabold shadow-xl shadow-emerald-500/30 hover:bg-emerald-900 cursor-pointer animate-pulse"
+          >
+            <span>
+              📸 LASER SCAN {inRangeTarget.name.toUpperCase()} [E] ({activeScanPct}%)
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-200 text-[10px]">
+              +100 PTS
+            </span>
+          </button>
+        ) : nextUnresolvedTarget ? (
+          <button
+            type="button"
+            onClick={() => {
+              setAutopilotTargetId(nextUnresolvedTarget.id);
+              playSciFiSfx("boost");
+              window.dispatchEvent(new KeyboardEvent("keydown", { code: "Space" }));
+              setTimeout(() => {
+                window.dispatchEvent(new KeyboardEvent("keyup", { code: "Space" }));
+              }, 900);
+              pushToast(`🚀 Ion Thruster Burn toward ${nextUnresolvedTarget.name}!`);
+            }}
+            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-void/85 border border-sky-400/60 text-sky-200 font-mono text-[11px] font-bold shadow-lg hover:bg-sky-950/80 hover:border-sky-300 cursor-pointer transition-all"
+          >
+            <span>🚀 WARP INTERCEPT: {nextUnresolvedTarget.name.toUpperCase()}</span>
+            <span className="text-[10px] text-amber-300">[Click / Hold Space]</span>
+          </button>
+        ) : null}
+      </div>
+
       {/* ── Toasts ── */}
       <ToastStack toasts={toasts} />
 
-      {/* ── Onboarding tip banner ── */}
-      {tip && !kidEventView && (
-        <div className="absolute top-40 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
-          <div className="flex items-center gap-3 bg-sky-950/90 backdrop-blur-md rounded-full border border-sky-400/40 px-4 py-2 shadow-lg max-w-md">
-            <span className="text-sm text-sky-100">{tip.text}</span>
-            <button
-              type="button"
-              onClick={() => setTip(null)}
-              aria-label="Dismiss tip"
-              className="text-sky-300 hover:text-white shrink-0"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Bottom-left: gauges + Lumi ── */}
-      <div className="absolute bottom-3 left-3 z-30 space-y-2 pointer-events-auto">
-        <LumiBot tip={tip} advice={lumiAdvice} onAcceptAdvice={acceptAdvice} busy={busy} />
+      {/* ── Bottom-left: gauges + Lumi side-by-side (Zero Overlap with Top-Left AI Card) ── */}
+      <div className="absolute bottom-3 left-3 z-30 flex items-end gap-2.5 pointer-events-auto">
         <KidGaugeBar gauges={gauges} />
+        <LumiBot tip={tip} advice={lumiAdvice} onAcceptAdvice={acceptAdvice} busy={busy} />
       </div>
 
       {/* ── Bottom-center: transport ── */}
