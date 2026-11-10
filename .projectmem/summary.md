@@ -51,6 +51,7 @@ LumenOS is an interactive 3D Earth-observation, satellite constellation, and Orb
 - Implemented True 3D Spherical Orbital Steering, Autonomous Target Intercept, and 3-Stage Interactive Orbital AI Pipeline in UltraRealisticEarthFlight.tsx and PlayPage.tsx
 - Implemented modular aerospace-grade OrbitalAIDataCenterSatellite class with 5 articulated sub-assemblies, InstancedMesh hardware, 3-level LODs, 5-stage deployment kinematics, and 6-satellite OISL laser mesh.
 - Implemented dedicated GLSL environmental simulation shaders for all 4 missions (Wildfire wind-driven FBM flame perimeter + burn scar, Flood topographic valley inundation + SAR contours, Volcano 3D displaced stratovolcano cone + dendritic lava channels + Plinian ash umbrella, and Solar Storm CME plasma cloud + 3D dipolar magnetosphere + polar auroral curtains) with Cinematic Event Cam in UltraRealisticEarthFlight.tsx. [apps/web/src/lib/mission-environment-engine.ts]
+- Redesigned HomePage, MissionsPage, HangarPage, ShipPreview3D, RewardsPage, HelpPage, ModeSelectPage, and Layout into a cohesive, modern aerospace Orbital AI Command Center UI with interactive 3D OrbitalAIDataCenterSatellite CAD cleanroom previews and Flight Readiness Review (FRR) telemetry matrices. [apps/web/src/pages/]
 
 ## Notes
 - IDE (Pyrefly) uses Python 3.14 interpreter without packages -> false 'Cannot find module numpy/skyfield' lints. Project runs on 'python' = 3.11.9 where deps are installed.

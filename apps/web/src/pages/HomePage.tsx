@@ -3,162 +3,324 @@ import { useApi } from "../hooks/useApi";
 import { getHealth } from "../api/client";
 import { Button } from "../components/Button";
 import { StatusBadge } from "../components/StatusBadge";
-import { loadMissionSession } from "../lib/mission";
-import { Rocket, Users, Wrench, ArrowRight, Radio } from "lucide-react";
+import { ShipPreview3D } from "../components/flight/ShipPreview3D";
+import { loadMissionSession, saveMissionSession, newPlayerId } from "../lib/mission";
+import { Rocket, Users, Wrench, ArrowRight, Radio, Globe, Award, BarChart3, Flame, Waves, Mountain, Sun } from "lucide-react";
 
-/**
- * Kid-first landing: one hero line, one giant PLAY button, and small links
- * to everything else (friends mode, expert console, rewards).
- */
+const QUICK_THEATERS = [
+  {
+    id: "wildfire",
+    name: "Wildfire Scout",
+    sensor: "3.9 µm SWIR · FireNet AI",
+    desc: "Track anisotropic forest fire fronts, pyrocumulus smoke plumes, and burn-scar coal veins.",
+    icon: Flame,
+    accent: "text-orange-400 border-orange-500/30 bg-orange-950/20 hover:border-orange-400/60",
+  },
+  {
+    id: "flood",
+    name: "Flood Scout",
+    sensor: "5.4 GHz SAR · HydroMask AI",
+    desc: "Penetrate monsoon cloud anvils to map branching river-valley inundation & flood contours.",
+    icon: Waves,
+    accent: "text-cyan-400 border-cyan-500/30 bg-cyan-950/20 hover:border-cyan-400/60",
+  },
+  {
+    id: "volcano",
+    name: "Volcano Watch",
+    sensor: "UV/InSAR · PlumeCast AI",
+    desc: "Monitor 3D stratovolcano relief, 5 dendritic lava gullies, and Plinian ash umbrella clouds.",
+    icon: Mountain,
+    accent: "text-fuchsia-400 border-fuchsia-500/30 bg-fuchsia-950/20 hover:border-fuchsia-400/60",
+  },
+  {
+    id: "solar_storm",
+    name: "Solar Storm Sentinel",
+    sensor: "EUV/MHD · HelioShield AI",
+    desc: "Observe propagating CME plasma clouds, Earth magnetopause bow-shock compression & polar auroras.",
+    icon: Sun,
+    accent: "text-emerald-400 border-emerald-500/30 bg-emerald-950/20 hover:border-emerald-400/60",
+  },
+] as const;
+
 export function HomePage() {
   const navigate = useNavigate();
   const { data: health, loading, error } = useApi(getHealth);
   const session = loadMissionSession();
   const hasActiveFlight = !!(session && session.sessionId);
 
+  const quickLaunchMission = (missionId: string, missionName: string) => {
+    saveMissionSession({
+      mode: "solo",
+      missionId,
+      missionName,
+      spacecraftId: null,
+      sessionId: null,
+      playerId: newPlayerId(),
+      roomCode: null,
+      experience: "simple",
+    });
+    navigate("/play", { state: { missionId } });
+  };
+
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 pt-8 pb-16 sm:px-6 lg:px-8">
       {/* Active mission banner */}
       {hasActiveFlight && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-accent/40 bg-accent/[0.06] px-4 py-3">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/40 bg-cyan-950/30 px-5 py-3.5 shadow-lg">
           <div className="flex items-center gap-3">
-            <Radio aria-hidden className="h-4 w-4 animate-pulse-soft text-accent" />
+            <Radio aria-hidden className="h-4 w-4 animate-pulse text-cyan-400" />
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.1em] text-accent">
-                Mission in flight — {session.missionName}
+              <p className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-cyan-300">
+                Active Orbital Sortie — {session.missionName}
               </p>
-              <p className="mt-0.5 text-xs text-muted">
-                {session.mode === "solo" ? "Solo · all stations" : `Co-op · room ${session.roomCode}`}
+              <p className="mt-0.5 text-xs text-slate-300">
+                {session.mode === "solo" ? "Solo · All 4 Flight Deck Stations" : `Co-Op Crew · Room ${session.roomCode}`}
               </p>
             </div>
           </div>
-          <Button size="sm" onClick={() => navigate(session.experience === "expert" || session.mode === "coop" ? "/operate" : "/play")}>
-            Resume Control <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+          <Button
+            size="sm"
+            onClick={() =>
+              navigate(session.experience === "expert" || session.mode === "coop" ? "/operate" : "/play")
+            }
+          >
+            Resume Flight Deck <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Button>
         </div>
       )}
 
-      {/* Hero */}
-      <section className="grid-bg relative mt-8 border border-edge px-6 py-14 md:px-12 text-center overflow-hidden">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-accent/40 bg-accent/10 text-[11px] font-mono uppercase tracking-widest text-accent">
-          LumenOS Orbital AI Data Center & Earth-Monitoring Command
-        </div>
-        <h1
-          aria-label="Fly your own satellite!"
-          className="mt-4 text-4xl md:text-5xl font-bold text-ink leading-tight tracking-tight"
-        >
-          Command an Orbital AI Satellite Constellation
-        </h1>
-        <p className="mt-3 text-muted text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
-          Deploy edge-AI spacecraft into Low Earth Orbit, manage Stefan-Boltzmann radiator rejection
-          and 24-TOPS neural compute blades, and route real-time crisis telemetry across optical
-          inter-satellite laser crosslinks.
-        </p>
+      {/* Two-Column Aerospace Command Hero */}
+      <section className="relative rounded-3xl border border-slate-800/90 bg-gradient-to-br from-slate-950 via-[#050b16] to-cyan-950/25 p-6 sm:p-10 lg:p-12 shadow-2xl overflow-hidden">
+        <div className="grid lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column (7 cols): Mission Command Briefing & Primary CTAs */}
+          <div className="lg:col-span-7 text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 text-[11px] font-mono uppercase tracking-[0.18em] text-cyan-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              LumenOS Orbital AI Data Center & Earth-Monitoring Command
+            </div>
 
-        {/* Key Architecture Highlights */}
-        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto text-left font-mono">
-          <div className="border border-edge bg-panel/70 p-3">
-            <div className="text-[10px] uppercase text-faint">Edge AI Compute</div>
-            <div className="text-sm font-bold text-accent-hi mt-0.5">24 TOPS Rad-Hard</div>
-            <div className="text-[10px] text-muted mt-0.5">50:1 Vector Compression</div>
+            <h1
+              aria-label="Fly your own satellite!"
+              className="mt-4 text-4xl sm:text-5xl font-bold text-slate-100 leading-[1.12] tracking-tight"
+            >
+              Command an Orbital AI{" "}
+              <span className="bg-gradient-to-r from-cyan-300 via-sky-200 to-amber-300 bg-clip-text text-transparent">
+                Satellite Constellation
+              </span>
+            </h1>
+
+            <p className="mt-4 text-slate-300 text-base sm:text-lg max-w-2xl leading-relaxed">
+              Deploy modular edge-AI spacecraft into Low Earth Orbit, balance Stefan-Boltzmann radiator
+              rejection and 24-TOPS neural compute blades, and contain real-time planetary crises across a
+              6-satellite optical laser mesh.
+            </p>
+
+            {/* 4 Key Architecture Specs */}
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
+              <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3">
+                <div className="text-[10px] uppercase text-slate-400">Edge AI Compute</div>
+                <div className="text-sm font-bold text-amber-300 mt-0.5">24 TOPS Rad-Hard</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">50:1 Vector Compression</div>
+              </div>
+              <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3">
+                <div className="text-[10px] uppercase text-slate-400">Optical Crosslink</div>
+                <div className="text-sm font-bold text-cyan-300 mt-0.5">1550 nm · 10 Gbps</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">6-Node OISL Laser Mesh</div>
+              </div>
+              <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3">
+                <div className="text-[10px] uppercase text-slate-400">Thermal Physics</div>
+                <div className="text-sm font-bold text-orange-300 mt-0.5">Stefan-Boltzmann</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Deployable Louver Wings</div>
+              </div>
+              <div className="rounded-xl border border-slate-800/90 bg-slate-950/80 p-3">
+                <div className="text-[10px] uppercase text-slate-400">Crisis Theaters</div>
+                <div className="text-sm font-bold text-emerald-300 mt-0.5">4 Global Missions</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">SWIR · SAR · UV · MHD</div>
+              </div>
+            </div>
+
+            {/* Primary CTA Buttons */}
+            <div className="mt-8 flex flex-wrap items-center gap-3.5">
+              <button
+                type="button"
+                aria-label="Play"
+                onClick={() => navigate("/missions")}
+                className="inline-flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-8 py-4 text-sm sm:text-base font-mono font-bold uppercase tracking-wider text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:from-emerald-300 hover:to-cyan-300 transition-all cursor-pointer"
+              >
+                <Rocket className="h-5 w-5" aria-hidden />
+                PLAY MISSION CAMPAIGN
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/globe")}
+                className="inline-flex items-center gap-2.5 rounded-2xl border border-cyan-500/40 bg-cyan-950/40 px-6 py-4 text-sm font-mono font-bold text-cyan-200 hover:bg-cyan-900/50 transition-all cursor-pointer"
+              >
+                <Globe className="h-4 w-4 text-cyan-300" aria-hidden />
+                Interactive 3D Earth & Constellation
+              </button>
+            </div>
           </div>
-          <div className="border border-edge bg-panel/70 p-3">
-            <div className="text-[10px] uppercase text-faint">Optical Crosslink</div>
-            <div className="text-sm font-bold text-info mt-0.5">1550 nm · 10 Gbps</div>
-            <div className="text-[10px] text-muted mt-0.5">3-Node Relay Mesh</div>
-          </div>
-          <div className="border border-edge bg-panel/70 p-3">
-            <div className="text-[10px] uppercase text-faint">Thermal Physics</div>
-            <div className="text-sm font-bold text-warn mt-0.5">Stefan-Boltzmann</div>
-            <div className="text-[10px] text-muted mt-0.5">Active Louver Radiators</div>
-          </div>
-          <div className="border border-edge bg-panel/70 p-3">
-            <div className="text-[10px] uppercase text-faint">Crisis Theaters</div>
-            <div className="text-sm font-bold text-ok mt-0.5">4 Global Missions</div>
-            <div className="text-[10px] text-muted mt-0.5">SWIR · SAR · UV · EUV</div>
+
+          {/* Right Column (5 cols): Live Interactive 3D Orbital AI Data Center Spacecraft */}
+          <div className="lg:col-span-5">
+            <ShipPreview3D
+              archetype="sprinter"
+              batterySize="L"
+              solarSize="L"
+              antennaSize="L"
+              className="w-full h-[350px] sm:h-[390px]"
+            />
           </div>
         </div>
-
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-          <button
-            type="button"
-            aria-label="Play"
-            onClick={() => navigate("/missions")}
-            className="inline-flex items-center gap-3 rounded-full bg-emerald-400 px-10 py-4 text-lg font-bold text-void shadow-lg hover:bg-emerald-300 hover:scale-[1.02] transition-all cursor-pointer"
-          >
-            <Rocket className="h-5 w-5" aria-hidden />
-            PLAY MISSION CAMPAIGN
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/globe")}
-            className="inline-flex items-center gap-2 rounded-full border border-amber-400/50 bg-amber-500/10 px-6 py-4 text-sm font-bold text-amber-200 hover:bg-amber-500/20 transition-all cursor-pointer"
-          >
-            🌍 Interactive 3D Earth & Constellation
-          </button>
-        </div>
-
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-mono">
-          <button
-            type="button"
-            aria-label="Fly with Friends"
-            onClick={() => navigate("/coop")}
-            className="inline-flex items-center gap-1.5 text-muted hover:text-ink cursor-pointer"
-          >
-            <Users className="h-4 w-4" aria-hidden /> Co-Op Flight Deck (Fly with Friends)
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/rewards")}
-            className="inline-flex items-center gap-1.5 text-muted hover:text-ink cursor-pointer"
-          >
-            🏅 Career & Hardware Unlocks
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/benchmark")}
-            className="inline-flex items-center gap-1.5 text-muted hover:text-ink cursor-pointer"
-          >
-            📊 AI Control Benchmark
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/design")}
-            className="inline-flex items-center gap-1.5 text-muted hover:text-ink cursor-pointer"
-          >
-            <Wrench className="h-4 w-4" aria-hidden /> Systems Engineering Console
-          </button>
-        </div>
-
-        {/* Orbit line art */}
-        <svg
-          aria-hidden
-          viewBox="0 0 400 400"
-          className="pointer-events-none absolute -right-24 -top-24 hidden h-[420px] w-[420px] text-accent md:block"
-        >
-          <ellipse cx="200" cy="200" rx="180" ry="110" transform="rotate(-24 200 200)" fill="none" stroke="currentColor" strokeOpacity="0.25" />
-          <ellipse cx="200" cy="200" rx="120" ry="70" transform="rotate(-24 200 200)" fill="none" stroke="currentColor" strokeOpacity="0.15" />
-          <circle cx="200" cy="200" r="34" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeDasharray="3 6" />
-          <circle cx="200" cy="200" r="12" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.4" />
-          <g transform="rotate(-24 200 200) translate(380 200)">
-            <rect x="-7" y="-4" width="14" height="8" fill="currentColor" fillOpacity="0.9" />
-            <rect x="-13" y="-2.5" width="4" height="5" fill="currentColor" fillOpacity="0.4" />
-            <rect x="9" y="-2.5" width="4" height="5" fill="currentColor" fillOpacity="0.4" />
-          </g>
-        </svg>
       </section>
 
-      {/* System status */}
-      <section className="mb-12 mt-8 flex flex-wrap items-center justify-center gap-2">
-        {loading && <StatusBadge label="Connecting" variant="warning" />}
-        {error && <StatusBadge label="Simulation API offline" variant="danger" />}
-        {health && (
-          <>
-            <StatusBadge label={`${health.app} v${health.version}`} variant="success" />
-            <StatusBadge label="Simulation engine online" variant="success" />
-          </>
-        )}
-        <StatusBadge label="Co-op sockets ready" variant="info" />
+      {/* 4 Global Environmental Simulation Theaters — 1-Click Direct Launch */}
+      <section className="mt-10">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-100">
+              Active Global Environmental Simulation Theaters
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Click any theater to launch directly into its real-time 3D GLSL environmental simulation, or open the Hangar CAD.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/missions")}
+            className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
+          >
+            View Full Mission Briefings <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {QUICK_THEATERS.map((th) => {
+            const Icon = th.icon;
+            return (
+              <div
+                key={th.id}
+                className={`rounded-2xl border p-4 transition-all flex flex-col justify-between ${th.accent}`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="font-mono text-[10px] text-slate-300 bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
+                      {th.sensor}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-100 mt-3">{th.name}</h3>
+                  <p className="text-xs text-slate-300/90 mt-1 leading-relaxed">{th.desc}</p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => quickLaunchMission(th.id, th.name)}
+                    className="text-xs font-mono font-bold text-cyan-300 hover:text-cyan-200 flex items-center gap-1 cursor-pointer"
+                  >
+                    Launch 3D Flight <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/hangar?mission=${th.id}`)}
+                    className="text-[11px] font-mono text-slate-400 hover:text-slate-200 cursor-pointer"
+                  >
+                    Hangar CAD
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Secondary Command Modules Grid */}
+      <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 font-mono">
+        <button
+          type="button"
+          aria-label="Fly with Friends"
+          onClick={() => navigate("/coop")}
+          className="rounded-2xl border border-slate-800/90 bg-slate-950/80 hover:border-cyan-500/40 p-4 text-left transition-all cursor-pointer flex items-start gap-3"
+        >
+          <span className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+            <Users className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <div className="text-xs font-bold text-slate-100">Co-Op Flight Deck</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-sans">
+              4-station multiplayer crew synchronization via room code.
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/rewards")}
+          className="rounded-2xl border border-slate-800/90 bg-slate-950/80 hover:border-amber-500/40 p-4 text-left transition-all cursor-pointer flex items-start gap-3"
+        >
+          <span className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+            <Award className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <div className="text-xs font-bold text-slate-100">Career & Hardware Unlocks</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-sans">
+              Spend engineering credits on Li-Sulfur & SAR hardware modules.
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/benchmark")}
+          className="rounded-2xl border border-slate-800/90 bg-slate-950/80 hover:border-purple-500/40 p-4 text-left transition-all cursor-pointer flex items-start gap-3"
+        >
+          <span className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300">
+            <BarChart3 className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <div className="text-xs font-bold text-slate-100">AI Control Benchmark</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-sans">
+              Compare Human vs. Heuristic vs. Autonomous AI orbital policies.
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate("/design")}
+          className="rounded-2xl border border-slate-800/90 bg-slate-950/80 hover:border-emerald-500/40 p-4 text-left transition-all cursor-pointer flex items-start gap-3"
+        >
+          <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+            <Wrench className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <div className="text-xs font-bold text-slate-100">Systems Engineering Console</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 font-sans">
+              Full subsystem mass, power, link budget & thermal CAD architect.
+            </div>
+          </div>
+        </button>
+      </section>
+
+      {/* System Telemetry Status Bar */}
+      <section className="mt-8 pt-6 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {loading && <StatusBadge label="Connecting Telemetry" variant="warning" />}
+          {error && <StatusBadge label="Autonomous Local Physics Engine" variant="info" />}
+          {health && (
+            <>
+              <StatusBadge label={`${health.app} v${health.version}`} variant="success" />
+              <StatusBadge label="Orbital Simulation Engine Online" variant="success" />
+            </>
+          )}
+          <StatusBadge label="6-Node OISL Constellation Ready" variant="info" />
+        </div>
+        <span className="font-mono text-[11px] text-slate-400">
+          WEBGL2 GLSL SHADERS · ACES FILMIC TONE MAPPING · 3-LEVEL LOD
+        </span>
       </section>
     </div>
   );
