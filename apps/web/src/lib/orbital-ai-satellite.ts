@@ -1147,14 +1147,16 @@ export class OrbitalAIDataCenterSatellite {
   public updateOrbitalSystems(
     sunDirectionWorld: THREE.Vector3,
     thermalTempC: number,
-    cameraWorldPos?: THREE.Vector3
+    camera?: THREE.Camera
   ): void {
     this.radiatorConfig.thermalLoadC = thermalTempC;
 
-    if (cameraWorldPos) {
-      this.lod.update(
-        ({ position: cameraWorldPos } as unknown) as THREE.Camera
-      );
+    if (camera && (camera as THREE.Camera).isCamera) {
+      try {
+        this.lod.update(camera);
+      } catch {
+        // Safe fallback if camera matrixWorld not yet updated
+      }
     }
 
     // 1. Orient Quad Solar Arrays toward the Sun around their rotary drive axis (X-axis)

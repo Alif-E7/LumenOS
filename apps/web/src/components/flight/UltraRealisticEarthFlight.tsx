@@ -769,12 +769,18 @@ export function UltraRealisticEarthFlight({
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 2.5, 9.5);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    container.replaceChildren(renderer.domElement);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.35;
+      container.replaceChildren(renderer.domElement);
+    } catch (e) {
+      console.warn("WebGLRenderer initialization skipped or unsupported in environment:", e);
+      return;
+    }
 
     // 2. Starfield in Deep Space
     const starsCount = 2600;
@@ -1558,7 +1564,8 @@ export function UltraRealisticEarthFlight({
       animId = requestAnimationFrame(animate);
       clockTime += 0.016;
 
-      const fs = flightState.current;
+      try {
+        const fs = flightState.current;
       fs.frameTick += 1;
       if (fs.autopilotBoostFrames > 0) {
         fs.autopilotBoostFrames -= 1;
@@ -1687,8 +1694,8 @@ export function UltraRealisticEarthFlight({
             : `${deployStatus.stageLabel} (${Math.round(deployStatus.progress * 100)}%)`
         );
       }
-      scoutSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera.position);
-      flagshipDcSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera.position);
+      scoutSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
+      flagshipDcSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
 
       // Subtle Hall-Effect Xenon Ion Plume modulation when boosting
       const plume = spacecraft.getObjectByName("thrusterPlume");
@@ -1754,7 +1761,7 @@ export function UltraRealisticEarthFlight({
         rn.mesh.position.copy(rPos);
         rn.mesh.up.copy(rRadialOut);
         rn.mesh.lookAt(rPos.clone().add(rForward));
-        rn.sat.updateOrbitalSystems(sunDirNorm, 22.0, camera.position);
+        rn.sat.updateOrbitalSystems(sunDirNorm, 22.0, camera);
 
         const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
         const dist = spacecraft.position.distanceTo(rPos);
@@ -1861,7 +1868,7 @@ export function UltraRealisticEarthFlight({
       let acquiredPos: THREE.Vector3 | null = null;
       let minTargetDistKm = Infinity;
       const footprintKm = Math.max(950, calculateFootprintRadiusKm(satAltKm, 35.0));
-      const activeScenarioClean = scenarioIdRef.current.replace(/_scout|_sentinel|_watch/g, "");
+      const activeScenarioClean = (scenarioIdRef.current || "wildfire").replace(/_scout|_sentinel|_watch/g, "");
       const resolvedIds = resolvedIdsRef.current;
 
       // Update Global Solar Storm Space-Weather System (CME Plasma Cloud + Earth Magnetosphere + Solar Flare Arches)
@@ -2251,6 +2258,10 @@ export function UltraRealisticEarthFlight({
 
       // Sunburst plane always faces the camera
       sunburstMesh.lookAt(camera.position);
+      } catch (loopErr) {
+        // Prevent unhandled errors from breaking the render loop permanently
+        console.warn("Orbital animation frame caught:", loopErr);
+      }
 
       renderer.render(scene, camera);
     };

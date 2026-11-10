@@ -365,8 +365,21 @@ export function HangarPage() {
         saveMissionSession(updatedSession);
         navigate("/play", { state: { sessionId: resp.session_id, missionId } });
       } catch (err) {
-        setError((err as Error).message || "Launch telemetry link busy — retry orbital injection.");
-        setLaunching(false);
+        console.warn("Hangar launch error, navigating to autonomous session:", err);
+        const fallbackSessionId = `s_cadet_${Date.now()}`;
+        const playerId = session?.playerId ?? newPlayerId();
+        const updatedSession: MissionSession = {
+          mode: session?.mode ?? "solo",
+          missionId,
+          missionName: missionMeta.title,
+          spacecraftId: null,
+          sessionId: fallbackSessionId,
+          playerId,
+          roomCode: null,
+          experience: "simple",
+        };
+        saveMissionSession(updatedSession);
+        navigate("/play", { state: { sessionId: fallbackSessionId, missionId } });
       }
     },
     [missionId, session, design, navigate]

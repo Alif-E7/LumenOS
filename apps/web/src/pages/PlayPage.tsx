@@ -53,6 +53,7 @@ import { EventPopup } from "../components/flight/EventPopup";
 import { LumiBot, type LumiAdvice } from "../components/flight/LumiBot";
 import { ToastStack, type Toast } from "../components/flight/Toasts";
 import { deriveOrbitalAIDataCenterState } from "../lib/ai-datacenter";
+import { BUNDLED_MISSION_DETAILS } from "../lib/bundled-missions";
 import type {
   ActiveEvent,
   ClockState,
@@ -125,14 +126,148 @@ export function PlayPage() {
   const [searchParams] = useSearchParams();
   const locationState = location.state as { sessionId?: string; missionId?: string } | null;
   const querySessionId = searchParams.get("session");
-  const [session, setSession] = useState(() => loadMissionSession());
+  const urlMissionId = searchParams.get("mission");
 
-  const effectiveSessionId = locationState?.sessionId ?? querySessionId ?? session?.sessionId ?? null;
+  const [session, setSession] = useState(() => {
+    const loaded = loadMissionSession();
+    if (loaded?.sessionId) return loaded;
+    const initialMission = urlMissionId || "wildfire";
+    const initialSession: MissionSession = {
+      mode: "solo",
+      missionId: initialMission,
+      missionName: BUNDLED_MISSION_DETAILS[initialMission]?.name || "Mission",
+      spacecraftId: null,
+      sessionId: `s_cadet_${Date.now()}`,
+      playerId: newPlayerId(),
+      roomCode: null,
+      experience: "simple",
+    };
+    saveMissionSession(initialSession);
+    return initialSession;
+  });
+
+  const effectiveSessionId = locationState?.sessionId ?? querySessionId ?? session?.sessionId ?? `s_cadet_${Date.now()}`;
   const sessionId = effectiveSessionId;
-  const missionId = locationState?.missionId ?? session?.missionId ?? searchParams.get("mission") ?? "wildfire";
+  const missionId = locationState?.missionId ?? session?.missionId ?? urlMissionId ?? "wildfire";
 
-  const [state, setState] = useState<GameStateSummary | null>(null);
-  const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
+  const [state, setState] = useState<GameStateSummary | null>(() => ({
+    session_id: effectiveSessionId,
+    mission_id: missionId,
+    step: 1,
+    elapsed_seconds: 0,
+    status: "running",
+    budget_remaining: 15000,
+    spacecraft_health_pct: 100,
+    data_collected_mb: 24,
+    data_downlinked_mb: 12,
+    resolved_event_count: 0,
+    current_score: 50,
+    control_mode: "lumenos_ai",
+    active_event_count: 1,
+    objectives_complete: 0,
+    objectives_total: 3,
+    outcome: null,
+    objectives: [
+      {
+        objective_id: "obj_orbit_insertion",
+        description: "Maintain nominal Sun-Synchronous Orbit (SSO) & solar tracking",
+        target_value: 100,
+        current_value: 100,
+        unit: "%",
+        weight: 1,
+        is_primary: true,
+        fraction: 1.0,
+        is_complete: true,
+      },
+      {
+        objective_id: "obj_ai_inference",
+        description: "Acquire multi-spectral sensor targets & run Edge AI inference",
+        target_value: 3,
+        current_value: 0,
+        unit: "targets",
+        weight: 2,
+        is_primary: true,
+        fraction: 0.0,
+        is_complete: false,
+      },
+      {
+        objective_id: "obj_crosslink_downlink",
+        description: "Downlink verified crisis telemetry via optical ISL crosslink mesh",
+        target_value: 1,
+        current_value: 0,
+        unit: "downlinks",
+        weight: 1.5,
+        is_primary: false,
+        fraction: 0.0,
+        is_complete: false,
+      },
+    ],
+  }));
+
+  const [telemetry, setTelemetry] = useState<Telemetry | null>(() => ({
+    step: 1,
+    elapsed_seconds: 0,
+    status: "running",
+    spacecraft_health_pct: 100,
+    orbital: {
+      altitude_km: 550.0,
+      velocity_km_s: 7.58,
+      latitude_deg: -33.8,
+      longitude_deg: 145.0,
+      in_eclipse: false,
+      true_anomaly_deg: 0,
+    },
+    power: {
+      solar_output_w: 420.0,
+      total_load_w: 245.0,
+      net_power_w: 175.0,
+      battery_soc_pct: 88,
+      in_eclipse: false,
+      low_power_warning: false,
+      power_critical: false,
+      battery_capacity_wh: 2000,
+      battery_usable_capacity_wh: 1600,
+      battery_soh_pct: 99.2,
+      battery_dod_pct: 12.0,
+    },
+    thermal: {
+      temperature_c: 22.0,
+      heat_input_w: 180.0,
+      heat_rejected_w: 180.0,
+      overtemp_warning: false,
+      undertemp_warning: false,
+      internal_dissipation_w: 110.0,
+      solar_absorbed_w: 70.0,
+      net_heat_w: 0.0,
+    },
+    comms: {
+      data_buffer_mb: 24,
+      data_buffer_pct: 10,
+      data_collected_mb: 24,
+      data_downlinked_mb: 12,
+      in_contact: true,
+      active_station: "LUMEN-RELAY-1 (ISL)",
+      signal_strength_dbm: -68.5,
+      buffer_full_warning: false,
+      current_data_rate_mbps: 155.0,
+    },
+    storage: {
+      used_pct: 10,
+      used_mb: 24,
+      free_mb: 232,
+      storage_full_warning: false,
+      raw_data_mb: 10,
+      processed_data_mb: 14,
+      compression_ratio: 25.0,
+    },
+    workload: {
+      cpu_usage_pct: 35.0,
+      processing_queue_items: 2,
+      cpu_overload_warning: false,
+      operational_profile: "ai_balanced",
+    },
+  }));
+
   const [clock, setClock] = useState<ClockState | null>(null);
   const [groundTrack, setGroundTrack] = useState<GroundTrackPoint[]>([]);
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null);
@@ -171,16 +306,13 @@ export function PlayPage() {
     setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), 2500);
   }, []);
 
-  // ── Guard: need a live session (solo only — co-op keeps the expert deck) ──
+  // ── Guard: solo only — co-op keeps the expert deck ──
   useEffect(() => {
     const s = loadMissionSession();
-    const effectiveId = locationState?.sessionId ?? querySessionId ?? s?.sessionId;
-    if (!effectiveId) {
-      navigate("/missions", { replace: true });
-    } else if (s?.mode === "coop") {
+    if (s?.mode === "coop") {
       navigate("/operate", { replace: true });
     }
-  }, [locationState, querySessionId, navigate]);
+  }, [navigate]);
 
   // ── Initial load ──────────────────────────────────────────────────────────
   const refresh = useCallback(async () => {
@@ -713,8 +845,6 @@ export function PlayPage() {
     )
   );
   const nextUnresolvedTarget = missionTargets.find((t) => targetStages[t.id] !== "RESOLVED") ?? null;
-
-  if (!sessionId) return null;
 
   return (
     <div className="fixed inset-0 bg-void overflow-hidden select-none">
