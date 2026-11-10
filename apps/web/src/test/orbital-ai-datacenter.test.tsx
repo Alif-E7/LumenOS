@@ -4,6 +4,7 @@ import {
   deriveOrbitalAIDataCenterState,
   computeConstellationRelayNodes,
 } from "../lib/ai-datacenter";
+import { GLOBAL_EARTH_EVENTS } from "../components/flight/UltraRealisticEarthFlight";
 import { DirectorStation } from "../components/StationPanels";
 import type { Telemetry, GameStateSummary } from "../types";
 
@@ -137,5 +138,21 @@ describe("Orbital AI Data Center & 4-Mission Phenomenology Engine", () => {
       { horizon_steps: 5 },
       "Request AI Predictive Forecast"
     );
+  });
+
+  it("provides interactive 3D crisis intercept targets across all 4 missions", () => {
+    expect(GLOBAL_EARTH_EVENTS.length).toBeGreaterThanOrEqual(12);
+    for (const mission of ["wildfire", "flood", "volcano", "solar_storm"] as const) {
+      const matching = GLOBAL_EARTH_EVENTS.filter(
+        (e) => e.scenarioId === mission || e.type === mission
+      );
+      expect(matching.length).toBeGreaterThanOrEqual(3);
+      matching.forEach((ev) => {
+        expect(ev.lat).toBeGreaterThanOrEqual(-90);
+        expect(ev.lat).toBeLessThanOrEqual(90);
+        expect(ev.lon).toBeGreaterThanOrEqual(-180);
+        expect(ev.lon).toBeLessThanOrEqual(180);
+      });
+    }
   });
 });

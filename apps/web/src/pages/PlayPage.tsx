@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import {
   Camera,
@@ -11,6 +11,12 @@ import {
   Pause,
   Coins,
   X,
+  Crosshair,
+  Cpu,
+  CheckCircle2,
+  Flame,
+  Navigation,
+  Thermometer,
 } from "lucide-react";
 import {
   getGameState,
@@ -38,7 +44,11 @@ import {
   type KidAction,
   type LumiTip,
 } from "../lib/kid";
-import { UltraRealisticEarthFlight } from "../components/flight/UltraRealisticEarthFlight";
+import {
+  UltraRealisticEarthFlight,
+  GLOBAL_EARTH_EVENTS,
+  type GlobalEarthEvent,
+} from "../components/flight/UltraRealisticEarthFlight";
 import { KidGaugeBar } from "../components/flight/KidGaugeBar";
 import { EventPopup } from "../components/flight/EventPopup";
 import { LumiBot, type LumiAdvice } from "../components/flight/LumiBot";
@@ -248,10 +258,262 @@ export function PlayPage() {
     };
   }, [running, sessionId, speedIdx, state?.status, refreshAdvisory]);
 
+  // ── Interactive 3D Target Intercept & 3-Stage Orbital AI Pipeline State ──
+  type TargetPipelineStage = "UNSCANNED" | "RAW_CAPTURED" | "AI_PROCESSED" | "RESOLVED";
+
+  const missionTargets = useMemo<GlobalEarthEvent[]>(() => {
+    const cleanId = missionId.replace(/_scout|_sentinel|_watch/g, "");
+    const primary = GLOBAL_EARTH_EVENTS.filter(
+      (e) => e.scenarioId === missionId || e.type === cleanId
+    );
+    return primary.length > 0 ? primary : GLOBAL_EARTH_EVENTS.slice(0, 4);
+  }, [missionId]);
+
+  const [targetStages, setTargetStages] = useState<Record<string, TargetPipelineStage>>({});
+  const [targetScanPct, setTargetScanPct] = useState<Record<string, number>>({});
+  const [autopilotTargetId, setAutopilotTargetId] = useState<string | null>(null);
+  const [inRangeTarget, setInRangeTarget] = useState<GlobalEarthEvent | null>(null);
+  const [inRangeDistKm, setInRangeDistKm] = useState<number>(9999);
+  const [aiInferencePct, setAiInferencePct] = useState<number>(0);
+  const [isRunningAi, setIsRunningAi] = useState<boolean>(false);
+  const [islPulseActive, setIslPulseActive] = useState<boolean>(false);
+  const [computeHeatBonusC, setComputeHeatBonusC] = useState<number>(0);
+  const [tacticalScoreBonus, setTacticalScoreBonus] = useState<number>(0);
+
+  // Default Autopilot Intercept to the first unresolved mission target
+  useEffect(() => {
+    if (missionTargets.length === 0) return;
+    setAutopilotTargetId((prev) => {
+      if (prev && missionTargets.some((t) => t.id === prev) && targetStages[prev] !== "RESOLVED") {
+        return prev;
+      }
+      const nextUnresolved = missionTargets.find((t) => targetStages[t.id] !== "RESOLVED");
+      return nextUnresolved?.id ?? null;
+    });
+  }, [missionTargets, targetStages]);
+
+  const resolvedTargetIds = useMemo(
+    () => Object.keys(targetStages).filter((id) => targetStages[id] === "RESOLVED"),
+    [targetStages]
+  );
+  const rawCapturedIds = useMemo(
+    () => Object.keys(targetStages).filter((id) => targetStages[id] === "RAW_CAPTURED"),
+    [targetStages]
+  );
+  const aiProcessedIds = useMemo(
+    () => Object.keys(targetStages).filter((id) => targetStages[id] === "AI_PROCESSED"),
+    [targetStages]
+  );
+
+  const handleTargetInRangeChange = useCallback(
+    (target: GlobalEarthEvent | null, distanceKm: number) => {
+      setInRangeTarget(target);
+      setInRangeDistKm(distanceKm);
+    },
+    []
+  );
+
+  const handleSelectTarget = useCallback(
+    (target: GlobalEarthEvent) => {
+      setAutopilotTargetId(target.id);
+      pushToast(`🎯 Intercept locked: ${target.name} — Banking orbital plane!`);
+    },
+    [pushToast]
+  );
+
+  // ── Stage 1: Automatic & Manual Nadir Laser Scan when over a Crisis Target ──
+  const triggerBackendCollect = useCallback(
+    async (targetName: string) => {
+      if (!sessionId) return;
+      try {
+        await performAction(sessionId, {
+          player_id: session?.playerId ?? "cadet",
+          action_type: "collect_data",
+          params: {},
+        });
+        void refresh();
+      } catch {
+        /* ignore transient backend error */
+      }
+      pushToast(`📸 100% Nadir Scan: ${targetName} captured (180 MB Raw Frame)! Press [R] for Edge AI.`);
+    },
+    [sessionId, session, refresh, pushToast]
+  );
+
+  useEffect(() => {
+    if (!inRangeTarget) return;
+    const tid = inRangeTarget.id;
+    const currentStage = targetStages[tid] ?? "UNSCANNED";
+    if (currentStage !== "UNSCANNED") return;
+
+    const timer = setInterval(() => {
+      setTargetScanPct((prev) => {
+        const cur = prev[tid] ?? 0;
+        const next = Math.min(100, cur + 14);
+        if (next >= 100 && cur < 100) {
+          setTargetStages((st) => ({ ...st, [tid]: "RAW_CAPTURED" }));
+          void triggerBackendCollect(inRangeTarget.name);
+        }
+        return { ...prev, [tid]: next };
+      });
+    }, 220);
+
+    return () => clearInterval(timer);
+  }, [inRangeTarget, targetStages, triggerBackendCollect]);
+
+  // Manual Boost Scan ([E] or Scan Button)
+  const handleManualScanBurst = useCallback(() => {
+    if (!inRangeTarget) {
+      pushToast("⚠️ No crisis target in Nadir Sensor Cone! Click a target to Intercept or steer with WASD.", "error");
+      return;
+    }
+    const tid = inRangeTarget.id;
+    const stage = targetStages[tid] ?? "UNSCANNED";
+    if (stage !== "UNSCANNED") {
+      pushToast(`✅ ${inRangeTarget.name} already scanned! Run Edge AI [R] or Transmit [F].`);
+      return;
+    }
+    const cur = targetScanPct[tid] ?? 0;
+    const next = Math.min(100, cur + 45);
+    setTargetScanPct((prev) => ({ ...prev, [tid]: next }));
+    if (next >= 100) {
+      setTargetStages((st) => ({ ...st, [tid]: "RAW_CAPTURED" }));
+      void triggerBackendCollect(inRangeTarget.name);
+    } else {
+      pushToast(`🔍 Laser Swath Scanning ${inRangeTarget.name}: ${next}%`);
+    }
+  }, [inRangeTarget, targetStages, targetScanPct, triggerBackendCollect, pushToast]);
+
+  // ── Stage 2: 24-TOPS Neural Edge AI Inference ([R] or Process AI Button) ──
+  const handleRunEdgeAi = useCallback(() => {
+    if (isRunningAi) return;
+    if (rawCapturedIds.length === 0) {
+      pushToast("⚠️ No Raw Sensor Frames queued! Fly over a crisis target and scan it to 100% first.", "error");
+      return;
+    }
+    setIsRunningAi(true);
+    setAiInferencePct(15);
+    setComputeHeatBonusC((h) => Math.min(26, h + 8.5));
+
+    if (sessionId) {
+      void performAction(sessionId, {
+        player_id: session?.playerId ?? "cadet",
+        action_type: "set_compute_profile",
+        params: { profile: "FULL" },
+      }).catch(() => undefined);
+    }
+
+    let pct = 15;
+    const timer = setInterval(() => {
+      pct += 28;
+      if (pct >= 100) {
+        clearInterval(timer);
+        setAiInferencePct(0);
+        setIsRunningAi(false);
+        setTargetStages((prev) => {
+          const updated = { ...prev };
+          rawCapturedIds.forEach((id) => {
+            updated[id] = "AI_PROCESSED";
+          });
+          return updated;
+        });
+        pushToast(
+          `🧠 24-TOPS Edge AI Complete! ${rawCapturedIds.length} Alert Vector(s) compressed. Press [F] to Transmit!`
+        );
+      } else {
+        setAiInferencePct(pct);
+      }
+    }, 180);
+  }, [isRunningAi, rawCapturedIds, sessionId, session, pushToast]);
+
+  // ── Stage 3: Optical ISL / RF Alert Transmission ([F] or Transmit Button) ──
+  const handleTransmitAlert = useCallback(async () => {
+    if (aiProcessedIds.length === 0) {
+      if (rawCapturedIds.length > 0) {
+        pushToast("⚠️ Run 24-TOPS Edge AI [R] on your raw frames before transmitting!", "error");
+      } else {
+        pushToast("⚠️ No AI-verified alerts ready! Scan a target [E] → Run Edge AI [R] → Transmit [F].", "error");
+      }
+      return;
+    }
+
+    setIslPulseActive(true);
+    setTimeout(() => setIslPulseActive(false), 2400);
+
+    const resolvedCount = aiProcessedIds.length;
+    setTargetStages((prev) => {
+      const updated = { ...prev };
+      aiProcessedIds.forEach((id) => {
+        updated[id] = "RESOLVED";
+      });
+      return updated;
+    });
+    setTacticalScoreBonus((s) => s + resolvedCount * 250);
+
+    if (sessionId) {
+      try {
+        await performAction(sessionId, {
+          player_id: session?.playerId ?? "cadet",
+          action_type: "downlink_data",
+          params: {},
+        });
+        void refresh();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    pushToast(
+      `📡 Optical ISL Crosslink Fired! ${resolvedCount} Crisis Target(s) CONTAINED (+${resolvedCount * 250} pts)!`
+    );
+  }, [aiProcessedIds, rawCapturedIds, sessionId, session, refresh, pushToast]);
+
+  // ── Radiator Coolant Purge ([T]) ──
+  const handleCoolantPurge = useCallback(() => {
+    setComputeHeatBonusC((h) => Math.max(-6, h - 10));
+    if (sessionId) {
+      void performAction(sessionId, {
+        player_id: session?.playerId ?? "cadet",
+        action_type: "set_compute_profile",
+        params: { profile: "CONSERVATIVE" },
+      }).catch(() => undefined);
+    }
+    pushToast("❄️ Ammonia Loop Louvers 100% Open — Venting NPU heat to deep space (-10°C)!");
+  }, [sessionId, session, pushToast]);
+
+  // Keyboard shortcuts for Interactive 3-Stage Pipeline: [E] Scan, [R] Edge AI, [F] Transmit, [T] Coolant
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.code === "KeyE") handleManualScanBurst();
+      if (e.code === "KeyR") handleRunEdgeAi();
+      if (e.code === "KeyF") void handleTransmitAlert();
+      if (e.code === "KeyT") handleCoolantPurge();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleManualScanBurst, handleRunEdgeAi, handleTransmitAlert, handleCoolantPurge]);
+
   // ── Actions ───────────────────────────────────────────────────────────────
   const dispatchAction = useCallback(
     async (action: KidAction) => {
       if (!sessionId || busy) return;
+      // Route Sensor Capture & Beam Downlink through the interactive 3D gameplay loop when appropriate!
+      if (action.actionType === "collect_data" && !inRangeTarget) {
+        pushToast(
+          "⚠️ No target inside Nadir Sensor Cone! Click a crisis target to Intercept or steer with WASD.",
+          "error"
+        );
+        return;
+      }
+      if (action.actionType === "collect_data" && inRangeTarget) {
+        handleManualScanBurst();
+      }
+      if (action.actionType === "downlink_data" && aiProcessedIds.length > 0) {
+        await handleTransmitAlert();
+        return;
+      }
+
       const coins = coinsLeft(state);
       if (action.cost > coins) {
         pushToast("Not enough coins for that!", "error");
@@ -276,7 +538,18 @@ export function PlayPage() {
         setBusy(false);
       }
     },
-    [sessionId, busy, state, session, pushToast, refresh]
+    [
+      sessionId,
+      busy,
+      state,
+      session,
+      inRangeTarget,
+      aiProcessedIds.length,
+      handleManualScanBurst,
+      handleTransmitAlert,
+      pushToast,
+      refresh,
+    ]
   );
 
   const chooseEvent = useCallback(
@@ -331,6 +604,8 @@ export function PlayPage() {
   const elapsed = telemetry?.elapsed_seconds ?? state?.elapsed_seconds ?? 0;
   const aiState = deriveOrbitalAIDataCenterState(missionId, telemetry, state);
   const [showAiPanel, setShowAiPanel] = useState(true);
+  const effectiveThermalTempC = Math.round(((telemetry?.thermal?.temperature_c ?? 22.0) + computeHeatBonusC) * 10) / 10;
+  const activeScanPct = inRangeTarget ? (targetScanPct[inRangeTarget.id] ?? 0) : 0;
 
   if (!sessionId) return null;
 
@@ -344,30 +619,42 @@ export function PlayPage() {
         scenarioId={missionId}
         groundTrackPoints={groundTrack}
         activeEvent={activeEvent}
-        thermalTempC={telemetry?.thermal?.temperature_c ?? 22.0}
-        aiActiveTops={aiState.activeTops}
+        thermalTempC={effectiveThermalTempC}
+        aiActiveTops={isRunningAi ? aiState.peakTops : aiState.activeTops}
+        resolvedTargetIds={resolvedTargetIds}
+        scanningTargetId={inRangeTarget?.id ?? null}
+        scanProgressPct={activeScanPct}
+        autopilotTargetId={autopilotTargetId}
+        islPulseActive={islPulseActive}
+        onTargetInRangeChange={handleTargetInRangeChange}
+        onSelectTarget={handleSelectTarget}
       />
 
-      {/* ── Top-left: Mission Objectives + Orbital AI Data Center Telemetry ── */}
-      <div className="absolute top-16 left-3 z-30 max-w-sm pointer-events-auto space-y-2">
-        <div className="bg-void/85 backdrop-blur-md rounded-2xl border border-edge px-4 py-3 shadow-lg">
+      {/* ── Top-left: Mission Objectives + Interactive 3-Stage Orbital AI Data Center ── */}
+      <div className="absolute top-16 left-3 z-30 w-84 max-w-[calc(100vw-1.5rem)] pointer-events-auto space-y-2">
+        <div className="bg-void/88 backdrop-blur-md rounded-2xl border border-edge px-3.5 py-2.5 shadow-lg">
           <div className="flex items-center justify-between gap-2">
             <div className="text-[11px] font-bold uppercase tracking-wider text-accent font-mono">
               Theater: {session?.missionName ?? missionId}
             </div>
-            <button
-              type="button"
-              onClick={() => setShowAiPanel((v) => !v)}
-              className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/50 cursor-pointer"
-            >
-              {showAiPanel ? "Hide AI Rack" : "Show AI Rack"}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold">
+                Score {(state?.current_score ?? 0) + tacticalScoreBonus}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAiPanel((v) => !v)}
+                className="text-[10px] font-mono px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/40 text-cyan-300 hover:bg-cyan-900/50 cursor-pointer"
+              >
+                {showAiPanel ? "Hide AI" : "Show AI"}
+              </button>
+            </div>
           </div>
-          <p className="text-xs sm:text-sm text-ink mt-0.5 font-semibold leading-snug">
+          <p className="text-xs text-ink mt-0.5 font-semibold leading-snug">
             {missionGoal(missionId)}
           </p>
           {goals.length > 0 && (
-            <div className="mt-2 space-y-1">
+            <div className="mt-1.5 space-y-1">
               {goals.map((g) => (
                 <div key={g.id} className="flex items-center gap-2">
                   <span
@@ -376,7 +663,7 @@ export function PlayPage() {
                   >
                     {g.done ? "✅" : "⬜"}
                   </span>
-                  <span className={`text-xs flex-1 ${g.done ? "text-emerald-200 line-through" : "text-muted"}`}>
+                  <span className={`text-[11px] flex-1 truncate ${g.done ? "text-emerald-200 line-through" : "text-muted"}`}>
                     {g.text}
                   </span>
                   <span className="text-[10px] text-faint tabular-nums font-mono">{g.progress}%</span>
@@ -386,19 +673,80 @@ export function PlayPage() {
           )}
         </div>
 
-        {/* Orbital AI Data Center & Phenomenology Telemetry Card */}
+        {/* Interactive 3-Stage Orbital AI Data Center & Phenomenology Deck */}
         {showAiPanel && (
           <div
             data-testid="orbital-ai-datacenter-hud"
-            className="bg-void/85 backdrop-blur-md rounded-2xl border border-cyan-500/30 px-3.5 py-2.5 shadow-xl text-xs space-y-2"
+            className="bg-void/90 backdrop-blur-md rounded-2xl border border-cyan-500/35 px-3.5 py-2.5 shadow-xl text-xs space-y-2"
           >
             <div className="flex items-center justify-between border-b border-edge/70 pb-1.5">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300">
-                🧠 Orbital AI Data Center · {aiState.operationalMode.replace("_", " ")}
+              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
+                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Orbital AI Data Center</span>
               </span>
               <span className="font-mono text-[10px] text-emerald-300 font-bold">
-                {aiState.activeTops}/{aiState.peakTops} TOPS
+                {isRunningAi ? aiState.peakTops : aiState.activeTops}/{aiState.peakTops} TOPS
               </span>
+            </div>
+
+            {/* Interactive 3-Stage Pipeline Action Bar: [1] Nadir Scan -> [2] 24-TOPS Edge AI -> [3] Optical ISL Transmit */}
+            <div className="grid grid-cols-3 gap-1.5 font-mono">
+              <button
+                type="button"
+                onClick={handleManualScanBurst}
+                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                  inRangeTarget
+                    ? "border-emerald-400 bg-emerald-950/70 text-emerald-200 shadow-sm shadow-emerald-500/30 animate-pulse"
+                    : "border-edge bg-panel/70 text-muted hover:border-cyan-500/50"
+                }`}
+                title="Stage 1: Scan target inside Nadir Sensor Cone (Shortcut: E)"
+              >
+                <div className="flex items-center justify-between text-[9px] uppercase text-faint">
+                  <span>1. Scan</span>
+                  <kbd className="px-1 rounded bg-void/80 text-cyan-300">E</kbd>
+                </div>
+                <div className="text-[10px] font-bold mt-0.5 truncate">
+                  {inRangeTarget ? `${activeScanPct}% Lock` : "No Lock"}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRunEdgeAi}
+                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                  rawCapturedIds.length > 0 || isRunningAi
+                    ? "border-violet-400 bg-violet-950/75 text-violet-200 shadow-sm shadow-violet-500/30 animate-pulse"
+                    : "border-edge bg-panel/70 text-muted hover:border-violet-500/50"
+                }`}
+                title="Stage 2: Run 24-TOPS Neural Edge AI Inference on captured raw frames (Shortcut: R)"
+              >
+                <div className="flex items-center justify-between text-[9px] uppercase text-faint">
+                  <span>2. Edge AI</span>
+                  <kbd className="px-1 rounded bg-void/80 text-violet-300">R</kbd>
+                </div>
+                <div className="text-[10px] font-bold mt-0.5 truncate">
+                  {isRunningAi ? `NPU ${aiInferencePct}%` : `${rawCapturedIds.length} Queued`}
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void handleTransmitAlert()}
+                className={`rounded-xl border px-2 py-1.5 text-left transition-all cursor-pointer ${
+                  aiProcessedIds.length > 0
+                    ? "border-cyan-400 bg-cyan-950/80 text-cyan-200 shadow-sm shadow-cyan-500/30 animate-bounce"
+                    : "border-edge bg-panel/70 text-muted hover:border-cyan-500/50"
+                }`}
+                title="Stage 3: Transmit AI Alert Vector via 1550 nm Optical ISL Crosslink (Shortcut: F)"
+              >
+                <div className="flex items-center justify-between text-[9px] uppercase text-faint">
+                  <span>3. ISL Beam</span>
+                  <kbd className="px-1 rounded bg-void/80 text-emerald-300">F</kbd>
+                </div>
+                <div className="text-[10px] font-bold mt-0.5 truncate">
+                  {aiProcessedIds.length > 0 ? `${aiProcessedIds.length} Ready!` : `${resolvedTargetIds.length} Sent`}
+                </div>
+              </button>
             </div>
 
             <div className="space-y-1 font-mono text-[10px]">
@@ -407,10 +755,21 @@ export function PlayPage() {
                 <span className="text-violet-300 shrink-0">{aiState.compressionRatio}:1 Vec</span>
               </div>
               <div className="flex items-center justify-between text-faint">
-                <span>Stage: <strong className="text-ink">{aiState.pipelineStage}</strong></span>
-                <span className="text-amber-300">
-                  Rad: {aiState.radiatorRejectionW}W ({aiState.radiatorLouverPct}% Louver)
+                <span>
+                  Core Temp:{" "}
+                  <strong className={effectiveThermalTempC >= 40 ? "text-rose-300" : "text-amber-300"}>
+                    {effectiveThermalTempC.toFixed(1)}°C
+                  </strong>
                 </span>
+                <button
+                  type="button"
+                  onClick={handleCoolantPurge}
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-sky-950/70 border border-sky-500/40 text-sky-300 hover:bg-sky-900/70 cursor-pointer flex items-center gap-1"
+                  title="Vent NPU heat via deployable Ammonia Loop Radiator Louvers (Shortcut: T)"
+                >
+                  <Thermometer className="w-2.5 h-2.5" />
+                  <span>Purge Rad [T]</span>
+                </button>
               </div>
               <div className="flex items-center justify-between text-faint">
                 <span>
@@ -455,9 +814,107 @@ export function PlayPage() {
 
       {/* ── Top-center: mission clock ── */}
       <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
-        <div className="bg-void/80 backdrop-blur-md rounded-full border border-edge px-4 py-1.5 shadow-lg text-center">
+        <div className="bg-void/85 backdrop-blur-md rounded-full border border-edge px-4 py-1.5 shadow-lg text-center">
           <span className="text-xs text-faint mr-1">Flight time</span>
           <span className="text-sm font-bold text-ink tabular-nums">{missionClock(elapsed)}</span>
+        </div>
+      </div>
+
+      {/* ── Top-Right Dock (Below Camera Switcher): Tactical Crisis Target Intercept Queue ── */}
+      <div
+        data-testid="target-intercept-queue"
+        className="absolute top-30 right-3 sm:right-6 z-30 w-68 pointer-events-auto hidden md:block"
+      >
+        <div className="bg-void/88 backdrop-blur-md border border-edge rounded-2xl p-3 shadow-xl space-y-2">
+          <div className="flex items-center justify-between border-b border-edge/70 pb-1.5">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-accent flex items-center gap-1">
+              <Crosshair className="w-3.5 h-3.5 text-accent" />
+              <span>Crisis Intercept Queue</span>
+            </span>
+            <span className="font-mono text-[10px] text-emerald-300 font-bold">
+              {resolvedTargetIds.length}/{missionTargets.length} Contained
+            </span>
+          </div>
+
+          <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+            {missionTargets.map((t) => {
+              const stage = targetStages[t.id] ?? "UNSCANNED";
+              const pct = targetScanPct[t.id] ?? 0;
+              const isIntercepting = autopilotTargetId === t.id;
+              const isInCone = inRangeTarget?.id === t.id;
+
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() =>
+                    setAutopilotTargetId((prev) => (prev === t.id ? null : t.id))
+                  }
+                  className={`w-full text-left rounded-xl border px-2.5 py-1.5 transition-all cursor-pointer ${
+                    stage === "RESOLVED"
+                      ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-200"
+                      : isInCone
+                        ? "border-emerald-400 bg-emerald-950/70 text-ink ring-1 ring-emerald-400/50"
+                        : isIntercepting
+                          ? "border-cyan-400/80 bg-cyan-950/50 text-ink"
+                          : "border-edge/80 bg-panel/70 text-muted hover:border-accent/50 hover:text-ink"
+                  }`}
+                  title="Click to lock Autonomous Orbital Plane Intercept onto this target"
+                >
+                  <div className="flex items-center justify-between gap-1.5 text-[11px] font-bold">
+                    <span className="truncate flex items-center gap-1.5">
+                      {stage === "RESOLVED" ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      ) : isIntercepting ? (
+                        <Navigation className="w-3.5 h-3.5 text-cyan-400 shrink-0 animate-pulse" />
+                      ) : (
+                        <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      )}
+                      <span className="truncate">{t.name}</span>
+                    </span>
+                    <span className="text-[9px] font-mono shrink-0 px-1.5 py-0.5 rounded bg-void/70 border border-edge/60">
+                      {stage === "RESOLVED"
+                        ? "CONTAINED"
+                        : stage === "AI_PROCESSED"
+                          ? "BEAM [F]"
+                          : stage === "RAW_CAPTURED"
+                            ? "RUN AI [R]"
+                            : isInCone
+                              ? `LOCKED ${pct}%`
+                              : isIntercepting
+                                ? "INTERCEPT"
+                                : t.intensity}
+                    </span>
+                  </div>
+                  {stage === "UNSCANNED" && pct > 0 && (
+                    <div className="w-full h-1 bg-void rounded-full overflow-hidden mt-1">
+                      <div
+                        className="h-full bg-emerald-400 transition-all duration-200"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between pt-1 border-t border-edge/60 text-[10px] font-mono text-faint">
+            <span>
+              {inRangeTarget
+                ? `🟢 In Cone (${inRangeDistKm} km)`
+                : autopilotTargetId
+                  ? "🧭 Auto-Banking Orbit"
+                  : "🕹️ Manual WASD Flight"}
+            </span>
+            <button
+              type="button"
+              onClick={() => navigate("/mission-end")}
+              className="text-rose-300 hover:underline cursor-pointer"
+            >
+              ✕ End Flight
+            </button>
+          </div>
         </div>
       </div>
 
@@ -466,7 +923,7 @@ export function PlayPage() {
 
       {/* ── Onboarding tip banner ── */}
       {tip && !kidEventView && (
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
+        <div className="absolute top-40 left-1/2 -translate-x-1/2 z-40 pointer-events-auto">
           <div className="flex items-center gap-3 bg-sky-950/90 backdrop-blur-md rounded-full border border-sky-400/40 px-4 py-2 shadow-lg max-w-md">
             <span className="text-sm text-sky-100">{tip.text}</span>
             <button
@@ -488,29 +945,29 @@ export function PlayPage() {
       </div>
 
       {/* ── Bottom-center: transport ── */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto">
         <div className="flex items-center gap-2 bg-void/85 backdrop-blur-md rounded-full border border-edge px-3 py-2 shadow-xl">
           <button
             type="button"
             onClick={() => setRunning((r) => !r)}
             disabled={state?.status !== "running" || !!kidEventView}
-            className={`flex items-center gap-2 rounded-full px-5 py-2.5 font-bold text-base transition-colors disabled:opacity-40 ${
+            className={`flex items-center gap-2 rounded-full px-5 py-2 font-bold text-sm transition-colors disabled:opacity-40 ${
               running
                 ? "bg-amber-400 text-ink hover:bg-amber-300"
                 : "bg-emerald-400 text-ink hover:bg-emerald-300"
             }`}
             aria-label={running ? "Pause mission" : "Play mission"}
           >
-            {running ? <Pause size={20} /> : <Play size={20} />}
+            {running ? <Pause size={18} /> : <Play size={18} />}
             {running ? "Pause" : "Play"}
           </button>
-          <div className="h-6 w-px bg-edge mx-1" />
+          <div className="h-5 w-px bg-edge mx-1" />
           {SPEEDS.map((s, i) => (
             <button
               key={s.label}
               type="button"
               onClick={() => setSpeedIdx(i)}
-              className={`px-3 py-1.5 rounded-full text-sm font-bold transition-colors ${
+              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
                 speedIdx === i ? "bg-accent text-ink" : "text-muted hover:text-ink"
               }`}
             >
@@ -521,9 +978,9 @@ export function PlayPage() {
       </div>
 
       {/* ── Bottom-right: Budget Credits + Orbital Command Deck ── */}
-      <div className="absolute bottom-3 right-3 z-30 pointer-events-auto">
-        <div className="bg-void/85 backdrop-blur-md rounded-2xl border border-edge p-3 shadow-xl w-68">
-          <div className="flex items-center justify-between mb-2.5">
+      <div className="absolute bottom-3 right-3 sm:right-6 z-30 pointer-events-auto">
+        <div className="bg-void/88 backdrop-blur-md rounded-2xl border border-edge p-3 shadow-xl w-68">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-sm font-bold text-amber-300 font-mono">
               <Coins size={16} />
               <span className="tabular-nums">{coins.toLocaleString()} cr</span>
@@ -536,7 +993,7 @@ export function PlayPage() {
               4-Station Console →
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {KID_ACTIONS.map((a) => {
               const Icon = ACTION_ICONS[a.icon];
               const affordable = a.cost <= coins;
@@ -547,13 +1004,13 @@ export function PlayPage() {
                   title={a.hint}
                   disabled={busy || !affordable}
                   onClick={() => void dispatchAction(a)}
-                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 transition-colors cursor-pointer ${
+                  className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2 transition-colors cursor-pointer ${
                     affordable
                       ? "border-edge bg-panel/80 hover:bg-raised hover:border-accent/50"
                       : "border-edge/50 bg-panel/40 opacity-40 cursor-not-allowed"
                   } disabled:cursor-wait`}
                 >
-                  <Icon size={20} className="text-accent" aria-hidden />
+                  <Icon size={18} className="text-accent" aria-hidden />
                   <span className="text-[11px] font-bold text-ink leading-none text-center">
                     {a.label}
                   </span>
@@ -567,11 +1024,11 @@ export function PlayPage() {
         </div>
       </div>
 
-      {/* ── Leave (small, out of the way) ── */}
+      {/* ── Mobile Leave button (visible on small screens) ── */}
       <button
         type="button"
         onClick={() => navigate("/mission-end")}
-        className="absolute top-32 right-4 sm:right-6 z-40 text-xs text-faint hover:text-rose-300 hover:bg-rose-950/40 border border-transparent hover:border-rose-800/50 px-3 py-1 rounded-full transition-colors pointer-events-auto"
+        className="md:hidden absolute top-32 right-3 z-40 text-xs text-faint hover:text-rose-300 bg-void/80 border border-edge px-3 py-1 rounded-full transition-colors pointer-events-auto"
       >
         ✕ End flight
       </button>
