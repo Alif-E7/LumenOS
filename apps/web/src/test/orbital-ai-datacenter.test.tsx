@@ -1,9 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import * as THREE from "three";
 import {
   deriveOrbitalAIDataCenterState,
   computeConstellationRelayNodes,
 } from "../lib/ai-datacenter";
+import { createOrbitalAIDataCenterSatellite } from "../lib/orbital-ai-satellite";
 import { GLOBAL_EARTH_EVENTS } from "../components/flight/UltraRealisticEarthFlight";
 import { DirectorStation } from "../components/StationPanels";
 import type { Telemetry, GameStateSummary } from "../types";
@@ -151,8 +153,61 @@ describe("Orbital AI Data Center & 4-Mission Phenomenology Engine", () => {
         expect(ev.lat).toBeGreaterThanOrEqual(-90);
         expect(ev.lat).toBeLessThanOrEqual(90);
         expect(ev.lon).toBeGreaterThanOrEqual(-180);
+        expect(ev.lon).toBeGreaterThanOrEqual(-180);
         expect(ev.lon).toBeLessThanOrEqual(180);
       });
     }
+  });
+
+  it("constructs modular OrbitalAIDataCenterSatellite with InstancedMesh hardware, 3-level LOD, and 5-stage deployment kinematics", () => {
+    const sat = createOrbitalAIDataCenterSatellite({
+      id: "test_scout_dc",
+      name: "LUMEN-SCOUT-1",
+      role: "flagship_datacenter",
+      scale: 0.65,
+      orbitRadius: 6.2,
+      orbitalInclination: 0.85,
+      orbitalSpeed: 0.002,
+      radiatorConfig: { wingCount: 4, thermalLoadC: 28 },
+      communicationRange: 10.0,
+      autoDeployOnEnter: true,
+    });
+
+    // Verify 5 distinct engineering sub-assemblies
+    expect(sat.computeModuleGroup.name).toBe("computeModule");
+    expect(sat.solarAssemblyGroup.name).toBe("solarArrays");
+    expect(sat.radiatorAssemblyGroup.name).toBe("thermalRadiators");
+    expect(sat.commsAssemblyGroup.name).toBe("communicationSystems");
+    expect(sat.propulsionGroup.name).toBe("propulsionAndHardware");
+
+    // Verify 3-level LOD (High, Medium, Low silhouette)
+    expect(sat.lod.levels).toHaveLength(3);
+
+    // Verify InstancedMesh usage for server blades, LEDs, brackets, radiator cooling channels, and RCS nozzles
+    let instancedMeshCount = 0;
+    sat.highDetailGroup.traverse((obj) => {
+      if (obj instanceof THREE.InstancedMesh) {
+        instancedMeshCount += 1;
+      }
+    });
+    expect(instancedMeshCount).toBeGreaterThanOrEqual(5);
+
+    // Verify 5-stage mechanical deployment progression (Stage 1 -> Stage 5)
+    expect(sat.getDeploymentStatus().stageIndex).toBe(1);
+    expect(sat.getDeploymentStatus().isDeployed).toBe(false);
+
+    sat.updateDeployment(1.2); // Advances to Stage 2 (Solar Arrays)
+    expect(sat.getDeploymentStatus().stageIndex).toBe(2);
+
+    sat.updateDeployment(1.2); // Advances to Stage 3 (Thermal Radiators)
+    expect(sat.getDeploymentStatus().stageIndex).toBe(3);
+
+    sat.updateDeployment(3.0); // Completes Stage 5 (Nominal Operation)
+    expect(sat.getDeploymentStatus().isDeployed).toBe(true);
+    expect(sat.getDeploymentStatus().stageIndex).toBe(5);
+
+    // Verify Sun-tracking solar array orientation and thermal state update
+    sat.updateOrbitalSystems(new THREE.Vector3(1, 0.2, 0.5).normalize(), 46.0);
+    expect(sat.radiatorConfig.thermalLoadC).toBe(46.0);
   });
 });

@@ -32,6 +32,10 @@ import {
   type CountryFeature,
 } from "../../lib/geo-borders";
 import { COUNTRY_LABELS } from "../../lib/country-labels";
+import {
+  OrbitalAIDataCenterSatellite,
+  createOrbitalAIDataCenterSatellite,
+} from "../../lib/orbital-ai-satellite";
 
 export interface UltraRealisticEarthFlightProps {
   orbital?: OrbitalTelemetry | null;
@@ -537,357 +541,48 @@ function createRippleSprite(): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas);
 }
 
-/** Procedural 3D Spacecraft Model with forward-facing (+Z) avionics, lateral (+/-X) solar wings, nadir (-Y) dish & sensors, and aft (-Z) ion thruster. */
-function createSpacecraftModel(): THREE.Group {
-  const ship = new THREE.Group();
-
-  // 1. Central Avionics Bus: Length along Z (0.75), Width along X (0.5), Height along Y (0.42)
-  const busMat = new THREE.MeshStandardMaterial({
-    color: 0xcfd8dc,
-    metalness: 0.85,
-    roughness: 0.25,
+/**
+ * Create the primary Low-Earth-Orbit AI Data Center Scout Spacecraft ("LUMEN-SCOUT-1")
+ * using the modular aerospace-engineered OrbitalAIDataCenterSatellite class.
+ */
+function createScoutAISatellite(): OrbitalAIDataCenterSatellite {
+  return createOrbitalAIDataCenterSatellite({
+    id: "lumen_scout_1",
+    name: "LUMEN-SCOUT-1",
+    role: "primary_scout",
+    scale: 0.62,
+    orbitRadius: EARTH_RADIUS + 0.85,
+    orbitAltitudeKm: 550,
+    orbitalInclination: Math.PI * 0.3,
+    orbitalSpeed: 0.0028,
+    solarPanelOrientation: "auto",
+    radiatorConfig: { wingCount: 2, thermalLoadC: 22.0, channelsPerPanel: 24 },
+    communicationRange: 9.8,
+    autoDeployOnEnter: true,
   });
-  const bus = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.75), busMat);
-  ship.add(bus);
-
-  // Gold Kapton Thermal Foil Wrap (central section)
-  const foilMat = new THREE.MeshStandardMaterial({
-    color: 0xf59e0b,
-    metalness: 0.95,
-    roughness: 0.35,
-  });
-  const foil = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.44, 0.38), foilMat);
-  ship.add(foil);
-
-  // 1b. Orbital AI Compute Blade Module (Dark anodized neural processor rack + status LEDs)
-  const aiRackMat = new THREE.MeshStandardMaterial({
-    color: 0x0f172a,
-    metalness: 0.9,
-    roughness: 0.2,
-    emissive: 0x082f49,
-    emissiveIntensity: 0.6,
-  });
-  const aiRack = new THREE.Mesh(new THREE.BoxGeometry(0.53, 0.22, 0.34), aiRackMat);
-  aiRack.position.set(0, 0.04, 0.12);
-  ship.add(aiRack);
-
-  // Deployable Active Thermal Radiator Wings on top (+Y space-facing)
-  const radMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    metalness: 0.85,
-    roughness: 0.15,
-    emissive: 0x0ea5e9,
-    emissiveIntensity: 0.2,
-  });
-  const radiator = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.025, 0.72), radMat);
-  radiator.name = "thermalRadiator";
-  radiator.position.set(0, 0.225, 0);
-  ship.add(radiator);
-
-  // Dual Vertical Deployable Thermal Rejection Fins (+Y)
-  const finGeom = new THREE.BoxGeometry(0.018, 0.28, 0.56);
-  const leftFin = new THREE.Mesh(finGeom, radMat);
-  leftFin.name = "thermalRadiatorLeft";
-  leftFin.position.set(-0.21, 0.35, -0.04);
-  leftFin.rotation.z = 0.22;
-  ship.add(leftFin);
-
-  const rightFin = new THREE.Mesh(finGeom, radMat);
-  rightFin.name = "thermalRadiatorRight";
-  rightFin.position.set(0.21, 0.35, -0.04);
-  rightFin.rotation.z = -0.22;
-  ship.add(rightFin);
-
-  // Zenith Optical ISL (1550 nm Laser Crosslink) Gimbal Turret on +Y
-  const islBase = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.065, 0.08, 0.08, 16),
-    new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 })
-  );
-  islBase.position.set(0, 0.27, 0.22);
-  ship.add(islBase);
-
-  const islDome = new THREE.Mesh(
-    new THREE.SphereGeometry(0.055, 16, 12),
-    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
-  );
-  islDome.name = "islLaserDome";
-  islDome.position.set(0, 0.32, 0.22);
-  ship.add(islDome);
-
-  // "LUMEN-AI" Orbital Data Center Insignia Plaque on the side flank (+X flank)
-  const plaqueCanvas = document.createElement("canvas");
-  plaqueCanvas.width = 256;
-  plaqueCanvas.height = 64;
-  const pctx = plaqueCanvas.getContext("2d");
-  if (pctx) {
-    pctx.fillStyle = "#090d16";
-    pctx.fillRect(0, 0, 256, 64);
-    pctx.strokeStyle = "#06b6d4";
-    pctx.lineWidth = 3;
-    pctx.strokeRect(3, 3, 250, 58);
-    pctx.fillStyle = "#38bdf8";
-    pctx.font = "bold 24px monospace";
-    pctx.textAlign = "center";
-    pctx.textBaseline = "middle";
-    pctx.fillText("LUMEN-AI DC", 128, 34);
-  }
-  const plaqueTex = new THREE.CanvasTexture(plaqueCanvas);
-  const plaqueMat = new THREE.MeshBasicMaterial({ map: plaqueTex });
-  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.09), plaqueMat);
-  plaque.rotation.y = Math.PI / 2;
-  plaque.position.set(0.27, 0.04, 0.12);
-  ship.add(plaque);
-
-  // 2. Dual Solar Array Wings extending laterally on +/- X
-  const solarMat = new THREE.MeshStandardMaterial({
-    color: 0x1d4ed8,
-    metalness: 0.7,
-    roughness: 0.2,
-    emissive: 0x0f172a,
-  });
-  const wingFrameMat = new THREE.MeshStandardMaterial({
-    color: 0xd97706,
-    metalness: 0.9,
-    roughness: 0.3,
-  });
-
-  const wingPanelGeom = new THREE.BoxGeometry(0.85, 0.015, 0.42);
-
-  // Right Wing (+X)
-  const rightWingGroup = new THREE.Group();
-  rightWingGroup.position.set(0.28, 0, 0);
-  const rightBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), busMat);
-  rightBoom.rotation.z = Math.PI / 2;
-  rightBoom.position.set(0.1, 0, 0);
-  rightWingGroup.add(rightBoom);
-
-  const rightPanel = new THREE.Mesh(wingPanelGeom, solarMat);
-  rightPanel.position.set(0.62, 0, 0);
-  rightWingGroup.add(rightPanel);
-
-  const rightBorder = new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.018, 0.44), wingFrameMat);
-  rightBorder.position.set(0.62, 0, 0);
-  rightBorder.scale.set(0.98, 0.8, 0.96);
-  rightWingGroup.add(rightBorder);
-  ship.add(rightWingGroup);
-
-  // Left Wing (-X)
-  const leftWingGroup = new THREE.Group();
-  leftWingGroup.position.set(-0.28, 0, 0);
-  const leftBoom = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), busMat);
-  leftBoom.rotation.z = Math.PI / 2;
-  leftBoom.position.set(-0.1, 0, 0);
-  leftWingGroup.add(leftBoom);
-
-  const leftPanel = new THREE.Mesh(wingPanelGeom, solarMat);
-  leftPanel.position.set(-0.62, 0, 0);
-  leftWingGroup.add(leftPanel);
-
-  const leftBorder = new THREE.Mesh(new THREE.BoxGeometry(0.87, 0.018, 0.44), wingFrameMat);
-  leftBorder.position.set(-0.62, 0, 0);
-  leftBorder.scale.set(0.98, 0.8, 0.96);
-  leftWingGroup.add(leftBorder);
-  ship.add(leftWingGroup);
-
-  // 3. Nadir High-Gain Parabolic Dish & Earth Sensors on -Y (Earth-facing)
-  const dishMat = new THREE.MeshStandardMaterial({
-    color: 0xf1f5f9,
-    metalness: 0.3,
-    roughness: 0.3,
-  });
-  const dish = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.08, 24, 1, true), dishMat);
-  dish.rotation.x = 0; // pointing down along -Y
-  dish.position.set(0, -0.26, 0.1);
-  ship.add(dish);
-
-  // Earth Imager Aperture lens (Nadir optical sensor on -Y)
-  const lensMat = new THREE.MeshStandardMaterial({
-    color: 0x0284c7,
-    roughness: 0.1,
-    metalness: 0.9,
-  });
-  const imager = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.06, 16), lensMat);
-  imager.position.set(0, -0.22, -0.15);
-  ship.add(imager);
-
-  // 4. Forward Avionics Nose Cone at +Z (flight velocity direction)
-  const noseMat = new THREE.MeshStandardMaterial({
-    color: 0x64748b,
-    metalness: 0.9,
-    roughness: 0.2,
-  });
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.18, 16), noseMat);
-  nose.rotation.x = Math.PI / 2; // points forward along +Z
-  nose.position.set(0, 0, 0.44);
-  ship.add(nose);
-
-  // 5. Aft Ion Thruster Assembly at -Z
-  const nozzleMat = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    metalness: 0.95,
-    roughness: 0.2,
-  });
-  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.05, 0.16, 20), nozzleMat);
-  nozzle.rotation.x = Math.PI / 2; // nozzle points backward along -Z
-  nozzle.position.set(0, 0, -0.42);
-  ship.add(nozzle);
-
-  // Glowing Plasma Thruster Plume at -Z (expands backward along -Z)
-  const plumeMat = new THREE.MeshBasicMaterial({
-    color: 0x38bdf8,
-    transparent: true,
-    opacity: 0.95,
-  });
-  const plume = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.45, 16), plumeMat);
-  plume.name = "thrusterPlume";
-  plume.rotation.x = -Math.PI / 2; // cone points backward along -Z
-  plume.position.set(0, 0, -0.68);
-  ship.add(plume);
-
-  // Lateral RCS Attitude Control Thruster Plumes (+/- X)
-  const rcsMat = new THREE.MeshBasicMaterial({
-    color: 0x22d3ee,
-    transparent: true,
-    opacity: 0.0,
-    blending: THREE.AdditiveBlending,
-  });
-  const rcsLeft = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.24, 12), rcsMat.clone());
-  rcsLeft.name = "rcsLeft";
-  rcsLeft.rotation.z = Math.PI / 2;
-  rcsLeft.position.set(-0.34, 0.02, 0.26);
-  ship.add(rcsLeft);
-
-  const rcsRight = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.24, 12), rcsMat.clone());
-  rcsRight.name = "rcsRight";
-  rcsRight.rotation.z = -Math.PI / 2;
-  rcsRight.position.set(0.34, 0.02, 0.26);
-  ship.add(rcsRight);
-
-  ship.scale.set(0.58, 0.58, 0.58);
-  return ship;
 }
 
 /**
- * Massive High-Orbit Orbital AI Data Center Mother Station ("LUMEN-DC-ALPHA").
- * Orbits in Medium Earth Orbit (MEO) on a separate orbital plane from the low-orbit Scout Satellite,
- * featuring a rotating Hexagonal Neural Compute Ring, 6 Modular NPU Server Pods, 4 Giant Solar Wings,
- * 4 Cryo-Radiator Arrays, and a 1550 nm Optical Laser Crosslink Transceiver.
+ * Create the High-Orbit Flagship Orbital AI Data Center Node ("LUMEN-DC-ALPHA")
+ * in Medium Earth Orbit with 4 Large Deployable Thermal Radiator Wings, Quad Solar Arrays,
+ * Twin High-Density Auxiliary Server Pods, and 4 Optical Laser Communication Terminals.
  */
-function createOrbitalDataCenterStation(): THREE.Group {
-  const station = new THREE.Group();
-
-  // 1. Central Cryo-Compute Spine Cylinder
-  const coreMat = new THREE.MeshStandardMaterial({
-    color: 0x0f172a,
-    metalness: 0.92,
-    roughness: 0.18,
-    emissive: 0x082f49,
-    emissiveIntensity: 0.45,
+function createFlagshipDataCenterSatellite(): OrbitalAIDataCenterSatellite {
+  return createOrbitalAIDataCenterSatellite({
+    id: "lumen_dc_alpha",
+    name: "LUMEN-DC-ALPHA",
+    role: "flagship_datacenter",
+    scale: 0.78,
+    orbitRadius: EARTH_RADIUS + 2.05,
+    orbitAltitudeKm: 1850,
+    orbitalInclination: 0.52,
+    raan: 1.15,
+    orbitalSpeed: 0.0011,
+    solarPanelOrientation: "auto",
+    radiatorConfig: { wingCount: 4, thermalLoadC: 26.0, channelsPerPanel: 24 },
+    communicationRange: 11.5,
+    autoDeployOnEnter: true,
   });
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.15, 24), coreMat);
-  spine.rotation.x = Math.PI / 2;
-  station.add(spine);
-
-  // Gold Kapton Thermal Shield Bands on Spine
-  const goldMat = new THREE.MeshStandardMaterial({
-    color: 0xf59e0b,
-    metalness: 0.95,
-    roughness: 0.28,
-  });
-  const band1 = new THREE.Mesh(new THREE.CylinderGeometry(0.195, 0.195, 0.24, 24), goldMat);
-  band1.rotation.x = Math.PI / 2;
-  band1.position.z = 0.28;
-  station.add(band1);
-
-  const band2 = band1.clone();
-  band2.position.z = -0.28;
-  station.add(band2);
-
-  // 2. Rotating Hexagonal Neural Compute Ring (6 Server Blade Modules)
-  const computeRingGroup = new THREE.Group();
-  computeRingGroup.name = "computeRing";
-  const ringTorus = new THREE.Mesh(
-    new THREE.TorusGeometry(0.52, 0.045, 16, 48),
-    new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      metalness: 0.9,
-      roughness: 0.15,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.65,
-    })
-  );
-  computeRingGroup.add(ringTorus);
-
-  const podGeom = new THREE.BoxGeometry(0.18, 0.14, 0.32);
-  const podMat = new THREE.MeshStandardMaterial({
-    color: 0x1e293b,
-    metalness: 0.88,
-    roughness: 0.2,
-    emissive: 0x06b6d4,
-    emissiveIntensity: 0.4,
-  });
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2;
-    const pod = new THREE.Mesh(podGeom, podMat);
-    pod.position.set(Math.cos(a) * 0.52, Math.sin(a) * 0.52, 0);
-    pod.rotation.z = a;
-    computeRingGroup.add(pod);
-  }
-  station.add(computeRingGroup);
-
-  // 3. Quad Giant Deep-Sapphire Photovoltaic Solar Array Wings (+/- X)
-  const solarMat = new THREE.MeshStandardMaterial({
-    color: 0x1e3a8a,
-    metalness: 0.78,
-    roughness: 0.18,
-    emissive: 0x172554,
-    emissiveIntensity: 0.5,
-  });
-  const solarGeom = new THREE.BoxGeometry(1.15, 0.016, 0.34);
-  const offsets: Array<[number, number]> = [
-    [0.82, 0.24],
-    [0.82, -0.24],
-    [-0.82, 0.24],
-    [-0.82, -0.24],
-  ];
-  offsets.forEach(([xOff, zOff]) => {
-    const wing = new THREE.Mesh(solarGeom, solarMat);
-    wing.position.set(xOff, 0, zOff);
-    station.add(wing);
-  });
-
-  // 4. Deployable White/Cyan Ammonia-Loop Thermal Radiator Fins (+/- Y)
-  const radMat = new THREE.MeshStandardMaterial({
-    color: 0xf8fafc,
-    metalness: 0.85,
-    roughness: 0.15,
-    emissive: 0x0ea5e9,
-    emissiveIntensity: 0.35,
-  });
-  const radGeom = new THREE.BoxGeometry(0.02, 0.68, 0.42);
-  const topRad = new THREE.Mesh(radGeom, radMat);
-  topRad.name = "dcRadiator";
-  topRad.position.set(0, 0.56, 0);
-  station.add(topRad);
-
-  const botRad = new THREE.Mesh(radGeom, radMat);
-  botRad.position.set(0, -0.56, 0);
-  station.add(botRad);
-
-  // 5. High-Power 1550 nm Optical Laser Transceiver Dome & Beacon Light
-  const laserDome = new THREE.Mesh(
-    new THREE.SphereGeometry(0.11, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0x22d3ee })
-  );
-  laserDome.position.set(0, 0, 0.62);
-  station.add(laserDome);
-
-  const dcLight = new THREE.PointLight(0x22d3ee, 1.6, 4.0);
-  dcLight.position.set(0, 0, 0.7);
-  station.add(dcLight);
-
-  station.scale.set(0.68, 0.68, 0.68);
-  return station;
 }
 
 /**
@@ -926,6 +621,10 @@ export function UltraRealisticEarthFlight({
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [isBoosting, setIsBoosting] = useState(false);
   const [orbitalSpeedKmS, setOrbitalSpeedKmS] = useState(7.6);
+  const [deploymentBadge, setDeploymentBadge] = useState<string | null>(
+    "Stage 1/5: Central AI Compute Bus Separation"
+  );
+  const deployTriggerRef = useRef<number>(0);
   const thermalTempRef = useRef(thermalTempC);
   thermalTempRef.current = thermalTempC;
   const scenarioIdRef = useRef(scenarioId);
@@ -1330,11 +1029,12 @@ export function UltraRealisticEarthFlight({
     );
     scene.add(orbitLine);
 
-    // 9. Low-Orbit Scout Spacecraft Model (LUMEN-SCOUT-1)
-    const spacecraft = createSpacecraftModel();
+    // 9. Low-Orbit Scout AI Data Center Satellite ("LUMEN-SCOUT-1")
+    const scoutSat = createScoutAISatellite();
+    const spacecraft = scoutSat.root;
     scene.add(spacecraft);
 
-    // 9a. HIGH-ORBIT ORBITAL AI DATA CENTER MOTHER STATION ("LUMEN-DC-ALPHA" in Separate MEO Orbit!)
+    // 9a. HIGH-ORBIT FLAGSHIP ORBITAL AI DATA CENTER SATELLITE ("LUMEN-DC-ALPHA" in Separate MEO Orbit!)
     const dcRadius = EARTH_RADIUS + 2.05;
     const dcInc = 0.52;
     const dcRaan = 1.15;
@@ -1348,29 +1048,32 @@ export function UltraRealisticEarthFlight({
     }
     const dcOrbitLine = new THREE.LineLoop(
       new THREE.BufferGeometry().setFromPoints(dcOrbitPts),
-      new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.38 })
+      new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.32 })
     );
     scene.add(dcOrbitLine);
 
-    const dcStation = createOrbitalDataCenterStation();
+    const flagshipDcSat = createFlagshipDataCenterSatellite();
+    const dcStation = flagshipDcSat.root;
     scene.add(dcStation);
 
     // High-Power Orbital Containment Downlink Beam (From AI Data Center Mother Station -> Earth Crisis Target!)
     const dcDownlinkBeam = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-      new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 3, transparent: true, opacity: 0 })
+      new THREE.LineBasicMaterial({ color: 0x10b981, linewidth: 2, transparent: true, opacity: 0 })
     );
     scene.add(dcDownlinkBeam);
 
-    // 9b. 3-Node Orbital AI Relay Constellation (LUMEN-RELAY-1..3) + Optical ISL Crosslink Laser
+    // 9b. Global Orbital AI Data Center Constellation Nodes (Distributed Across 4 Inclined Orbital Planes)
     const relayRadius = EARTH_RADIUS + 1.65;
     const relayPlanes = [
-      { name: "LUMEN-RELAY-1", inc: 0.95, raan: 0.4, speed: 0.0014, phase: 0.3 },
-      { name: "LUMEN-RELAY-2", inc: 0.62, raan: 2.4, speed: 0.0013, phase: 2.3 },
-      { name: "LUMEN-RELAY-3", inc: 1.25, raan: 4.5, speed: 0.0015, phase: 4.2 },
+      { id: "lumen_relay_1", name: "LUMEN-RELAY-1", inc: 0.95, raan: 0.4, speed: 0.0014, phase: 0.3 },
+      { id: "lumen_relay_2", name: "LUMEN-RELAY-2", inc: 0.62, raan: 2.1, speed: 0.0013, phase: 2.0 },
+      { id: "lumen_relay_3", name: "LUMEN-RELAY-3", inc: 1.25, raan: 3.9, speed: 0.0015, phase: 3.8 },
+      { id: "lumen_relay_4", name: "LUMEN-RELAY-4", inc: 0.78, raan: 5.2, speed: 0.00135, phase: 5.1 },
     ];
     const relayNodes: Array<{
       name: string;
+      sat: OrbitalAIDataCenterSatellite;
       mesh: THREE.Group;
       inc: number;
       raan: number;
@@ -1379,7 +1082,7 @@ export function UltraRealisticEarthFlight({
     }> = [];
 
     relayPlanes.forEach((rp) => {
-      // Subtle cyan orbital track for relay plane
+      // Subtle orbital track for each constellation plane
       const rPts: THREE.Vector3[] = [];
       for (let i = 0; i <= 96; i++) {
         const a = (i / 96) * Math.PI * 2;
@@ -1391,25 +1094,62 @@ export function UltraRealisticEarthFlight({
       }
       const rRing = new THREE.LineLoop(
         new THREE.BufferGeometry().setFromPoints(rPts),
-        new THREE.LineBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.18 })
+        new THREE.LineBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.14 })
       );
       scene.add(rRing);
 
-      // Relay satellite mini-bus + solar wings + beacon
-      const rGroup = new THREE.Group();
-      const rCore = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.11, 0),
-        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.9, roughness: 0.2, emissive: 0x0284c7, emissiveIntensity: 0.8 })
-      );
-      const rWing = new THREE.Mesh(
-        new THREE.BoxGeometry(0.48, 0.012, 0.12),
-        new THREE.MeshStandardMaterial({ color: 0x1d4ed8, metalness: 0.8, roughness: 0.2 })
-      );
-      rGroup.add(rCore);
-      rGroup.add(rWing);
-      scene.add(rGroup);
-      relayNodes.push({ name: rp.name, mesh: rGroup, inc: rp.inc, raan: rp.raan, speed: rp.speed, phase: rp.phase });
+      // Instantiate a full modular OrbitalAIDataCenterSatellite with LODs for each constellation node
+      const nodeSat = createOrbitalAIDataCenterSatellite({
+        id: rp.id,
+        name: rp.name,
+        role: "constellation_node",
+        scale: 0.44,
+        orbitRadius: relayRadius,
+        orbitAltitudeKm: 1250,
+        orbitalInclination: rp.inc,
+        raan: rp.raan,
+        orbitalSpeed: rp.speed,
+        initialPhase: rp.phase,
+        solarPanelOrientation: "auto",
+        radiatorConfig: { wingCount: 2, thermalLoadC: 21.0, channelsPerPanel: 16 },
+        communicationRange: 9.8,
+        autoDeployOnEnter: false,
+      });
+      scene.add(nodeSat.root);
+      relayNodes.push({
+        name: rp.name,
+        sat: nodeSat,
+        mesh: nodeSat.root,
+        inc: rp.inc,
+        raan: rp.raan,
+        speed: rp.speed,
+        phase: rp.phase,
+      });
     });
+
+    // Dynamic Global Inter-Satellite Optical Laser Mesh (Thin, precise 1550 nm laser links between constellation satellites)
+    const constellationMeshLines = new THREE.LineSegments(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.34,
+      })
+    );
+    scene.add(constellationMeshLines);
+
+    // Optional Satellite-to-Ground-Station Optical / Ka-Band Downlink Lines
+    const groundLinkLines = new THREE.LineSegments(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0x10b981,
+        transparent: true,
+        opacity: 0.28,
+      })
+    );
+    scene.add(groundLinkLines);
+
+    let lastDeployTrigger = deployTriggerRef.current;
 
     // Optical Inter-Satellite Link (1550 nm Cyan Laser Crosslink)
     const islBeam = new THREE.Line(
@@ -1777,41 +1517,44 @@ export function UltraRealisticEarthFlight({
       spacecraft.rotateZ(-fs.roll);
       spacecraft.rotateY(fs.yaw);
 
-      // Main Hall-Effect Thruster plume flaring when boosting
+      // Replay 5-stage mechanical deployment when triggered by the user
+      if (deployTriggerRef.current !== lastDeployTrigger) {
+        lastDeployTrigger = deployTriggerRef.current;
+        scoutSat.triggerDeployment();
+        flagshipDcSat.triggerDeployment();
+      }
+
+      // Advance 5-Stage Mechanical Deployment Sequence & Sun-Tracking Solar Arrays
+      const deployStatus = scoutSat.updateDeployment(0.016);
+      flagshipDcSat.updateDeployment(0.016);
+      if (fs.frameTick % 12 === 0) {
+        setDeploymentBadge(
+          deployStatus.isDeployed
+            ? null
+            : `${deployStatus.stageLabel} (${Math.round(deployStatus.progress * 100)}%)`
+        );
+      }
+      scoutSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera.position);
+      flagshipDcSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera.position);
+
+      // Subtle Hall-Effect Xenon Ion Plume modulation when boosting
       const plume = spacecraft.getObjectByName("thrusterPlume");
       if (plume) {
-        const pScale = isBursting ? 2.3 + 0.3 * Math.sin(clockTime * 25) : 1.0 + 0.15 * Math.sin(clockTime * 15);
+        const pScale = isBursting ? 1.55 + 0.15 * Math.sin(clockTime * 22) : 0.9 + 0.08 * Math.sin(clockTime * 14);
         plume.scale.set(pScale, pScale, pScale);
       }
 
-      // Lateral RCS thruster plumes flare when precessing orbital plane
+      // Subtle lateral RCS attitude puffs when precessing orbital plane
       const rcsLeft = spacecraft.getObjectByName("rcsLeft") as THREE.Mesh | undefined;
       const rcsRight = spacecraft.getObjectByName("rcsRight") as THREE.Mesh | undefined;
       if (rcsLeft && rcsRight) {
         const leftMat = rcsLeft.material as THREE.MeshBasicMaterial;
         const rightMat = rcsRight.material as THREE.MeshBasicMaterial;
-        leftMat.opacity = activeTurnRate < -0.0005 ? Math.min(0.85, Math.abs(activeTurnRate) * 180) : 0;
-        rightMat.opacity = activeTurnRate > 0.0005 ? Math.min(0.85, Math.abs(activeTurnRate) * 180) : 0;
+        leftMat.opacity = activeTurnRate < -0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
+        rightMat.opacity = activeTurnRate > 0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
       }
 
-      // Dynamic Thermal Radiator Glow on Scout Satellite
-      const topRad = spacecraft.getObjectByName("thermalRadiator") as THREE.Mesh | undefined;
-      if (topRad && topRad.material) {
-        const mat = topRad.material as THREE.MeshStandardMaterial;
-        const temp = thermalTempRef.current;
-        if (temp >= 44) {
-          mat.emissive.setHex(0xef4444);
-          mat.emissiveIntensity = 0.8 + 0.25 * Math.sin(clockTime * 8);
-        } else if (temp >= 34) {
-          mat.emissive.setHex(0xf59e0b);
-          mat.emissiveIntensity = 0.5;
-        } else {
-          mat.emissive.setHex(0x0ea5e9);
-          mat.emissiveIntensity = 0.24;
-        }
-      }
-
-      // ── 11B. HIGH-ORBIT ORBITAL AI DATA CENTER MOTHER STATION ("LUMEN-DC-ALPHA") ──
+      // ── 11B. HIGH-ORBIT FLAGSHIP ORBITAL AI DATA CENTER SATELLITE ("LUMEN-DC-ALPHA") ──
       // Orbits independently in Medium Earth Orbit (dcRadius = 7.05) on its own inclined orbital plane!
       fs.dcPhase = (fs.dcPhase + 0.0011 * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
       const dcx0 = Math.cos(fs.dcPhase) * dcRadius;
@@ -1831,16 +1574,9 @@ export function UltraRealisticEarthFlight({
       dcStation.up.copy(dcRadialOut);
       dcStation.lookAt(dcPos.clone().add(dcForward));
 
-      // Rotate the Hexagonal Neural Compute Ring on the AI Data Center Mother Station
-      const computeRing = dcStation.getObjectByName("computeRing");
-      if (computeRing) {
-        computeRing.rotation.z = clockTime * (islPulseRef.current ? 3.2 : 1.1);
-      }
-
-      // Update 3-Node Relay Constellation & Connect Scout Satellite -> Orbital AI Data Center Mother Station!
+      // ── 11C. GLOBAL ORBITAL AI DATA CENTER CONSTELLATION & DYNAMIC OPTICAL LASER MESH ──
       let bestLinkTarget: { name: string; pos: THREE.Vector3; dist: number } | null = null;
 
-      // Prefer direct optical crosslink from Low-Orbit Scout Satellite up to High-Orbit AI Data Center Mother Station!
       const dcMid = spacecraft.position.clone().add(dcPos).multiplyScalar(0.5);
       const dcDist = spacecraft.position.distanceTo(dcPos);
       if (dcMid.length() > EARTH_RADIUS * 0.85) {
@@ -1848,13 +1584,24 @@ export function UltraRealisticEarthFlight({
       }
 
       relayNodes.forEach((rn) => {
-        rn.phase += rn.speed * (fs.keys.space ? 1.6 : 1.0);
+        rn.phase = (rn.phase + rn.speed * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
         const rx0 = Math.cos(rn.phase) * relayRadius;
         const ry0 = Math.sin(rn.phase) * relayRadius * Math.sin(rn.inc);
         const rz0 = Math.sin(rn.phase) * relayRadius * Math.cos(rn.inc);
         const rPos = new THREE.Vector3(rx0, ry0, rz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan);
+
+        const rtox = -Math.sin(rn.phase) * relayRadius;
+        const rtoy = Math.cos(rn.phase) * relayRadius * Math.sin(rn.inc);
+        const rtoz = Math.cos(rn.phase) * relayRadius * Math.cos(rn.inc);
+        const rForward = new THREE.Vector3(rtox, rtoy, rtoz)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan)
+          .normalize();
+        const rRadialOut = rPos.clone().normalize();
+
         rn.mesh.position.copy(rPos);
-        rn.mesh.lookAt(0, 0, 0);
+        rn.mesh.up.copy(rRadialOut);
+        rn.mesh.lookAt(rPos.clone().add(rForward));
+        rn.sat.updateOrbitalSystems(sunDirNorm, 22.0, camera.position);
 
         const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
         const dist = spacecraft.position.distanceTo(rPos);
@@ -1862,6 +1609,54 @@ export function UltraRealisticEarthFlight({
           bestLinkTarget = { name: rn.name, pos: rPos, dist };
         }
       });
+
+      // Compute Dynamic Inter-Satellite Optical Laser Communication Links across the entire 6-Satellite Constellation
+      const allConstellationSats: OrbitalAIDataCenterSatellite[] = [
+        scoutSat,
+        flagshipDcSat,
+        ...relayNodes.map((r) => r.sat),
+      ];
+      allConstellationSats.forEach((s) => {
+        s.networkConnections = [];
+      });
+
+      const meshLinkPts: THREE.Vector3[] = [];
+      for (let i = 0; i < allConstellationSats.length; i++) {
+        for (let j = i + 1; j < allConstellationSats.length; j++) {
+          const satA = allConstellationSats[i];
+          const satB = allConstellationSats[j];
+          const posA = satA.root.position;
+          const posB = satB.root.position;
+          const dist = posA.distanceTo(posB);
+          const maxRange = Math.min(satA.communicationRange, satB.communicationRange);
+          const midPt = posA.clone().add(posB).multiplyScalar(0.5);
+          // Line of sight check above Earth's horizon
+          if (dist <= maxRange && midPt.length() > EARTH_RADIUS + 0.08) {
+            satA.networkConnections.push(satB.id);
+            satB.networkConnections.push(satA.id);
+            meshLinkPts.push(posA.clone(), posB.clone());
+          }
+        }
+      }
+      constellationMeshLines.geometry.dispose();
+      constellationMeshLines.geometry = new THREE.BufferGeometry().setFromPoints(meshLinkPts);
+
+      // Compute Optional Ground Station Optical / Ka-Band Downlinks for in-range satellites
+      const gsLinkPts: THREE.Vector3[] = [];
+      GROUND_STATIONS.forEach((gs) => {
+        const gsPos = latLonToVector3(gs.latitude, gs.longitude, EARTH_RADIUS + 0.025);
+        const gsNormal = gsPos.clone().normalize();
+        for (const sat of allConstellationSats) {
+          const satPos = sat.root.position;
+          const toSat = satPos.clone().sub(gsPos);
+          if (toSat.length() < 3.6 && toSat.normalize().dot(gsNormal) > 0.35) {
+            gsLinkPts.push(gsPos, satPos.clone());
+            break;
+          }
+        }
+      });
+      groundLinkLines.geometry.dispose();
+      groundLinkLines.geometry = new THREE.BufferGeometry().setFromPoints(gsLinkPts);
 
       if (bestLinkTarget) {
         const nr = bestLinkTarget;
@@ -2374,6 +2169,17 @@ export function UltraRealisticEarthFlight({
           <div className="h-4 w-px bg-edge mx-0.5" />
           <button
             type="button"
+            onClick={() => {
+              deployTriggerRef.current += 1;
+              setDeploymentBadge("Stage 1/5: Central AI Compute Bus Separation");
+            }}
+            title="Replay 5-Stage Mechanical Solar & Radiator Wing Deployment Sequence"
+            className="px-2.5 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer text-cyan-300 hover:bg-cyan-950/60"
+          >
+            ⚙️ <span className="hidden xl:inline">Deploy</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowMapOverlay((v) => !v)}
             title="Toggle Political Borders & Country Names Overlay"
             className={`px-2.5 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer ${
@@ -2396,6 +2202,11 @@ export function UltraRealisticEarthFlight({
         <span className="bg-void/85 backdrop-blur-md border border-violet-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-violet-200 shadow-md font-mono">
           🏛️ {activeRelayLabel}
         </span>
+        {deploymentBadge && (
+          <span className="bg-sky-950/90 backdrop-blur-md border border-sky-400/60 px-2.5 py-0.5 rounded-full text-[11px] text-sky-200 shadow-md font-mono animate-pulse">
+            ⚙️ {deploymentBadge}
+          </span>
+        )}
         <span className="bg-void/85 backdrop-blur-md border border-sky-500/40 px-2.5 py-0.5 rounded-full text-[11px] text-sky-200 shadow-md font-mono hidden sm:inline-flex">
           🧠 {aiActiveTops.toFixed(1)} TOPS · {satLat.toFixed(1)}°, {satLon.toFixed(1)}°
         </span>
