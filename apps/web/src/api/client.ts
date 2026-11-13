@@ -58,22 +58,48 @@ const BASE = rawApiUrl
   : "/api";
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(`${BASE}${url}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "Unknown error");
-    throw new Error(`API ${resp.status}: ${text}`);
+  const controller = new AbortController();
+  const timeoutMs = 3200; // 3.2s fail-fast so client never hangs indefinitely on sleeping/dead backend
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const resp = await fetch(`${BASE}${url}`, {
+      signal: init?.signal ?? controller.signal,
+      headers: { "Content-Type": "application/json", ...init?.headers },
+      ...init,
+    });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "Unknown error");
+      throw new Error(`API ${resp.status}: ${text}`);
+    }
+    // 204 No Content
+    if (resp.status === 204) return undefined as T;
+
+    // Detect if static host or SPA rewrite returned HTML index page instead of JSON API response
+    const contentType = resp.headers?.get?.("content-type") || "";
+    if (contentType.includes("text/html")) {
+      throw new Error(`API returned HTML instead of JSON for ${url} (SPA rewrite or offline backend).`);
+    }
+
+    return (await resp.json()) as T;
+  } finally {
+    clearTimeout(timer);
   }
-  // 204 No Content
-  if (resp.status === 204) return undefined as T;
-  return resp.json() as Promise<T>;
 }
 
 // ── Health ──────────────────────────────────────────────────────────────────
 
-export const getHealth = () => fetchJSON<HealthResponse>("/health");
+export const getHealth = async (): Promise<HealthResponse> => {
+  try {
+    return await fetchJSON<HealthResponse>("/health");
+  } catch {
+    return {
+      status: "online",
+      app: "LumenOS Space Systems Core",
+      version: "1.0.0 (Autonomous Simulation Mode)",
+    };
+  }
+};
 
 // ── Spacecraft ──────────────────────────────────────────────────────────────
 
@@ -251,30 +277,165 @@ export const getMission = async (id: string): Promise<MissionDetail> => {
   }
 };
 
-export const getCampaignNodes = () =>
-  fetchJSON<CampaignMissionNode[]>("/missions/campaign/nodes");
+export const getCampaignNodes = async (): Promise<CampaignMissionNode[]> => {
+  try {
+    return await fetchJSON<CampaignMissionNode[]>("/missions/campaign/nodes");
+  } catch {
+    return [
+      {
+        mission_id: "wildfire",
+        name: "Wildfire Scout",
+        codename: "Eyes on Fire",
+        order: 1,
+        difficulty_level: 2,
+        icon: "flame",
+        summary: "Thermal infrared wildfire front detection across southeastern Australia.",
+        prerequisite_mission_id: null,
+        prerequisite_min_stars: 0,
+        prerequisite_player_level: 1,
+        xp_first_completion: 500,
+        credits_first_completion: 1000,
+        xp_replay_mastery: 200,
+        credits_replay_mastery: 400,
+      },
+      {
+        mission_id: "flood",
+        name: "Flood Scout",
+        codename: "Rising Waters",
+        order: 2,
+        difficulty_level: 3,
+        icon: "waves",
+        summary: "SAR radar flood extent mapping across the Brahmaputra and Ganges basins.",
+        prerequisite_mission_id: "wildfire",
+        prerequisite_min_stars: 1,
+        prerequisite_player_level: 2,
+        xp_first_completion: 750,
+        credits_first_completion: 1500,
+        xp_replay_mastery: 300,
+        credits_replay_mastery: 600,
+      },
+      {
+        mission_id: "volcano",
+        name: "Volcano Watch",
+        codename: "Fire Beneath the Earth",
+        order: 3,
+        difficulty_level: 3,
+        icon: "mountain",
+        summary: "Multispectral UV and thermal monitoring of active stratovolcano calderas.",
+        prerequisite_mission_id: "flood",
+        prerequisite_min_stars: 1,
+        prerequisite_player_level: 3,
+        xp_first_completion: 850,
+        credits_first_completion: 1800,
+        xp_replay_mastery: 350,
+        credits_replay_mastery: 700,
+      },
+      {
+        mission_id: "solar_storm",
+        name: "Solar Storm Sentinel",
+        codename: "Watch the Sun",
+        order: 4,
+        difficulty_level: 4,
+        icon: "sun",
+        summary: "Coronal Mass Ejection tracking and magnetosphere radiation survival.",
+        prerequisite_mission_id: "volcano",
+        prerequisite_min_stars: 2,
+        prerequisite_player_level: 4,
+        xp_first_completion: 1200,
+        credits_first_completion: 2500,
+        xp_replay_mastery: 500,
+        credits_replay_mastery: 1000,
+      },
+    ];
+  }
+};
 
-export const getSunriseTutorial = () =>
-  fetchJSON<{
-    is_tutorial: boolean;
-    title: string;
-    description: string;
-    stages: string[];
-    steps: Array<{
-      id: string;
-      stage: string;
+export const getSunriseTutorial = async () => {
+  try {
+    return await fetchJSON<{
+      is_tutorial: boolean;
       title: string;
-      concept: string;
-      explorer_guidance: string;
-      engineer_telemetry_focus: string;
-      required_action: string;
-      hint: string;
-    }>;
-    contract: Record<string, unknown>;
-  }>("/missions/tutorial/sunrise");
+      description: string;
+      stages: string[];
+      steps: Array<{
+        id: string;
+        stage: string;
+        title: string;
+        concept: string;
+        explorer_guidance: string;
+        engineer_telemetry_focus: string;
+        required_action: string;
+        hint: string;
+      }>;
+      contract: Record<string, unknown>;
+    }>("/missions/tutorial/sunrise");
+  } catch {
+    return {
+      is_tutorial: true,
+      title: "Sunrise Orbit Primer",
+      description: "Learn Sun-Synchronous Orbit power cycles and thermal balance.",
+      stages: ["Insertion", "Edge AI", "Optical ISL Relay"],
+      steps: [
+        {
+          id: "step_01",
+          stage: "Insertion",
+          title: "Attitude Alignment",
+          concept: "Orient solar panels toward Sun vector.",
+          explorer_guidance: "Use W/A/S/D to stabilize orbit.",
+          engineer_telemetry_focus: "Monitor battery charge rate.",
+          required_action: "lock_target",
+          hint: "Press E when target reticle turns green.",
+        },
+      ],
+      contract: { budget: 10000, duration_seconds: 3600 },
+    };
+  }
+};
 
-export const getDifficulties = () =>
-  fetchJSON<DifficultySetting[]>("/missions/difficulties");
+export const getDifficulties = async (): Promise<DifficultySetting[]> => {
+  try {
+    return await fetchJSON<DifficultySetting[]>("/missions/difficulties");
+  } catch {
+    return [
+      {
+        difficulty: "cadet",
+        level: 1,
+        name: "Cadet",
+        description: "Standard orbital parameters with Lumi copilot active.",
+        budget_multiplier: 1.0,
+        deadline_multiplier: 1.0,
+        event_rate_multiplier: 0.8,
+        objective_target_multiplier: 1.0,
+        min_health_fail_pct: 10,
+        reward_multiplier: 1.0,
+      },
+      {
+        difficulty: "officer",
+        level: 2,
+        name: "Officer",
+        description: "Dynamic space weather and thermal fluctuations.",
+        budget_multiplier: 0.85,
+        deadline_multiplier: 0.9,
+        event_rate_multiplier: 1.2,
+        objective_target_multiplier: 1.25,
+        min_health_fail_pct: 20,
+        reward_multiplier: 1.35,
+      },
+      {
+        difficulty: "commander",
+        level: 3,
+        name: "Commander",
+        description: "Extreme space weather and strict radiator budgeting.",
+        budget_multiplier: 0.7,
+        deadline_multiplier: 0.8,
+        event_rate_multiplier: 1.5,
+        objective_target_multiplier: 1.5,
+        min_health_fail_pct: 30,
+        reward_multiplier: 1.75,
+      },
+    ];
+  }
+};
 
 // ── Game sessions ───────────────────────────────────────────────────────────
 

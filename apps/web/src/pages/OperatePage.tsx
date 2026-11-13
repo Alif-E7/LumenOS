@@ -135,7 +135,7 @@ export function OperatePage() {
         getSimulationClock(session.sessionId).catch(() => null),
       ]);
       setGameState(stateResp.game_state);
-      if (Object.keys(telResp.telemetry).length > 0) setTelemetry(telResp.telemetry);
+      if (telResp?.telemetry && Object.keys(telResp.telemetry).length > 0) setTelemetry(telResp.telemetry);
       if (clockResp?.clock) setClock(clockResp.clock);
 
       // Async fetch ground track and timeline forecast
