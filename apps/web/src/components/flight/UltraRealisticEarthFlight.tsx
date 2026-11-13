@@ -769,18 +769,12 @@ export function UltraRealisticEarthFlight({
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 2.5, 9.5);
 
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-      renderer.setSize(width, height);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.35;
-      container.replaceChildren(renderer.domElement);
-    } catch (e) {
-      console.warn("WebGLRenderer initialization skipped or unsupported in environment:", e);
-      return;
-    }
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    container.replaceChildren(renderer.domElement);
 
     // 2. Starfield in Deep Space
     const starsCount = 2600;
@@ -1566,59 +1560,63 @@ export function UltraRealisticEarthFlight({
 
       try {
         const fs = flightState.current;
-      fs.frameTick += 1;
-      if (fs.autopilotBoostFrames > 0) {
-        fs.autopilotBoostFrames -= 1;
-      }
+        fs.frameTick += 1;
+        if (fs.autopilotBoostFrames > 0) {
+          fs.autopilotBoostFrames -= 1;
+        }
 
-      // Sync optional map borders visibility
-      if (bordersMesh) {
-        bordersMesh.visible = showMapOverlayRef.current;
-      }
+        // Sync optional map borders visibility
+        if (bordersMesh) {
+          bordersMesh.visible = showMapOverlayRef.current;
+        }
 
-      // ── 11A. LOW-ORBIT SCOUT SATELLITE ("LUMEN-SCOUT-1") GREAT-CIRCLE PROPAGATION ──
-      // Uses smooth orbital plane precession so the satellite ALWAYS flies a full circle around Earth
-      // and NEVER spins in place over a single point!
-      const steerSpeed = 0.032;
-      const returnSpeed = 0.06;
-      let activeTurnRate = 0; // Gentle orbital plane precession rate around satDir
+        // ── 11A. LOW-ORBIT SCOUT SATELLITE ("LUMEN-SCOUT-1") GREAT-CIRCLE PROPAGATION ──
+        // Uses smooth orbital plane precession so the satellite ALWAYS flies a full circle around Earth
+        // and NEVER spins in place over a single point!
+        const steerSpeed = 0.032;
+        const returnSpeed = 0.06;
+        let activeTurnRate = 0; // Gentle orbital plane precession rate around satDir
 
-      if (fs.keys.w) fs.pitch = Math.max(-0.3, fs.pitch - steerSpeed);
-      else if (fs.keys.s) fs.pitch = Math.min(0.3, fs.pitch + steerSpeed);
-      else fs.pitch *= 1 - returnSpeed;
+        if (fs.keys.w) fs.pitch = Math.max(-0.3, fs.pitch - steerSpeed);
+        else if (fs.keys.s) fs.pitch = Math.min(0.3, fs.pitch + steerSpeed);
+        else fs.pitch *= 1 - returnSpeed;
 
-      if (fs.keys.a) {
-        fs.yaw = Math.max(-0.4, fs.yaw - steerSpeed);
-        fs.roll = Math.max(-0.55, fs.roll - steerSpeed * 1.4);
-        activeTurnRate = 0.0042; // Smooth orbital plane precession left
-      } else if (fs.keys.d) {
-        fs.yaw = Math.min(0.4, fs.yaw + steerSpeed);
-        fs.roll = Math.min(0.55, fs.roll + steerSpeed * 1.4);
-        activeTurnRate = -0.0042; // Smooth orbital plane precession right
-      } else if (autopilotIdRef.current) {
-        // ── SMOOTH GREAT-CIRCLE ORBITAL PLANE ALIGNMENT (NO HOVERING OR SPINNING!) ──
-        const targetEv = liveEvents.find((e) => e.event.id === autopilotIdRef.current);
-        if (targetEv) {
-          const evNormal = targetEv.position.clone().normalize();
-          const angleToTarget = fs.satDir.angleTo(evNormal);
-          // Only precess orbital plane when target is ahead (> 0.16 rad away); fly straight through when overhead!
-          if (angleToTarget > 0.16) {
-            const desiredTan = evNormal
-              .clone()
-              .sub(fs.satDir.clone().multiplyScalar(fs.satDir.dot(evNormal)));
-            if (desiredTan.lengthSq() > 1e-6) {
-              desiredTan.normalize();
-              const cross = new THREE.Vector3().crossVectors(fs.velDir, desiredTan);
-              const signedSin = THREE.MathUtils.clamp(cross.dot(fs.satDir), -1, 1);
-              const cosAngle = THREE.MathUtils.clamp(fs.velDir.dot(desiredTan), -1, 1);
-              const angleDiff = Math.atan2(signedSin, cosAngle);
-              // Gentle orbital plane alignment so turning radius is always >= Earth's radius!
-              activeTurnRate = THREE.MathUtils.clamp(angleDiff * 0.022, -0.0038, 0.0038);
-              fs.roll = THREE.MathUtils.lerp(fs.roll, -activeTurnRate * 95.0, 0.1);
-              fs.yaw = THREE.MathUtils.lerp(fs.yaw, -activeTurnRate * 55.0, 0.1);
+        if (fs.keys.a) {
+          fs.yaw = Math.max(-0.4, fs.yaw - steerSpeed);
+          fs.roll = Math.max(-0.55, fs.roll - steerSpeed * 1.4);
+          activeTurnRate = 0.0042; // Smooth orbital plane precession left
+        } else if (fs.keys.d) {
+          fs.yaw = Math.min(0.4, fs.yaw + steerSpeed);
+          fs.roll = Math.min(0.55, fs.roll + steerSpeed * 1.4);
+          activeTurnRate = -0.0042; // Smooth orbital plane precession right
+        } else if (autopilotIdRef.current) {
+          // ── SMOOTH GREAT-CIRCLE ORBITAL PLANE ALIGNMENT (NO HOVERING OR SPINNING!) ──
+          const targetEv = liveEvents.find((e) => e.event.id === autopilotIdRef.current);
+          if (targetEv) {
+            const evNormal = targetEv.position.clone().normalize();
+            const angleToTarget = fs.satDir.angleTo(evNormal);
+            // Only precess orbital plane when target is ahead (> 0.16 rad away); fly straight through when overhead!
+            if (angleToTarget > 0.16) {
+              const desiredTan = evNormal
+                .clone()
+                .sub(fs.satDir.clone().multiplyScalar(fs.satDir.dot(evNormal)));
+              if (desiredTan.lengthSq() > 1e-6) {
+                desiredTan.normalize();
+                const cross = new THREE.Vector3().crossVectors(fs.velDir, desiredTan);
+                const signedSin = THREE.MathUtils.clamp(cross.dot(fs.satDir), -1, 1);
+                const cosAngle = THREE.MathUtils.clamp(fs.velDir.dot(desiredTan), -1, 1);
+                const angleDiff = Math.atan2(signedSin, cosAngle);
+                // Gentle orbital plane alignment so turning radius is always >= Earth's radius!
+                activeTurnRate = THREE.MathUtils.clamp(angleDiff * 0.022, -0.0038, 0.0038);
+                fs.roll = THREE.MathUtils.lerp(fs.roll, -activeTurnRate * 95.0, 0.1);
+                fs.yaw = THREE.MathUtils.lerp(fs.yaw, -activeTurnRate * 55.0, 0.1);
+              }
+            } else {
+              // Directly overhead inside sensor cone — hold steady wings-level attitude!
+              fs.yaw *= 1 - returnSpeed;
+              fs.roll *= 1 - returnSpeed;
             }
           } else {
-            // Directly overhead inside sensor cone — hold steady wings-level attitude!
             fs.yaw *= 1 - returnSpeed;
             fs.roll *= 1 - returnSpeed;
           }
@@ -1626,638 +1624,634 @@ export function UltraRealisticEarthFlight({
           fs.yaw *= 1 - returnSpeed;
           fs.roll *= 1 - returnSpeed;
         }
-      } else {
-        fs.yaw *= 1 - returnSpeed;
-        fs.roll *= 1 - returnSpeed;
-      }
 
-      if (Math.abs(activeTurnRate) > 1e-5) {
-        fs.velDir.applyAxisAngle(fs.satDir, activeTurnRate).normalize();
-      }
+        if (Math.abs(activeTurnRate) > 1e-5) {
+          fs.velDir.applyAxisAngle(fs.satDir, activeTurnRate).normalize();
+        }
 
-      // Speed control: Spacebar or Target Intercept Burst = 2.2x Boost, W = 1.35x, S = 0.6x
-      const isBursting = fs.keys.space || fs.autopilotBoostFrames > 0;
-      const pitchSpeedMod = fs.keys.w ? 1.35 : fs.keys.s ? 0.6 : 1.0;
-      const speedMultiplier = (isBursting ? 2.2 : 1.0) * pitchSpeedMod;
-      if (fs.frameTick % 10 === 0) {
-        setOrbitalSpeedKmS(Number((7.6 * speedMultiplier).toFixed(1)));
-      }
+        // Speed control: Spacebar or Target Intercept Burst = 2.2x Boost, W = 1.35x, S = 0.6x
+        const isBursting = fs.keys.space || fs.autopilotBoostFrames > 0;
+        const pitchSpeedMod = fs.keys.w ? 1.35 : fs.keys.s ? 0.6 : 1.0;
+        const speedMultiplier = (isBursting ? 2.2 : 1.0) * pitchSpeedMod;
+        if (fs.frameTick % 10 === 0) {
+          setOrbitalSpeedKmS(Number((7.6 * speedMultiplier).toFixed(1)));
+        }
 
-      // Advance Scout Satellite along its great-circle orbital path
-      const stepAngle = fs.speed * speedMultiplier;
-      fs.progress = (fs.progress + stepAngle) % (Math.PI * 2);
-      fs.satDir.addScaledVector(fs.velDir, stepAngle).normalize();
-      fs.velDir
-        .sub(fs.satDir.clone().multiplyScalar(fs.velDir.dot(fs.satDir)))
-        .normalize();
-
-      spacecraft.position.copy(fs.satDir).multiplyScalar(orbitRadius);
-      const forwardDir = fs.velDir.clone();
-      const radialOut = fs.satDir.clone();
-      const radialDown = radialOut.clone().negate();
-      const lateral = new THREE.Vector3().crossVectors(radialOut, forwardDir).normalize();
-
-      // Update Scout Satellite's 3D Cyan Orbit Ring
-      const orbitRingPts: THREE.Vector3[] = [];
-      const orbitSegs = 120;
-      for (let i = 0; i <= orbitSegs; i++) {
-        const a = (i / orbitSegs) * Math.PI * 2;
-        const pt = radialOut
-          .clone()
-          .multiplyScalar(Math.cos(a) * orbitRadius)
-          .addScaledVector(forwardDir, Math.sin(a) * orbitRadius);
-        orbitRingPts.push(pt);
-      }
-      orbitLine.geometry.setFromPoints(orbitRingPts);
-
-      // Orient Scout Satellite along velocity vector
-      spacecraft.up.copy(radialOut);
-      spacecraft.lookAt(spacecraft.position.clone().add(forwardDir));
-      spacecraft.rotateX(-fs.pitch);
-      spacecraft.rotateZ(-fs.roll);
-      spacecraft.rotateY(fs.yaw);
-
-      // Replay 5-stage mechanical deployment when triggered by the user
-      if (deployTriggerRef.current !== lastDeployTrigger) {
-        lastDeployTrigger = deployTriggerRef.current;
-        scoutSat.triggerDeployment();
-        flagshipDcSat.triggerDeployment();
-      }
-
-      // Advance 5-Stage Mechanical Deployment Sequence & Sun-Tracking Solar Arrays
-      const deployStatus = scoutSat.updateDeployment(0.016);
-      flagshipDcSat.updateDeployment(0.016);
-      if (fs.frameTick % 12 === 0) {
-        setDeploymentBadge(
-          deployStatus.isDeployed
-            ? null
-            : `${deployStatus.stageLabel} (${Math.round(deployStatus.progress * 100)}%)`
-        );
-      }
-      scoutSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
-      flagshipDcSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
-
-      // Subtle Hall-Effect Xenon Ion Plume modulation when boosting
-      const plume = spacecraft.getObjectByName("thrusterPlume");
-      if (plume) {
-        const pScale = isBursting ? 1.55 + 0.15 * Math.sin(clockTime * 22) : 0.9 + 0.08 * Math.sin(clockTime * 14);
-        plume.scale.set(pScale, pScale, pScale);
-      }
-
-      // Subtle lateral RCS attitude puffs when precessing orbital plane
-      const rcsLeft = spacecraft.getObjectByName("rcsLeft") as THREE.Mesh | undefined;
-      const rcsRight = spacecraft.getObjectByName("rcsRight") as THREE.Mesh | undefined;
-      if (rcsLeft && rcsRight) {
-        const leftMat = rcsLeft.material as THREE.MeshBasicMaterial;
-        const rightMat = rcsRight.material as THREE.MeshBasicMaterial;
-        leftMat.opacity = activeTurnRate < -0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
-        rightMat.opacity = activeTurnRate > 0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
-      }
-
-      // ── 11B. HIGH-ORBIT FLAGSHIP ORBITAL AI DATA CENTER SATELLITE ("LUMEN-DC-ALPHA") ──
-      // Orbits independently in Medium Earth Orbit (dcRadius = 7.05) on its own inclined orbital plane!
-      fs.dcPhase = (fs.dcPhase + 0.0011 * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
-      const dcx0 = Math.cos(fs.dcPhase) * dcRadius;
-      const dcy0 = Math.sin(fs.dcPhase) * dcRadius * Math.sin(dcInc);
-      const dcz0 = Math.sin(fs.dcPhase) * dcRadius * Math.cos(dcInc);
-      const dcPos = new THREE.Vector3(dcx0, dcy0, dcz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan);
-
-      const dctox = -Math.sin(fs.dcPhase) * dcRadius;
-      const dctoy = Math.cos(fs.dcPhase) * dcRadius * Math.sin(dcInc);
-      const dctoz = Math.cos(fs.dcPhase) * dcRadius * Math.cos(dcInc);
-      const dcForward = new THREE.Vector3(dctox, dctoy, dctoz)
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan)
-        .normalize();
-      const dcRadialOut = dcPos.clone().normalize();
-
-      dcStation.position.copy(dcPos);
-      dcStation.up.copy(dcRadialOut);
-      dcStation.lookAt(dcPos.clone().add(dcForward));
-
-      // ── 11C. GLOBAL ORBITAL AI DATA CENTER CONSTELLATION & DYNAMIC OPTICAL LASER MESH ──
-      let bestLinkTarget: { name: string; pos: THREE.Vector3; dist: number } | null = null;
-
-      const dcMid = spacecraft.position.clone().add(dcPos).multiplyScalar(0.5);
-      const dcDist = spacecraft.position.distanceTo(dcPos);
-      if (dcMid.length() > EARTH_RADIUS * 0.85) {
-        bestLinkTarget = { name: "LUMEN-DC-ALPHA", pos: dcPos, dist: dcDist };
-      }
-
-      relayNodes.forEach((rn) => {
-        rn.phase = (rn.phase + rn.speed * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
-        const rx0 = Math.cos(rn.phase) * relayRadius;
-        const ry0 = Math.sin(rn.phase) * relayRadius * Math.sin(rn.inc);
-        const rz0 = Math.sin(rn.phase) * relayRadius * Math.cos(rn.inc);
-        const rPos = new THREE.Vector3(rx0, ry0, rz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan);
-
-        const rtox = -Math.sin(rn.phase) * relayRadius;
-        const rtoy = Math.cos(rn.phase) * relayRadius * Math.sin(rn.inc);
-        const rtoz = Math.cos(rn.phase) * relayRadius * Math.cos(rn.inc);
-        const rForward = new THREE.Vector3(rtox, rtoy, rtoz)
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan)
+        // Advance Scout Satellite along its great-circle orbital path
+        const stepAngle = fs.speed * speedMultiplier;
+        fs.progress = (fs.progress + stepAngle) % (Math.PI * 2);
+        fs.satDir.addScaledVector(fs.velDir, stepAngle).normalize();
+        fs.velDir
+          .sub(fs.satDir.clone().multiplyScalar(fs.velDir.dot(fs.satDir)))
           .normalize();
-        const rRadialOut = rPos.clone().normalize();
 
-        rn.mesh.position.copy(rPos);
-        rn.mesh.up.copy(rRadialOut);
-        rn.mesh.lookAt(rPos.clone().add(rForward));
-        rn.sat.updateOrbitalSystems(sunDirNorm, 22.0, camera);
+        spacecraft.position.copy(fs.satDir).multiplyScalar(orbitRadius);
+        const forwardDir = fs.velDir.clone();
+        const radialOut = fs.satDir.clone();
+        const radialDown = radialOut.clone().negate();
+        const lateral = new THREE.Vector3().crossVectors(radialOut, forwardDir).normalize();
 
-        const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
-        const dist = spacecraft.position.distanceTo(rPos);
-        if (!bestLinkTarget && midPoint.length() > EARTH_RADIUS + 0.15) {
-          bestLinkTarget = { name: rn.name, pos: rPos, dist };
+        // Update Scout Satellite's 3D Cyan Orbit Ring
+        const orbitRingPts: THREE.Vector3[] = [];
+        const orbitSegs = 120;
+        for (let i = 0; i <= orbitSegs; i++) {
+          const a = (i / orbitSegs) * Math.PI * 2;
+          const pt = radialOut
+            .clone()
+            .multiplyScalar(Math.cos(a) * orbitRadius)
+            .addScaledVector(forwardDir, Math.sin(a) * orbitRadius);
+          orbitRingPts.push(pt);
         }
-      });
+        orbitLine.geometry.setFromPoints(orbitRingPts);
 
-      // Compute Dynamic Inter-Satellite Optical Laser Communication Links across the entire 6-Satellite Constellation
-      const allConstellationSats: OrbitalAIDataCenterSatellite[] = [
-        scoutSat,
-        flagshipDcSat,
-        ...relayNodes.map((r) => r.sat),
-      ];
-      allConstellationSats.forEach((s) => {
-        s.networkConnections = [];
-      });
+        // Orient Scout Satellite along velocity vector
+        spacecraft.up.copy(radialOut);
+        spacecraft.lookAt(spacecraft.position.clone().add(forwardDir));
+        spacecraft.rotateX(-fs.pitch);
+        spacecraft.rotateZ(-fs.roll);
+        spacecraft.rotateY(fs.yaw);
 
-      const meshLinkPts: THREE.Vector3[] = [];
-      for (let i = 0; i < allConstellationSats.length; i++) {
-        for (let j = i + 1; j < allConstellationSats.length; j++) {
-          const satA = allConstellationSats[i];
-          const satB = allConstellationSats[j];
-          const posA = satA.root.position;
-          const posB = satB.root.position;
-          const dist = posA.distanceTo(posB);
-          const maxRange = Math.min(satA.communicationRange, satB.communicationRange);
-          const midPt = posA.clone().add(posB).multiplyScalar(0.5);
-          // Line of sight check above Earth's horizon
-          if (dist <= maxRange && midPt.length() > EARTH_RADIUS + 0.08) {
-            satA.networkConnections.push(satB.id);
-            satB.networkConnections.push(satA.id);
-            meshLinkPts.push(posA.clone(), posB.clone());
-          }
-        }
-      }
-      constellationMeshLines.geometry.dispose();
-      constellationMeshLines.geometry = new THREE.BufferGeometry().setFromPoints(meshLinkPts);
-
-      // Compute Optional Ground Station Optical / Ka-Band Downlinks for in-range satellites
-      const gsLinkPts: THREE.Vector3[] = [];
-      GROUND_STATIONS.forEach((gs) => {
-        const gsPos = latLonToVector3(gs.latitude, gs.longitude, EARTH_RADIUS + 0.025);
-        const gsNormal = gsPos.clone().normalize();
-        for (const sat of allConstellationSats) {
-          const satPos = sat.root.position;
-          const toSat = satPos.clone().sub(gsPos);
-          if (toSat.length() < 3.6 && toSat.normalize().dot(gsNormal) > 0.35) {
-            gsLinkPts.push(gsPos, satPos.clone());
-            break;
-          }
-        }
-      });
-      groundLinkLines.geometry.dispose();
-      groundLinkLines.geometry = new THREE.BufferGeometry().setFromPoints(gsLinkPts);
-
-      if (bestLinkTarget) {
-        const nr = bestLinkTarget;
-        islBeam.geometry.setFromPoints([spacecraft.position, nr.pos]);
-        const isPulsing = islPulseRef.current;
-        (islBeam.material as THREE.LineBasicMaterial).opacity = isPulsing
-          ? 0.95
-          : 0.55 + 0.25 * Math.sin(clockTime * 12);
-        (islBeam.material as THREE.LineBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x22d3ee);
-
-        // Animate Optical ISL Laser Data Packets streaming from Scout Satellite UP to AI Data Center Station
-        islPackets.forEach((pkt, idx) => {
-          pkt.visible = true;
-          const speed = isPulsing ? 2.0 : 0.75;
-          const t = (clockTime * speed + idx / islPackets.length) % 1.0;
-          pkt.position.lerpVectors(spacecraft.position, nr.pos, t);
-          const s = isPulsing ? 1.5 : 0.9;
-          pkt.scale.setScalar(s);
-          (pkt.material as THREE.MeshBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x67e8f9);
-        });
-
-        if (fs.frameTick % 30 === 0) {
-          const gbps = Math.max(4.2, 12.0 - nr.dist * 0.55).toFixed(1);
-          setActiveRelayLabel(`${nr.name} (${gbps} Gbps ISL)`);
-        }
-      } else {
-        (islBeam.material as THREE.LineBasicMaterial).opacity = 0;
-        islPackets.forEach((pkt) => {
-          pkt.visible = false;
-        });
-      }
-
-      // Footprint position & Volumetric Nadir Sensor Cone on Earth surface below Scout Satellite
-      const subSatNormal = radialOut.clone();
-      const subSatPos = subSatNormal.clone().multiplyScalar(EARTH_RADIUS + 0.02);
-      footprintMesh.position.copy(subSatPos);
-      footprintMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), subSatNormal);
-
-      const coneMid = spacecraft.position.clone().add(subSatPos).multiplyScalar(0.5);
-      scanConeMesh.position.copy(coneMid);
-      scanConeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), subSatNormal);
-
-      // Slow Cloud Drift
-      cloudMesh.rotation.y = clockTime * 0.005;
-
-      // ── Animate 4 Distinct Mission Environmental Simulations + Space Weather ──
-      let acquiredTarget: string | null = null;
-      let acquiredEvent: GlobalEarthEvent | null = null;
-      let acquiredPos: THREE.Vector3 | null = null;
-      let minTargetDistKm = Infinity;
-      const footprintKm = Math.max(950, calculateFootprintRadiusKm(satAltKm, 35.0));
-      const activeScenarioClean = (scenarioIdRef.current || "wildfire").replace(/_scout|_sentinel|_watch/g, "");
-      const resolvedIds = resolvedIdsRef.current;
-
-      // Update Global Solar Storm Space-Weather System (CME Plasma Cloud + Earth Magnetosphere + Solar Flare Arches)
-      const isSolarStormMission = activeScenarioClean === "solar_storm";
-      const swState = spaceWeatherSystem.update(
-        clockTime,
-        isSolarStormMission,
-        scanningIdRef.current !== null || scanPctRef.current > 0
-      );
-
-      // Modulate inter-satellite laser mesh scintillation during severe CME magnetosphere impact
-      (constellationMeshLines.material as THREE.LineBasicMaterial).opacity =
-        swState.magnetosphereCompression > 0.35
-          ? 0.18 + 0.25 * Math.abs(Math.sin(clockTime * 28.0))
-          : 0.34;
-
-      liveEvents.forEach((ev, idx) => {
-        const isResolved = resolvedIds.includes(ev.event.id);
-        const isAutopilotTarget = autopilotIdRef.current === ev.event.id;
-        const isBeingScanned = scanningIdRef.current === ev.event.id;
-        const isMissionPrimary =
-          ev.event.scenarioId === scenarioIdRef.current ||
-          ev.event.type === activeScenarioClean;
-        const baseScale = isMissionPrimary ? 1.2 : 0.72;
-        ev.group.scale.setScalar(baseScale);
-
-        // Show 3D Containment Shield Dome when target is RESOLVED
-        ev.shieldMesh.visible = isResolved;
-        if (isResolved) {
-          ev.shieldMesh.rotation.y = clockTime * 0.9;
+        // Replay 5-stage mechanical deployment when triggered by the user
+        if (deployTriggerRef.current !== lastDeployTrigger) {
+          lastDeployTrigger = deployTriggerRef.current;
+          scoutSat.triggerDeployment();
+          flagshipDcSat.triggerDeployment();
         }
 
-        // Subtle pulse on target reticle
-        const pulse = isAutopilotTarget
-          ? 1.06 + 0.14 * Math.sin(clockTime * 6.0)
-          : 1.0 + 0.08 * Math.sin(clockTime * 3.0 + idx);
-        ev.ringMesh.scale.set(pulse, pulse, pulse);
-
-        // Update Custom GLSL Environmental Simulation Shaders (Wildfire / Flood / Volcano / Aurora)
-        if (ev.shaderMat) {
-          ev.shaderMat.uniforms.uTime.value = clockTime + idx * 1.7;
-          if (ev.shaderMat.uniforms.uScanActive !== undefined) {
-            ev.shaderMat.uniforms.uScanActive.value = isBeingScanned ? 1.0 : 0.0;
-          }
-          if (ev.shaderMat.uniforms.uContained !== undefined) {
-            ev.shaderMat.uniforms.uContained.value = isResolved ? 1.0 : 0.0;
-          }
-          if (ev.event.type === "wildfire" && ev.shaderMat.uniforms.uProgression !== undefined) {
-            // Fire perimeter expands naturally over time unless contained
-            ev.shaderMat.uniforms.uProgression.value = isResolved
-              ? 0.35
-              : 0.52 + 0.26 * (0.5 + 0.5 * Math.sin(clockTime * 0.25 + idx));
-          } else if (ev.event.type === "flood" && ev.shaderMat.uniforms.uWaterLevel !== undefined) {
-            // River basin water level rises and overflows banks progressively
-            ev.shaderMat.uniforms.uWaterLevel.value = isResolved
-              ? 0.38
-              : 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(clockTime * 0.3 + idx));
-          } else if (ev.event.type === "volcano" && ev.shaderMat.uniforms.uEruptionIntensity !== undefined) {
-            ev.shaderMat.uniforms.uEruptionIntensity.value = isResolved
-              ? 0.35
-              : 0.68 + 0.25 * (0.5 + 0.5 * Math.sin(clockTime * 0.4 + idx));
-          } else if (ev.event.type === "solar_storm" && ev.shaderMat.uniforms.uStormIntensity !== undefined) {
-            ev.shaderMat.uniforms.uStormIntensity.value =
-              0.55 + swState.magnetosphereCompression * 0.45;
-          }
-        }
-
-        // Animate Mission-Specific 3D Particles (Wildfire Embers / Flood Rainfall / Volcanic Tephra)
-        if (ev.flameParticles && ev.flamePosis) {
-          ev.flameParticles.visible = !isResolved;
-          if (!isResolved) {
-            const arr = ev.flamePosis;
-            const count = arr.length / 3;
-            if (ev.event.type === "flood") {
-              // Slanted Monsoon Rainfall descending from storm anvil onto river basin
-              for (let i = 0; i < count; i++) {
-                arr[i * 3 + 1] -= 0.018;
-                arr[i * 3] -= 0.004;
-                if (arr[i * 3 + 1] < 0.01) {
-                  arr[i * 3] = (Math.random() - 0.5) * 0.42;
-                  arr[i * 3 + 1] = 0.3;
-                  arr[i * 3 + 2] = (Math.random() - 0.5) * 0.42;
-                }
-              }
-            } else {
-              // Rising Wildfire Embers along the expanding fire perimeter
-              for (let i = 0; i < count; i++) {
-                arr[i * 3 + 1] += 0.012;
-                arr[i * 3] -= 0.004; // Wind-advected NW
-                if (arr[i * 3 + 1] > 0.32) {
-                  const ang = (i / count) * Math.PI * 2;
-                  const rad = 0.12 + Math.random() * 0.12;
-                  arr[i * 3] = Math.cos(ang) * rad;
-                  arr[i * 3 + 1] = 0.01;
-                  arr[i * 3 + 2] = Math.sin(ang) * rad;
-                }
-              }
-            }
-            (ev.flameParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-          }
-        }
-
-        // Animate Wind-Sheared Wildfire Smoke & Volcanic Plinian Ash Column
-        if (ev.smokeParticles && ev.smokePosis) {
-          ev.smokeParticles.visible = !isResolved;
-          if (!isResolved) {
-            const arr = ev.smokePosis;
-            const count = arr.length / 3;
-            for (let i = 0; i < count; i++) {
-              arr[i * 3 + 1] += 0.009;
-              if (ev.event.type === "wildfire") {
-                // Strong NW wind shear bending the smoke plume
-                arr[i * 3] -= 0.0065;
-                arr[i * 3 + 2] += 0.0045;
-              } else {
-                // Radial expansion at the volcanic tropopause umbrella
-                arr[i * 3] += Math.cos(clockTime * 2 + i) * 0.003;
-                arr[i * 3 + 2] += Math.sin(clockTime * 2 + i) * 0.003;
-              }
-              if (arr[i * 3 + 1] > 0.58) {
-                arr[i * 3] = (Math.random() - 0.5) * 0.08;
-                arr[i * 3 + 1] = 0.08;
-                arr[i * 3 + 2] = (Math.random() - 0.5) * 0.08;
-              }
-            }
-            (ev.smokeParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-          }
-        }
-
-        // Animate Volcanic Tropopause Umbrella Ash Cloud & Flood Monsoon Anvil
-        if (ev.ashUmbrellaMesh) {
-          ev.ashUmbrellaMesh.visible = !isResolved;
-          const uScale = 1.0 + 0.18 * Math.sin(clockTime * 0.8 + idx);
-          ev.ashUmbrellaMesh.scale.set(uScale, uScale, 1);
-          ev.ashUmbrellaMesh.rotation.z = clockTime * 0.12;
-        }
-        if (ev.stormAnvilMesh) {
-          const sScale = 1.0 + 0.1 * Math.sin(clockTime * 1.1 + idx);
-          ev.stormAnvilMesh.scale.set(sScale, sScale, 1);
-          ev.stormAnvilMesh.rotation.z = -clockTime * 0.08;
-        }
-
-        if (ev.rippleMesh) {
-          const rippleScale = 1.0 + ((clockTime * 0.75 + idx * 0.4) % 1.4);
-          ev.rippleMesh.scale.set(rippleScale, rippleScale, rippleScale);
-          (ev.rippleMesh.material as THREE.MeshBasicMaterial).opacity = isResolved
-            ? 0.2
-            : Math.max(0.18, 0.85 - (rippleScale - 1.0) / 1.4);
-        }
-
-        if (ev.auroraRibbon) {
-          ev.auroraRibbon.rotation.y = clockTime * 0.18;
-        }
-
-        if (ev.light) {
-          ev.light.intensity = isResolved ? 0.25 : 1.4 + 0.45 * Math.sin(clockTime * 11.0 + idx * 3.0);
-        }
-
-        const evNormal = ev.position.clone().normalize();
-        const dKm = subSatNormal.angleTo(evNormal) * 6371.0;
-        if (dKm <= footprintKm && dKm < minTargetDistKm) {
-          minTargetDistKm = dKm;
-          acquiredTarget = ev.event.name;
-          acquiredEvent = ev.event;
-          acquiredPos = ev.position;
-          (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
-
-          targetBeam.geometry.setFromPoints([spacecraft.position, ev.position]);
-          (targetBeam.material as THREE.LineBasicMaterial).opacity = 0.95;
-        } else if (isResolved) {
-          (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x10b981);
-        } else if (isAutopilotTarget) {
-          (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x38bdf8);
-        } else {
-          (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(
-            parseInt(ev.event.colorHex.replace("#", ""), 16)
+        // Advance 5-Stage Mechanical Deployment Sequence & Sun-Tracking Solar Arrays
+        const deployStatus = scoutSat.updateDeployment(0.016);
+        flagshipDcSat.updateDeployment(0.016);
+        if (fs.frameTick % 12 === 0) {
+          setDeploymentBadge(
+            deployStatus.isDeployed
+              ? null
+              : `${deployStatus.stageLabel} (${Math.round(deployStatus.progress * 100)}%)`
           );
         }
-      });
+        scoutSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
+        flagshipDcSat.updateOrbitalSystems(sunDirNorm, thermalTempRef.current, camera);
 
-      // Animate High-Power Orbital Containment Beam from AI Data Center Mother Station when pulsing!
-      if (islPulseRef.current && liveEvents.length > 0) {
-        const targetEv =
-          liveEvents.find((e) => resolvedIds.includes(e.event.id)) ??
-          liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
-          liveEvents[0];
-        dcDownlinkBeam.geometry.setFromPoints([dcPos, targetEv.position]);
-        (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0.9;
-      } else {
-        (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0;
-      }
+        // Subtle Hall-Effect Xenon Ion Plume modulation when boosting
+        const plume = spacecraft.getObjectByName("thrusterPlume");
+        if (plume) {
+          const pScale = isBursting ? 1.55 + 0.15 * Math.sin(clockTime * 22) : 0.9 + 0.08 * Math.sin(clockTime * 14);
+          plume.scale.set(pScale, pScale, pScale);
+        }
 
-      if (acquiredTarget && acquiredPos) {
-        const isActivelyScanning =
-          scanningIdRef.current !== null || scanPctRef.current > 0;
-        // Mission-specific multi-spectral sensor cone colors:
-        // Wildfire = SWIR Thermal Amber (0xf97316), Flood = C-Band SAR Cyan (0x06b6d4),
-        // Volcano = UV/InSAR Violet (0xe879f9), Solar Storm = Magnetometer Emerald (0x10b981)
-        const activeSensorHex =
-          activeScenarioClean === "wildfire"
-            ? 0xf97316
-            : activeScenarioClean === "flood"
-            ? 0x06b6d4
-            : activeScenarioClean === "volcano"
-            ? 0xe879f9
-            : 0x10b981;
-        scanConeMat.color.setHex(isActivelyScanning ? activeSensorHex : 0x22d3ee);
-        scanConeMat.opacity = isActivelyScanning
-          ? 0.28 + 0.1 * Math.sin(clockTime * 14)
-          : 0.2;
-        (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(
-          isActivelyScanning ? activeSensorHex : 0x10b981
+        // Subtle lateral RCS attitude puffs when precessing orbital plane
+        const rcsLeft = spacecraft.getObjectByName("rcsLeft") as THREE.Mesh | undefined;
+        const rcsRight = spacecraft.getObjectByName("rcsRight") as THREE.Mesh | undefined;
+        if (rcsLeft && rcsRight) {
+          const leftMat = rcsLeft.material as THREE.MeshBasicMaterial;
+          const rightMat = rcsRight.material as THREE.MeshBasicMaterial;
+          leftMat.opacity = activeTurnRate < -0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
+          rightMat.opacity = activeTurnRate > 0.0005 ? Math.min(0.65, Math.abs(activeTurnRate) * 140) : 0;
+        }
+
+        // ── 11B. HIGH-ORBIT FLAGSHIP ORBITAL AI DATA CENTER SATELLITE ("LUMEN-DC-ALPHA") ──
+        // Orbits independently in Medium Earth Orbit (dcRadius = 7.05) on its own inclined orbital plane!
+        fs.dcPhase = (fs.dcPhase + 0.0011 * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
+        const dcx0 = Math.cos(fs.dcPhase) * dcRadius;
+        const dcy0 = Math.sin(fs.dcPhase) * dcRadius * Math.sin(dcInc);
+        const dcz0 = Math.sin(fs.dcPhase) * dcRadius * Math.cos(dcInc);
+        const dcPos = new THREE.Vector3(dcx0, dcy0, dcz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan);
+
+        const dctox = -Math.sin(fs.dcPhase) * dcRadius;
+        const dctoy = Math.cos(fs.dcPhase) * dcRadius * Math.sin(dcInc);
+        const dctoz = Math.cos(fs.dcPhase) * dcRadius * Math.cos(dcInc);
+        const dcForward = new THREE.Vector3(dctox, dctoy, dctoz)
+          .applyAxisAngle(new THREE.Vector3(0, 1, 0), dcRaan)
+          .normalize();
+        const dcRadialOut = dcPos.clone().normalize();
+
+        dcStation.position.copy(dcPos);
+        dcStation.up.copy(dcRadialOut);
+        dcStation.lookAt(dcPos.clone().add(dcForward));
+
+        // ── 11C. GLOBAL ORBITAL AI DATA CENTER CONSTELLATION & DYNAMIC OPTICAL LASER MESH ──
+        let bestLinkTarget: { name: string; pos: THREE.Vector3; dist: number } | null = null;
+
+        const dcMid = spacecraft.position.clone().add(dcPos).multiplyScalar(0.5);
+        const dcDist = spacecraft.position.distanceTo(dcPos);
+        if (dcMid.length() > EARTH_RADIUS * 0.85) {
+          bestLinkTarget = { name: "LUMEN-DC-ALPHA", pos: dcPos, dist: dcDist };
+        }
+
+        relayNodes.forEach((rn) => {
+          rn.phase = (rn.phase + rn.speed * (fs.keys.space ? 1.6 : 1.0)) % (Math.PI * 2);
+          const rx0 = Math.cos(rn.phase) * relayRadius;
+          const ry0 = Math.sin(rn.phase) * relayRadius * Math.sin(rn.inc);
+          const rz0 = Math.sin(rn.phase) * relayRadius * Math.cos(rn.inc);
+          const rPos = new THREE.Vector3(rx0, ry0, rz0).applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan);
+
+          const rtox = -Math.sin(rn.phase) * relayRadius;
+          const rtoy = Math.cos(rn.phase) * relayRadius * Math.sin(rn.inc);
+          const rtoz = Math.cos(rn.phase) * relayRadius * Math.cos(rn.inc);
+          const rForward = new THREE.Vector3(rtox, rtoy, rtoz)
+            .applyAxisAngle(new THREE.Vector3(0, 1, 0), rn.raan)
+            .normalize();
+          const rRadialOut = rPos.clone().normalize();
+
+          rn.mesh.position.copy(rPos);
+          rn.mesh.up.copy(rRadialOut);
+          rn.mesh.lookAt(rPos.clone().add(rForward));
+          rn.sat.updateOrbitalSystems(sunDirNorm, 22.0, camera);
+
+          const midPoint = spacecraft.position.clone().add(rPos).multiplyScalar(0.5);
+          const dist = spacecraft.position.distanceTo(rPos);
+          if (!bestLinkTarget && midPoint.length() > EARTH_RADIUS + 0.15) {
+            bestLinkTarget = { name: rn.name, pos: rPos, dist };
+          }
+        });
+
+        // Compute Dynamic Inter-Satellite Optical Laser Communication Links across the entire 6-Satellite Constellation
+        const allConstellationSats: OrbitalAIDataCenterSatellite[] = [
+          scoutSat,
+          flagshipDcSat,
+          ...relayNodes.map((r) => r.sat),
+        ];
+        allConstellationSats.forEach((s) => {
+          s.networkConnections = [];
+        });
+
+        const meshLinkPts: THREE.Vector3[] = [];
+        for (let i = 0; i < allConstellationSats.length; i++) {
+          for (let j = i + 1; j < allConstellationSats.length; j++) {
+            const satA = allConstellationSats[i];
+            const satB = allConstellationSats[j];
+            const posA = satA.root.position;
+            const posB = satB.root.position;
+            const dist = posA.distanceTo(posB);
+            const maxRange = Math.min(satA.communicationRange, satB.communicationRange);
+            const midPt = posA.clone().add(posB).multiplyScalar(0.5);
+            // Line of sight check above Earth's horizon
+            if (dist <= maxRange && midPt.length() > EARTH_RADIUS + 0.08) {
+              satA.networkConnections.push(satB.id);
+              satB.networkConnections.push(satA.id);
+              meshLinkPts.push(posA.clone(), posB.clone());
+            }
+          }
+        }
+        constellationMeshLines.geometry.dispose();
+        constellationMeshLines.geometry = new THREE.BufferGeometry().setFromPoints(meshLinkPts);
+
+        // Compute Optional Ground Station Optical / Ka-Band Downlinks for in-range satellites
+        const gsLinkPts: THREE.Vector3[] = [];
+        GROUND_STATIONS.forEach((gs) => {
+          const gsPos = latLonToVector3(gs.latitude, gs.longitude, EARTH_RADIUS + 0.025);
+          const gsNormal = gsPos.clone().normalize();
+          for (const sat of allConstellationSats) {
+            const satPos = sat.root.position;
+            const toSat = satPos.clone().sub(gsPos);
+            if (toSat.length() < 3.6 && toSat.normalize().dot(gsNormal) > 0.35) {
+              gsLinkPts.push(gsPos, satPos.clone());
+              break;
+            }
+          }
+        });
+        groundLinkLines.geometry.dispose();
+        groundLinkLines.geometry = new THREE.BufferGeometry().setFromPoints(gsLinkPts);
+
+        if (bestLinkTarget) {
+          const nr = bestLinkTarget;
+          islBeam.geometry.setFromPoints([spacecraft.position, nr.pos]);
+          const isPulsing = islPulseRef.current;
+          (islBeam.material as THREE.LineBasicMaterial).opacity = isPulsing
+            ? 0.95
+            : 0.55 + 0.25 * Math.sin(clockTime * 12);
+          (islBeam.material as THREE.LineBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x22d3ee);
+
+          // Animate Optical ISL Laser Data Packets streaming from Scout Satellite UP to AI Data Center Station
+          islPackets.forEach((pkt, idx) => {
+            pkt.visible = true;
+            const speed = isPulsing ? 2.0 : 0.75;
+            const t = (clockTime * speed + idx / islPackets.length) % 1.0;
+            pkt.position.lerpVectors(spacecraft.position, nr.pos, t);
+            const s = isPulsing ? 1.5 : 0.9;
+            pkt.scale.setScalar(s);
+            (pkt.material as THREE.MeshBasicMaterial).color.setHex(isPulsing ? 0x34d399 : 0x67e8f9);
+          });
+
+          if (fs.frameTick % 30 === 0) {
+            const gbps = Math.max(4.2, 12.0 - nr.dist * 0.55).toFixed(1);
+            setActiveRelayLabel(`${nr.name} (${gbps} Gbps ISL)`);
+          }
+        } else {
+          (islBeam.material as THREE.LineBasicMaterial).opacity = 0;
+          islPackets.forEach((pkt) => {
+            pkt.visible = false;
+          });
+        }
+
+        // Footprint position & Volumetric Nadir Sensor Cone on Earth surface below Scout Satellite
+        const subSatNormal = radialOut.clone();
+        const subSatPos = subSatNormal.clone().multiplyScalar(EARTH_RADIUS + 0.02);
+        footprintMesh.position.copy(subSatPos);
+        footprintMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), subSatNormal);
+
+        const coneMid = spacecraft.position.clone().add(subSatPos).multiplyScalar(0.5);
+        scanConeMesh.position.copy(coneMid);
+        scanConeMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), subSatNormal);
+
+        // Slow Cloud Drift
+        cloudMesh.rotation.y = clockTime * 0.005;
+
+        // ── Animate 4 Distinct Mission Environmental Simulations + Space Weather ──
+        let acquiredTarget: string | null = null;
+        let acquiredEvent: GlobalEarthEvent | null = null;
+        let acquiredPos: THREE.Vector3 | null = null;
+        let minTargetDistKm = Infinity;
+        const footprintKm = Math.max(950, calculateFootprintRadiusKm(satAltKm, 35.0));
+        const activeScenarioClean = (scenarioIdRef.current || "wildfire").replace(/_scout|_sentinel|_watch/g, "");
+        const resolvedIds = resolvedIdsRef.current;
+
+        // Update Global Solar Storm Space-Weather System (CME Plasma Cloud + Earth Magnetosphere + Solar Flare Arches)
+        const isSolarStormMission = activeScenarioClean === "solar_storm";
+        const swState = spaceWeatherSystem.update(
+          clockTime,
+          isSolarStormMission,
+          scanningIdRef.current !== null || scanPctRef.current > 0
         );
 
-        scanPackets.forEach((spkt, idx) => {
-          spkt.visible = true;
-          const t = (clockTime * 1.4 + idx / scanPackets.length) % 1.0;
-          spkt.position.lerpVectors(acquiredPos!, spacecraft.position, t);
-          (spkt.material as THREE.MeshBasicMaterial).opacity = 0.9;
+        // Modulate inter-satellite laser mesh scintillation during severe CME magnetosphere impact
+        (constellationMeshLines.material as THREE.LineBasicMaterial).opacity =
+          swState.magnetosphereCompression > 0.35
+            ? 0.18 + 0.25 * Math.abs(Math.sin(clockTime * 28.0))
+            : 0.34;
+
+        liveEvents.forEach((ev, idx) => {
+          const isResolved = resolvedIds.includes(ev.event.id);
+          const isAutopilotTarget = autopilotIdRef.current === ev.event.id;
+          const isBeingScanned = scanningIdRef.current === ev.event.id;
+          const isMissionPrimary =
+            ev.event.scenarioId === scenarioIdRef.current ||
+            ev.event.type === activeScenarioClean;
+          const baseScale = isMissionPrimary ? 1.2 : 0.72;
+          ev.group.scale.setScalar(baseScale);
+
+          // Show 3D Containment Shield Dome when target is RESOLVED
+          ev.shieldMesh.visible = isResolved;
+          if (isResolved) {
+            ev.shieldMesh.rotation.y = clockTime * 0.9;
+          }
+
+          // Subtle pulse on target reticle
+          const pulse = isAutopilotTarget
+            ? 1.06 + 0.14 * Math.sin(clockTime * 6.0)
+            : 1.0 + 0.08 * Math.sin(clockTime * 3.0 + idx);
+          ev.ringMesh.scale.set(pulse, pulse, pulse);
+
+          // Update Custom GLSL Environmental Simulation Shaders (Wildfire / Flood / Volcano / Aurora)
+          if (ev.shaderMat) {
+            ev.shaderMat.uniforms.uTime.value = clockTime + idx * 1.7;
+            if (ev.shaderMat.uniforms.uScanActive !== undefined) {
+              ev.shaderMat.uniforms.uScanActive.value = isBeingScanned ? 1.0 : 0.0;
+            }
+            if (ev.shaderMat.uniforms.uContained !== undefined) {
+              ev.shaderMat.uniforms.uContained.value = isResolved ? 1.0 : 0.0;
+            }
+            if (ev.event.type === "wildfire" && ev.shaderMat.uniforms.uProgression !== undefined) {
+              // Fire perimeter expands naturally over time unless contained
+              ev.shaderMat.uniforms.uProgression.value = isResolved
+                ? 0.35
+                : 0.52 + 0.26 * (0.5 + 0.5 * Math.sin(clockTime * 0.25 + idx));
+            } else if (ev.event.type === "flood" && ev.shaderMat.uniforms.uWaterLevel !== undefined) {
+              // River basin water level rises and overflows banks progressively
+              ev.shaderMat.uniforms.uWaterLevel.value = isResolved
+                ? 0.38
+                : 0.62 + 0.28 * (0.5 + 0.5 * Math.sin(clockTime * 0.3 + idx));
+            } else if (ev.event.type === "volcano" && ev.shaderMat.uniforms.uEruptionIntensity !== undefined) {
+              ev.shaderMat.uniforms.uEruptionIntensity.value = isResolved
+                ? 0.35
+                : 0.68 + 0.25 * (0.5 + 0.5 * Math.sin(clockTime * 0.4 + idx));
+            } else if (ev.event.type === "solar_storm" && ev.shaderMat.uniforms.uStormIntensity !== undefined) {
+              ev.shaderMat.uniforms.uStormIntensity.value =
+                0.55 + swState.magnetosphereCompression * 0.45;
+            }
+          }
+
+          // Animate Mission-Specific 3D Particles (Wildfire Embers / Flood Rainfall / Volcanic Tephra)
+          if (ev.flameParticles && ev.flamePosis) {
+            ev.flameParticles.visible = !isResolved;
+            if (!isResolved) {
+              const arr = ev.flamePosis;
+              const count = arr.length / 3;
+              if (ev.event.type === "flood") {
+                // Slanted Monsoon Rainfall descending from storm anvil onto river basin
+                for (let i = 0; i < count; i++) {
+                  arr[i * 3 + 1] -= 0.018;
+                  arr[i * 3] -= 0.004;
+                  if (arr[i * 3 + 1] < 0.01) {
+                    arr[i * 3] = (Math.random() - 0.5) * 0.42;
+                    arr[i * 3 + 1] = 0.3;
+                    arr[i * 3 + 2] = (Math.random() - 0.5) * 0.42;
+                  }
+                }
+              } else {
+                // Rising Wildfire Embers along the expanding fire perimeter
+                for (let i = 0; i < count; i++) {
+                  arr[i * 3 + 1] += 0.012;
+                  arr[i * 3] -= 0.004; // Wind-advected NW
+                  if (arr[i * 3 + 1] > 0.32) {
+                    const ang = (i / count) * Math.PI * 2;
+                    const rad = 0.12 + Math.random() * 0.12;
+                    arr[i * 3] = Math.cos(ang) * rad;
+                    arr[i * 3 + 1] = 0.01;
+                    arr[i * 3 + 2] = Math.sin(ang) * rad;
+                  }
+                }
+              }
+              (ev.flameParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+            }
+          }
+
+          // Animate Wind-Sheared Wildfire Smoke & Volcanic Plinian Ash Column
+          if (ev.smokeParticles && ev.smokePosis) {
+            ev.smokeParticles.visible = !isResolved;
+            if (!isResolved) {
+              const arr = ev.smokePosis;
+              const count = arr.length / 3;
+              for (let i = 0; i < count; i++) {
+                arr[i * 3 + 1] += 0.009;
+                if (ev.event.type === "wildfire") {
+                  // Strong NW wind shear bending the smoke plume
+                  arr[i * 3] -= 0.0065;
+                  arr[i * 3 + 2] += 0.0045;
+                } else {
+                  // Radial expansion at the volcanic tropopause umbrella
+                  arr[i * 3] += Math.cos(clockTime * 2 + i) * 0.003;
+                  arr[i * 3 + 2] += Math.sin(clockTime * 2 + i) * 0.003;
+                }
+                if (arr[i * 3 + 1] > 0.58) {
+                  arr[i * 3] = (Math.random() - 0.5) * 0.08;
+                  arr[i * 3 + 1] = 0.08;
+                  arr[i * 3 + 2] = (Math.random() - 0.5) * 0.08;
+                }
+              }
+              (ev.smokeParticles.geometry.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+            }
+          }
+
+          // Animate Volcanic Tropopause Umbrella Ash Cloud & Flood Monsoon Anvil
+          if (ev.ashUmbrellaMesh) {
+            ev.ashUmbrellaMesh.visible = !isResolved;
+            const uScale = 1.0 + 0.18 * Math.sin(clockTime * 0.8 + idx);
+            ev.ashUmbrellaMesh.scale.set(uScale, uScale, 1);
+            ev.ashUmbrellaMesh.rotation.z = clockTime * 0.12;
+          }
+          if (ev.stormAnvilMesh) {
+            const sScale = 1.0 + 0.1 * Math.sin(clockTime * 1.1 + idx);
+            ev.stormAnvilMesh.scale.set(sScale, sScale, 1);
+            ev.stormAnvilMesh.rotation.z = -clockTime * 0.08;
+          }
+
+          if (ev.rippleMesh) {
+            const rippleScale = 1.0 + ((clockTime * 0.75 + idx * 0.4) % 1.4);
+            ev.rippleMesh.scale.set(rippleScale, rippleScale, rippleScale);
+            (ev.rippleMesh.material as THREE.MeshBasicMaterial).opacity = isResolved
+              ? 0.2
+              : Math.max(0.18, 0.85 - (rippleScale - 1.0) / 1.4);
+          }
+
+          if (ev.auroraRibbon) {
+            ev.auroraRibbon.rotation.y = clockTime * 0.18;
+          }
+
+          if (ev.light) {
+            ev.light.intensity = isResolved ? 0.25 : 1.4 + 0.45 * Math.sin(clockTime * 11.0 + idx * 3.0);
+          }
+
+          const evNormal = ev.position.clone().normalize();
+          const dKm = subSatNormal.angleTo(evNormal) * 6371.0;
+          if (dKm <= footprintKm && dKm < minTargetDistKm) {
+            minTargetDistKm = dKm;
+            acquiredTarget = ev.event.name;
+            acquiredEvent = ev.event;
+            acquiredPos = ev.position;
+            (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x22c55e);
+
+            targetBeam.geometry.setFromPoints([spacecraft.position, ev.position]);
+            (targetBeam.material as THREE.LineBasicMaterial).opacity = 0.95;
+          } else if (isResolved) {
+            (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x10b981);
+          } else if (isAutopilotTarget) {
+            (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(0x38bdf8);
+          } else {
+            (ev.ringMesh.material as THREE.MeshBasicMaterial).color.setHex(
+              parseInt(ev.event.colorHex.replace("#", ""), 16)
+            );
+          }
         });
-      } else {
-        (targetBeam.material as THREE.LineBasicMaterial).opacity = 0;
-        scanConeMat.color.setHex(0x38bdf8);
-        scanConeMat.opacity = 0.11;
-        (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(0x38bdf8);
-        scanPackets.forEach((spkt) => {
-          spkt.visible = false;
-        });
-      }
 
-      const currentInRangeId = (acquiredEvent as GlobalEarthEvent | null)?.id ?? null;
-      if (currentInRangeId !== fs.lastInRangeId || fs.frameTick % 12 === 0) {
-        fs.lastInRangeId = currentInRangeId;
-        setInRangeTargetName(acquiredTarget);
-        onTargetInRangeRef.current?.(acquiredEvent, Math.round(minTargetDistKm));
-      }
-
-      // ── 12. CAMERA MODES: SCOUT CHASE (TPP), NADIR SCAN, CINEMATIC EVENT CAM, AI STATION, GLOBAL ORBIT ──
-      const currentMode = viewModeRef.current;
-      const targetCamPos = new THREE.Vector3();
-      const targetLookAt = new THREE.Vector3();
-      const targetCamUp = new THREE.Vector3();
-
-      if (currentMode === "tpp") {
-        // 🚀 Scout Chase (Third-Person Perspective behind Low-Orbit Scout Satellite)
-        const zoom = tppZoomRef.current;
-        const chaseBehind = forwardDir.clone().multiplyScalar(-2.8 * zoom);
-        const chaseUp = radialOut.clone().multiplyScalar(1.15 * zoom);
-        const chaseSide = lateral.clone().multiplyScalar(0.65 * zoom);
-
-        targetCamPos.copy(spacecraft.position).add(chaseBehind).add(chaseUp).add(chaseSide);
-        targetLookAt.copy(spacecraft.position)
-          .add(forwardDir.clone().multiplyScalar(1.4))
-          .add(radialDown.clone().multiplyScalar(0.45));
-        targetCamUp.copy(radialOut);
-      } else if (currentMode === "cinematic") {
-        // 🎬 Cinematic Event Cam — Low-altitude oblique orbital fly-around focused directly on the active environmental simulation!
-        const zoom = tppZoomRef.current;
-        const focusEv =
-          liveEvents.find((e) => e.event.id === scanningIdRef.current) ??
-          liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
-          liveEvents.find((e) => e.event.scenarioId === activeScenarioClean) ??
-          liveEvents[0];
-        if (focusEv) {
-          const evNormal = focusEv.position.clone().normalize();
-          const arbitraryUp =
-            Math.abs(evNormal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
-          const tangentA = new THREE.Vector3().crossVectors(arbitraryUp, evNormal).normalize();
-          const tangentB = new THREE.Vector3().crossVectors(evNormal, tangentA).normalize();
-          const orbitPanAngle = clockTime * 0.14;
-          const panOffset = tangentA
-            .clone()
-            .multiplyScalar(Math.cos(orbitPanAngle) * 1.35 * zoom)
-            .add(tangentB.clone().multiplyScalar(Math.sin(orbitPanAngle) * 1.35 * zoom));
-          targetCamPos
-            .copy(focusEv.position)
-            .add(evNormal.clone().multiplyScalar(1.15 * zoom))
-            .add(panOffset);
-          targetLookAt.copy(focusEv.position).add(evNormal.clone().multiplyScalar(0.08));
-          targetCamUp.copy(evNormal);
+        // Animate High-Power Orbital Containment Beam from AI Data Center Mother Station when pulsing!
+        if (islPulseRef.current && liveEvents.length > 0) {
+          const targetEv =
+            liveEvents.find((e) => resolvedIds.includes(e.event.id)) ??
+            liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
+            liveEvents[0];
+          dcDownlinkBeam.geometry.setFromPoints([dcPos, targetEv.position]);
+          (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0.9;
         } else {
-          targetCamPos.copy(spacecraft.position).multiplyScalar(1.25);
+          (dcDownlinkBeam.material as THREE.LineBasicMaterial).opacity = 0;
+        }
+
+        if (acquiredTarget && acquiredPos) {
+          const isActivelyScanning =
+            scanningIdRef.current !== null || scanPctRef.current > 0;
+          // Mission-specific multi-spectral sensor cone colors:
+          // Wildfire = SWIR Thermal Amber (0xf97316), Flood = C-Band SAR Cyan (0x06b6d4),
+          // Volcano = UV/InSAR Violet (0xe879f9), Solar Storm = Magnetometer Emerald (0x10b981)
+          const activeSensorHex =
+            activeScenarioClean === "wildfire"
+              ? 0xf97316
+              : activeScenarioClean === "flood"
+                ? 0x06b6d4
+                : activeScenarioClean === "volcano"
+                  ? 0xe879f9
+                  : 0x10b981;
+          scanConeMat.color.setHex(isActivelyScanning ? activeSensorHex : 0x22d3ee);
+          scanConeMat.opacity = isActivelyScanning
+            ? 0.28 + 0.1 * Math.sin(clockTime * 14)
+            : 0.2;
+          (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(
+            isActivelyScanning ? activeSensorHex : 0x10b981
+          );
+
+          scanPackets.forEach((spkt, idx) => {
+            spkt.visible = true;
+            const t = (clockTime * 1.4 + idx / scanPackets.length) % 1.0;
+            spkt.position.lerpVectors(acquiredPos!, spacecraft.position, t);
+            (spkt.material as THREE.MeshBasicMaterial).opacity = 0.9;
+          });
+        } else {
+          (targetBeam.material as THREE.LineBasicMaterial).opacity = 0;
+          scanConeMat.color.setHex(0x38bdf8);
+          scanConeMat.opacity = 0.11;
+          (footprintMesh.material as THREE.MeshBasicMaterial).color.setHex(0x38bdf8);
+          scanPackets.forEach((spkt) => {
+            spkt.visible = false;
+          });
+        }
+
+        const currentInRangeId = (acquiredEvent as GlobalEarthEvent | null)?.id ?? null;
+        if (currentInRangeId !== fs.lastInRangeId || fs.frameTick % 12 === 0) {
+          fs.lastInRangeId = currentInRangeId;
+          setInRangeTargetName(acquiredTarget);
+          onTargetInRangeRef.current?.(acquiredEvent, Math.round(minTargetDistKm));
+        }
+
+        // ── 12. CAMERA MODES: SCOUT CHASE (TPP), NADIR SCAN, CINEMATIC EVENT CAM, AI STATION, GLOBAL ORBIT ──
+        const currentMode = viewModeRef.current;
+        const targetCamPos = new THREE.Vector3();
+        const targetLookAt = new THREE.Vector3();
+        const targetCamUp = new THREE.Vector3();
+
+        if (currentMode === "tpp") {
+          // 🚀 Scout Chase (Third-Person Perspective behind Low-Orbit Scout Satellite)
+          const zoom = tppZoomRef.current;
+          const chaseBehind = forwardDir.clone().multiplyScalar(-2.8 * zoom);
+          const chaseUp = radialOut.clone().multiplyScalar(1.15 * zoom);
+          const chaseSide = lateral.clone().multiplyScalar(0.65 * zoom);
+
+          targetCamPos.copy(spacecraft.position).add(chaseBehind).add(chaseUp).add(chaseSide);
+          targetLookAt.copy(spacecraft.position)
+            .add(forwardDir.clone().multiplyScalar(1.4))
+            .add(radialDown.clone().multiplyScalar(0.45));
+          targetCamUp.copy(radialOut);
+        } else if (currentMode === "cinematic") {
+          // 🎬 Cinematic Event Cam — Low-altitude oblique orbital fly-around focused directly on the active environmental simulation!
+          const zoom = tppZoomRef.current;
+          const focusEv =
+            liveEvents.find((e) => e.event.id === scanningIdRef.current) ??
+            liveEvents.find((e) => e.event.id === autopilotIdRef.current) ??
+            liveEvents.find((e) => e.event.scenarioId === activeScenarioClean) ??
+            liveEvents[0];
+          if (focusEv) {
+            const evNormal = focusEv.position.clone().normalize();
+            const arbitraryUp =
+              Math.abs(evNormal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+            const tangentA = new THREE.Vector3().crossVectors(arbitraryUp, evNormal).normalize();
+            const tangentB = new THREE.Vector3().crossVectors(evNormal, tangentA).normalize();
+            const orbitPanAngle = clockTime * 0.14;
+            const panOffset = tangentA
+              .clone()
+              .multiplyScalar(Math.cos(orbitPanAngle) * 1.35 * zoom)
+              .add(tangentB.clone().multiplyScalar(Math.sin(orbitPanAngle) * 1.35 * zoom));
+            targetCamPos
+              .copy(focusEv.position)
+              .add(evNormal.clone().multiplyScalar(1.15 * zoom))
+              .add(panOffset);
+            targetLookAt.copy(focusEv.position).add(evNormal.clone().multiplyScalar(0.08));
+            targetCamUp.copy(evNormal);
+          } else {
+            targetCamPos.copy(spacecraft.position).multiplyScalar(1.25);
+            targetLookAt.set(0, 0, 0);
+            targetCamUp.set(0, 1, 0);
+          }
+        } else if (currentMode === "datacenter") {
+          // 🏛️ High-Orbit AI Data Center Mother Station Camera ("LUMEN-DC-ALPHA")
+          const zoom = tppZoomRef.current;
+          const dcLateral = new THREE.Vector3().crossVectors(dcRadialOut, dcForward).normalize();
+          targetCamPos
+            .copy(dcPos)
+            .add(dcForward.clone().multiplyScalar(-2.6 * zoom))
+            .add(dcRadialOut.clone().multiplyScalar(0.95 * zoom))
+            .add(dcLateral.clone().multiplyScalar(1.1 * zoom));
+          // Look from the AI Data Center Station down toward Earth & the Scout Satellite
+          targetLookAt.copy(dcPos).multiplyScalar(0.45);
+          targetCamUp.copy(dcRadialOut);
+        } else if (currentMode === "nadir" || currentMode === "wing") {
+          // 🛰️ Ride-Along (Nadir)
+          const nadirPos = spacecraft.position.clone()
+            .add(radialOut.clone().multiplyScalar(1.9))
+            .add(lateral.clone().multiplyScalar(0.55));
+          targetCamPos.copy(nadirPos);
+          const subSat = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS);
+          targetLookAt.copy(subSat);
+          targetCamUp.copy(forwardDir);
+        } else {
+          // 🌍 Global Orbit View (Frames both Low-Orbit Scout Satellite AND High-Orbit AI Data Center Station!)
+          const rad = orbitAngleRef.current.radius || 18.5;
+          const theta = orbitAngleRef.current.theta;
+          const phi = orbitAngleRef.current.phi;
+
+          targetCamPos.set(
+            rad * Math.cos(phi) * Math.sin(theta),
+            rad * Math.sin(phi),
+            rad * Math.cos(phi) * Math.cos(theta)
+          );
           targetLookAt.set(0, 0, 0);
           targetCamUp.set(0, 1, 0);
         }
-      } else if (currentMode === "datacenter") {
-        // 🏛️ High-Orbit AI Data Center Mother Station Camera ("LUMEN-DC-ALPHA")
-        const zoom = tppZoomRef.current;
-        const dcLateral = new THREE.Vector3().crossVectors(dcRadialOut, dcForward).normalize();
-        targetCamPos
-          .copy(dcPos)
-          .add(dcForward.clone().multiplyScalar(-2.6 * zoom))
-          .add(dcRadialOut.clone().multiplyScalar(0.95 * zoom))
-          .add(dcLateral.clone().multiplyScalar(1.1 * zoom));
-        // Look from the AI Data Center Station down toward Earth & the Scout Satellite
-        targetLookAt.copy(dcPos).multiplyScalar(0.45);
-        targetCamUp.copy(dcRadialOut);
-      } else if (currentMode === "nadir" || currentMode === "wing") {
-        // 🛰️ Ride-Along (Nadir)
-        const nadirPos = spacecraft.position.clone()
-          .add(radialOut.clone().multiplyScalar(1.9))
-          .add(lateral.clone().multiplyScalar(0.55));
-        targetCamPos.copy(nadirPos);
-        const subSat = spacecraft.position.clone().normalize().multiplyScalar(EARTH_RADIUS);
-        targetLookAt.copy(subSat);
-        targetCamUp.copy(forwardDir);
-      } else {
-        // 🌍 Global Orbit View (Frames both Low-Orbit Scout Satellite AND High-Orbit AI Data Center Station!)
-        const rad = orbitAngleRef.current.radius || 18.5;
-        const theta = orbitAngleRef.current.theta;
-        const phi = orbitAngleRef.current.phi;
 
-        targetCamPos.set(
-          rad * Math.cos(phi) * Math.sin(theta),
-          rad * Math.sin(phi),
-          rad * Math.cos(phi) * Math.cos(theta)
-        );
-        targetLookAt.set(0, 0, 0);
-        targetCamUp.set(0, 1, 0);
-      }
+        const lerpSpeed = currentMode === "orbit" ? 0.08 : currentMode === "cinematic" ? 0.09 : 0.12;
+        camPosRef.current.lerp(targetCamPos, lerpSpeed);
+        camLookAtRef.current.lerp(targetLookAt, lerpSpeed);
+        camUpRef.current.lerp(targetCamUp, lerpSpeed);
 
-      const lerpSpeed = currentMode === "orbit" ? 0.08 : currentMode === "cinematic" ? 0.09 : 0.12;
-      camPosRef.current.lerp(targetCamPos, lerpSpeed);
-      camLookAtRef.current.lerp(targetLookAt, lerpSpeed);
-      camUpRef.current.lerp(targetCamUp, lerpSpeed);
+        camera.position.copy(camPosRef.current);
+        camera.up.copy(camUpRef.current);
+        camera.lookAt(camLookAtRef.current);
 
-      camera.position.copy(camPosRef.current);
-      camera.up.copy(camUpRef.current);
-      camera.lookAt(camLookAtRef.current);
-
-      // Update Country Labels ONLY when Map Borders overlay is enabled!
-      if (!showMapOverlayRef.current) {
-        for (const node of labelNodes) {
-          node.sprite.visible = false;
-        }
-      } else {
-        const camDist = camera.position.length();
-        const distScale = THREE.MathUtils.clamp((camDist - EARTH_RADIUS) / 9.5, 0.3, 1.1);
-        const placedBoxes: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [];
-        const tmpWorldPos = new THREE.Vector3();
-        const tmpNDC = new THREE.Vector3();
-
-        for (const node of labelNodes) {
-          const maxDist = node.importance === 1 ? 26.0 : node.importance === 2 ? 15.5 : 10.5;
-          if (camDist > maxDist) {
+        // Update Country Labels ONLY when Map Borders overlay is enabled!
+        if (!showMapOverlayRef.current) {
+          for (const node of labelNodes) {
             node.sprite.visible = false;
-            continue;
           }
-          node.sprite.getWorldPosition(tmpWorldPos);
-          const toCam = camera.position.clone().sub(tmpWorldPos).normalize();
-          const facingDot = node.localNormal.dot(toCam);
-        if (facingDot <= 0.22) {
-          node.sprite.visible = false;
-          continue;
-        }
-        tmpNDC.copy(tmpWorldPos).project(camera);
-        if (tmpNDC.z > 1.0) {
-          node.sprite.visible = false;
-          continue;
-        }
-        const hw = (node.baseWidth * distScale) / (camDist * 0.68);
-        const hh = (node.baseHeight * distScale) / (camDist * 0.65);
-        const box = {
-          minX: tmpNDC.x - hw,
-          maxX: tmpNDC.x + hw,
-          minY: tmpNDC.y - hh,
-          maxY: tmpNDC.y + hh,
-        };
-        let collides = false;
-        for (const p of placedBoxes) {
-          if (box.minX < p.maxX && box.maxX > p.minX && box.minY < p.maxY && box.maxY > p.minY) {
-            collides = true;
-            break;
-          }
-        }
-        if (collides) {
-          node.sprite.visible = false;
-          continue;
-        }
-        placedBoxes.push(box);
-        node.sprite.visible = true;
-        node.sprite.scale.set(node.baseWidth * distScale, node.baseHeight * distScale, 1);
-        const limbFade = THREE.MathUtils.smoothstep(facingDot, 0.22, 0.48);
-        (node.sprite.material as THREE.SpriteMaterial).opacity = limbFade * 0.72;
-      }
-      }
+        } else {
+          const camDist = camera.position.length();
+          const distScale = THREE.MathUtils.clamp((camDist - EARTH_RADIUS) / 9.5, 0.3, 1.1);
+          const placedBoxes: Array<{ minX: number; maxX: number; minY: number; maxY: number }> = [];
+          const tmpWorldPos = new THREE.Vector3();
+          const tmpNDC = new THREE.Vector3();
 
-      // Sunburst plane always faces the camera
-      sunburstMesh.lookAt(camera.position);
+          for (const node of labelNodes) {
+            const maxDist = node.importance === 1 ? 26.0 : node.importance === 2 ? 15.5 : 10.5;
+            if (camDist > maxDist) {
+              node.sprite.visible = false;
+              continue;
+            }
+            node.sprite.getWorldPosition(tmpWorldPos);
+            const toCam = camera.position.clone().sub(tmpWorldPos).normalize();
+            const facingDot = node.localNormal.dot(toCam);
+            if (facingDot <= 0.22) {
+              node.sprite.visible = false;
+              continue;
+            }
+            tmpNDC.copy(tmpWorldPos).project(camera);
+            if (tmpNDC.z > 1.0) {
+              node.sprite.visible = false;
+              continue;
+            }
+            const hw = (node.baseWidth * distScale) / (camDist * 0.68);
+            const hh = (node.baseHeight * distScale) / (camDist * 0.65);
+            const box = {
+              minX: tmpNDC.x - hw,
+              maxX: tmpNDC.x + hw,
+              minY: tmpNDC.y - hh,
+              maxY: tmpNDC.y + hh,
+            };
+            let collides = false;
+            for (const p of placedBoxes) {
+              if (box.minX < p.maxX && box.maxX > p.minX && box.minY < p.maxY && box.maxY > p.minY) {
+                collides = true;
+                break;
+              }
+            }
+            if (collides) {
+              node.sprite.visible = false;
+              continue;
+            }
+            placedBoxes.push(box);
+            node.sprite.visible = true;
+            node.sprite.scale.set(node.baseWidth * distScale, node.baseHeight * distScale, 1);
+            const limbFade = THREE.MathUtils.smoothstep(facingDot, 0.22, 0.48);
+            (node.sprite.material as THREE.SpriteMaterial).opacity = limbFade * 0.72;
+          }
+        }
+
+        // Sunburst plane always faces the camera
+        sunburstMesh.lookAt(camera.position);
       } catch (loopErr) {
         // Prevent unhandled errors from breaking the render loop permanently
         console.warn("Orbital animation frame caught:", loopErr);
@@ -2444,11 +2438,10 @@ export function UltraRealisticEarthFlight({
                 type="button"
                 onClick={() => setViewMode(opt.id as CameraViewMode)}
                 title={`${opt.label} — ${opt.desc} (Press C to cycle)`}
-                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all duration-200 cursor-pointer ${
-                  active
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-full transition-all duration-200 cursor-pointer ${active
                     ? "bg-accent text-ink shadow-md ring-1 ring-accent/60"
                     : "text-muted hover:text-ink hover:bg-raised/60"
-                }`}
+                  }`}
               >
                 <span>{opt.icon}</span>
                 <span className="hidden lg:inline">{opt.label}</span>
@@ -2471,11 +2464,10 @@ export function UltraRealisticEarthFlight({
             type="button"
             onClick={() => setShowMapOverlay((v) => !v)}
             title="Toggle Political Borders & Country Names Overlay"
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer ${
-              showMapOverlay
+            className={`px-2.5 py-1 text-[11px] font-bold rounded-full transition-all cursor-pointer ${showMapOverlay
                 ? "bg-cyan-500/30 text-cyan-200 border border-cyan-400/50"
                 : "text-faint hover:text-ink"
-            }`}
+              }`}
           >
             🗺️ <span className="hidden xl:inline">Borders</span>
           </button>
@@ -2500,11 +2492,10 @@ export function UltraRealisticEarthFlight({
           🧠 {aiActiveTops.toFixed(1)} TOPS · {satLat.toFixed(1)}°, {satLon.toFixed(1)}°
         </span>
         <span
-          className={`px-2.5 py-0.5 rounded-full text-[11px] border backdrop-blur-md shadow-md font-mono ${
-            inEclipse
+          className={`px-2.5 py-0.5 rounded-full text-[11px] border backdrop-blur-md shadow-md font-mono ${inEclipse
               ? "bg-indigo-950/85 border-indigo-500/40 text-indigo-300"
               : "bg-amber-950/60 border-amber-500/40 text-amber-300"
-          }`}
+            }`}
         >
           {inEclipse ? "🌙 Umbra" : "☀️ Sunlit"}
         </span>
@@ -2602,11 +2593,10 @@ export function UltraRealisticEarthFlight({
           onMouseUp={handleBoostEnd}
           onTouchStart={handleBoostStart}
           onTouchEnd={handleBoostEnd}
-          className={`px-2.5 py-0.5 rounded-full border flex items-center gap-1 text-[10px] font-bold font-mono transition-all active:scale-95 cursor-pointer ${
-            isBoosting
+          className={`px-2.5 py-0.5 rounded-full border flex items-center gap-1 text-[10px] font-bold font-mono transition-all active:scale-95 cursor-pointer ${isBoosting
               ? "bg-cyan-500 text-ink border-cyan-300 shadow-cyan-500/50"
               : "bg-panel/90 border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/60"
-          }`}
+            }`}
           title="Hold Spacebar to Fire Hall-Effect Ion Boost (2.2x Orbital Speed)"
         >
           <Zap className="w-3 h-3" />
